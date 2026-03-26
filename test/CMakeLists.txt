@@ -17,8 +17,8 @@ include(../cmake/CPM.cmake)
 CPMAddPackage("gh:doctest/doctest@2.4.12")
 CPMAddPackage("gh:TheLartians/Format.cmake@1.7.3")
 
-# Aircraft and MMA targets are expected to be built by parent project
-# If this is being run standalone, we need to build them
+# Aircraft and MMA targets are expected to be built by parent project If this is being run
+# standalone, we need to build them
 if(NOT TARGET Aircraft)
   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/.. ${CMAKE_BINARY_DIR}/avionics)
 endif()

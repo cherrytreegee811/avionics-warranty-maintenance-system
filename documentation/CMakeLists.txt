@@ -8,8 +8,8 @@ include(../cmake/CPM.cmake)
 
 CPMAddPackage("gh:mosra/m.css#a0d292ec311b97fefd21e93cdefb60f88d19ede6")
 
-# Aircraft and MMA targets are expected to be built by parent project
-# If this is being run standalone, we need to build them
+# Aircraft and MMA targets are expected to be built by parent project If this is being run
+# standalone, we need to build them
 if(NOT TARGET Aircraft)
   add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/.. ${CMAKE_BINARY_DIR}/avionics)
 endif()
