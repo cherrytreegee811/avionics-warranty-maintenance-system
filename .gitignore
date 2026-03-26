@@ -1,4 +1,6 @@
 /build*
+!/build.bat
+!/build.sh
 /.vscode
 /cpm_modules
 .DS_Store
