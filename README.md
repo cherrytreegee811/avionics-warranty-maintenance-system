@@ -1,3 +1,9 @@
+[![macos](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/macos.yml/badge.svg)](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/macos.yml)
+[![windows](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/windows.yml/badge.svg)](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/windows.yml)
+[![ubuntu](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/ubuntu.yml)
+[![style](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/style.yml/badge.svg)](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/style.yml)
+[![install](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/install.yml/badge.svg)](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/install.yml)
+
 # Aircraft Maintenance Management System
 
 A distributed C++ application simulating aircraft (client) and Maintenance Management Application (MMA) (server) communication for aircraft state management, diagnostic data transfer, and maintenance tracking.
