@@ -57,8 +57,8 @@ The system fulfills requirements for state machine management, diagnostic data t
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/AircraftMaintenanceSystem.git
-cd AircraftMaintenanceSystem
+git clone https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system.git
+cd avionics-warranty-maintenance-system
 
 # Configure and build
 cmake -S all -B build
