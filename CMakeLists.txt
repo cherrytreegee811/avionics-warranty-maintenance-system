@@ -39,10 +39,7 @@ add_library(Aircraft ${PROJECT_SOURCE_DIR}/include/aircraft/aircraft.h ${PROJECT
 set_target_properties(Aircraft PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 target_compile_options(Aircraft PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")
 target_link_libraries(Aircraft PRIVATE fmt::fmt)
-target_include_directories(
-  Aircraft PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-                  $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
-)
+target_include_directories(Aircraft PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>)
 
 # ---- Create MMA Library ----
 
@@ -50,16 +47,11 @@ add_library(MMA ${PROJECT_SOURCE_DIR}/include/mma/mma.h ${PROJECT_SOURCE_DIR}/so
 set_target_properties(MMA PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 target_compile_options(MMA PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")
 target_link_libraries(MMA PRIVATE fmt::fmt)
-target_include_directories(
-  MMA PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
-             $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>
-)
+target_include_directories(MMA PUBLIC $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include> $<INSTALL_INTERFACE:include/${PROJECT_NAME}-${PROJECT_VERSION}>)
 
 # ---- Create Aircraft Executable ----
 
-add_executable(AircraftApp
-  ${PROJECT_SOURCE_DIR}/source/aircraft_main.cpp
-)
+add_executable(AircraftApp ${PROJECT_SOURCE_DIR}/source/aircraft_main.cpp)
 set_target_properties(AircraftApp PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 target_link_libraries(AircraftApp PRIVATE Aircraft)
 
