@@ -9,9 +9,9 @@
 A distributed C++ application simulating aircraft (client) and Maintenance Management Application (MMA) (server) communication for aircraft state management, diagnostic data transfer, and maintenance tracking.
 
 ## Contributors
-- Isaiah Andrews
-- Jonathan Taylor
-- Salah Salame
+- Isaiah Andrews (<i>SemiDoge</i>)
+- Jonathan Taylor (<i>CherryTreeGee811</i>)
+- Salah Salame (<i>TechNerd-019</i>)
 
 ## Project Overview
 
