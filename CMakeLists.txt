@@ -35,10 +35,7 @@ CPMAddPackage(
 
 # ---- Create Aircraft Library ----
 
-add_library(Aircraft
-  ${PROJECT_SOURCE_DIR}/include/aircraft/aircraft.h
-  ${PROJECT_SOURCE_DIR}/source/aircraft.cpp
-)
+add_library(Aircraft ${PROJECT_SOURCE_DIR}/include/aircraft/aircraft.h ${PROJECT_SOURCE_DIR}/source/aircraft.cpp)
 set_target_properties(Aircraft PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 target_compile_options(Aircraft PUBLIC "$<$<COMPILE_LANG_AND_ID:CXX,MSVC>:/permissive->")
 target_link_libraries(Aircraft PRIVATE fmt::fmt)
