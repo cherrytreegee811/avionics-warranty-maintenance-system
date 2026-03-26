@@ -1,19 +1,24 @@
 cmake_minimum_required(VERSION 3.14...3.22)
 
-project(GreeterDocs)
+project(AvionicsDocs LANGUAGES CXX)
 
 # ---- Dependencies ----
 
 include(../cmake/CPM.cmake)
 
 CPMAddPackage("gh:mosra/m.css#a0d292ec311b97fefd21e93cdefb60f88d19ede6")
-CPMAddPackage(NAME Greeter SOURCE_DIR ${CMAKE_CURRENT_LIST_DIR}/..)
+
+# Aircraft and MMA targets are expected to be built by parent project
+# If this is being run standalone, we need to build them
+if(NOT TARGET Aircraft)
+  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/.. ${CMAKE_BINARY_DIR}/avionics)
+endif()
 
 # ---- Doxygen variables ----
 
 # set Doxyfile variables
-set(DOXYGEN_PROJECT_NAME Greeter)
-set(DOXYGEN_PROJECT_VERSION ${Greeter_VERSION})
+set(DOXYGEN_PROJECT_NAME "Avionics Warranty Maintenance System")
+set(DOXYGEN_PROJECT_VERSION "1.0")
 set(DOXYGEN_PROJECT_ROOT "${CMAKE_CURRENT_LIST_DIR}/..")
 set(DOXYGEN_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/doxygen")
 

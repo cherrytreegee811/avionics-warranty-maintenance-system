@@ -1,21 +1,19 @@
 #include <doctest/doctest.h>
-#include <greeter/greeter.h>
-#include <greeter/version.h>
+#include <aircraft/aircraft.h>
+#include <mma/mma.h>
 
-#include <string>
+TEST_CASE("Aircraft") {
+  using namespace aircraft;
 
-TEST_CASE("Greeter") {
-  using namespace greeter;
-
-  Greeter greeter("Tests");
-
-  CHECK(greeter.greet(LanguageCode::EN) == "Hello, Tests!");
-  CHECK(greeter.greet(LanguageCode::DE) == "Hallo Tests!");
-  CHECK(greeter.greet(LanguageCode::ES) == "¡Hola Tests!");
-  CHECK(greeter.greet(LanguageCode::FR) == "Bonjour Tests!");
+  Aircraft aircraft;
+  aircraft.initialize();
+  CHECK(true);  // Stub test
 }
 
-TEST_CASE("Greeter version") {
-  static_assert(std::string_view(GREETER_VERSION) == std::string_view("1.0"));
-  CHECK(std::string(GREETER_VERSION) == std::string("1.0"));
+TEST_CASE("MMA") {
+  using namespace mma;
+
+  MMA mma;
+  mma.initialize();
+  CHECK(true);  // Stub test
 }
