@@ -1,5 +1,5 @@
-#include <doctest/doctest.h>
 #include <aircraft/aircraft.h>
+#include <doctest/doctest.h>
 #include <mma/mma.h>
 
 TEST_CASE("Aircraft") {
