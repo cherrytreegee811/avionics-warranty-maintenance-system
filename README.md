@@ -30,13 +30,13 @@ The system fulfills requirements for state machine management, diagnostic data t
 - **Comprehensive Logging**: All transmitted/received packets logged to files on both client and server
 - **Connection Verification**: Secure handshake protocol before command acceptance
 - **MISRA Compliance**: Code adheres to MISRA C++ 2012 guidelines
-- **Testing Suite**: Unit, integration, and system tests using Google Test
+- **Testing Suite**: Unit, integration, and system tests using Doctest
 
 ## Technology Stack
 
-- **Language**: C++17/20
-- **Build System**: CMake 3.15+
-- **Testing**: Google Test / MSTest
+- **Language**: C++23
+- **Build System**: CMake 3.22+
+- **Testing**: Doctest
 - **Network**: TCP/IP sockets (ports: server 8000, client 5000)
 - **Code Quality**: MISRA C++ 2012 compliance checks
 - **CI/CD**: GitHub Actions
@@ -47,10 +47,10 @@ The system fulfills requirements for state machine management, diagnostic data t
 
 ### Prerequisites
 
-- CMake 3.15 or higher
+- CMake 3.22 or higher
 - Ninja
-- C++17 compatible compiler (GCC 9+, Clang 10+, MSVC 2019+)
-- Google Test (automatically downloaded via CPM.cmake if not present)
+- C++23 compatible compiler (GCC 11+, Clang 14+, MSVC 19.29+)
+- Doctest (automatically downloaded via CPM.cmake if not present)
 - Optional: Doxygen for documentation generation
 
 ### Build Everything at Once
