@@ -8,10 +8,10 @@ if not exist build (
 
 echo Running Aircraft and MMA components...
 echo.
-echo === Aircraft Component ===
-call build\src\AircraftApp.exe
-echo.
 echo === MMA Component ===
 call build\src\MMAApp.exe
+echo.
+echo === Aircraft Component ===
+call build\src\AircraftApp.exe
 echo.
 echo Execution completed

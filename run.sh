@@ -10,10 +10,10 @@ fi
 
 echo "Running Aircraft and MMA components..."
 echo ""
-echo "=== Aircraft Component ==="
-./build/src/AircraftApp
-echo ""
 echo "=== MMA Component ==="
 ./build/src/MMAApp
+echo ""
+echo "=== Aircraft Component ==="
+./build/src/AircraftApp
 echo ""
 echo "Execution completed"
