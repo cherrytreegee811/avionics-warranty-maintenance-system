@@ -21,7 +21,11 @@ jobs:
           cmake --build build -j
       - name: Analyze
         run: |
-          pvs-studio-analyzer analyze -f build/compile_commands.json -j
+          pvs-studio-analyzer analyze \
+            -f build/compile_commands.json \
+            -j \
+            -o pvs-studio.log \
+            --rules-config misra.cfg
       - name: Convert report
         run: |
           plog-converter -t html -o pvs-report.html PVS-Studio.log
