@@ -1,5 +1,9 @@
 name: PVS-Studio build analysis
 on: workflow_dispatch
+permissions:
+  contents: read
+  actions: read
+  security-events: write
 jobs:
   build-analyze:
     runs-on: ubuntu-latest
