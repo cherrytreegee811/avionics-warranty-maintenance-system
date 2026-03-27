@@ -16,6 +16,8 @@ namespace aircraft {
      * @brief Initialize the aircraft client
      */
     void initialize();
+
+    int token = 0;
   };
 
 }  // namespace aircraft
