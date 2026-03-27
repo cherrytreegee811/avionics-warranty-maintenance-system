@@ -1,4 +1,4 @@
-#include <aircraft/aircraft.h>
+#include <aircraft/Aircraft.h>
 
 using namespace aircraft;
 

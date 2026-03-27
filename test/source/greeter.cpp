@@ -1,4 +1,4 @@
-#include <aircraft/aircraft.h>
+#include <aircraft/Aircraft.h>
 #include <doctest/doctest.h>
 #include <mma/mma.h>
 

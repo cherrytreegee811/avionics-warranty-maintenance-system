@@ -1,5 +1,5 @@
 
-#include <aircraft/aircraft.h>
+#include <aircraft/Aircraft.h>
 #include <aircraft/StateManager.h>
 #include <aircraft/StandbyState.h>
 #include <iostream>
