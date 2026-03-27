@@ -40,6 +40,7 @@ jobs:
             -f build/compile_commands.json \
             -j \
             -o pvs-studio.log \
+            --exclude-path "build/_deps" \
             --rules-config misra.cfg
       
       - name: Filter MISRA warnings
