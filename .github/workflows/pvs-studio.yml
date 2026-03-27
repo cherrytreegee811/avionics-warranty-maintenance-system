@@ -1,5 +1,12 @@
 name: PVS-Studio build analysis
-on: workflow_dispatch
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
 jobs:
   build-analyze:
     runs-on: ubuntu-latest
@@ -21,12 +28,16 @@ jobs:
           cmake --build build -j
       - name: Analyze
         run: |
-          pvs-studio-analyzer analyze -f build/compile_commands.json -j
+          pvs-studio-analyzer analyze \
+            -f build/compile_commands.json \
+            -j \
+            -o pvs-studio.log \
+            --rules-config misra.cfg
       - name: Convert report
         run: |
-          plog-converter -t sarif -o pvs-report.sarif PVS-Studio.log
-      - name: Publish report
-        uses: github/codeql-action/upload-sarif@v3
+          plog-converter -t html -o pvs-report.html pvs-studio.log
+      - name: Upload PVS report artifact
+        uses: actions/upload-artifact@v4
         with:
-          sarif_file: pvs-report.sarif
-          category: PVS-Studio
+          name: pvs-report
+          path: pvs-report.html
