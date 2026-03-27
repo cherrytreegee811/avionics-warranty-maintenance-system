@@ -1,9 +1,5 @@
 name: PVS-Studio build analysis
 on: workflow_dispatch
-permissions:
-  contents: read
-  actions: read
-  security-events: write
 jobs:
   build-analyze:
     runs-on: ubuntu-latest
@@ -28,9 +24,9 @@ jobs:
           pvs-studio-analyzer analyze -f build/compile_commands.json -j
       - name: Convert report
         run: |
-          plog-converter -t sarif -o pvs-report.sarif PVS-Studio.log
-      - name: Publish report
-        uses: github/codeql-action/upload-sarif@v4
+          plog-converter -t html -o pvs-report.html PVS-Studio.log
+      - name: Upload PVS report artifact
+        uses: actions/upload-artifact@v4
         with:
-          sarif_file: pvs-report.sarif
-          category: PVS-Studio
+          name: pvs-report
+          path: pvs-report.html
