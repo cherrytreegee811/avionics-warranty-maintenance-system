@@ -3,17 +3,18 @@
 #include "BaseState.h"
 
 namespace aircraft {
-class Aircraft;
+  class Aircraft;
 }
 
 class MaintenanceState : public BaseState {
 public:
-    MaintenanceState(aircraft::Aircraft &aircraft, StateManager &stateManager);
+  MaintenanceState(aircraft::Aircraft& aircraft, StateManager& stateManager);
 
-    void UpdateState() override;
-    void DrawState() override;
-    void InitState() override;
-    void CleanUpState() override;
+  void UpdateState() override;
+  void DrawState() override;
+  void InitState() override;
+  void CleanUpState() override;
+
 private:
-    StateManager &m_stateManager;
+  StateManager& m_stateManager;
 };

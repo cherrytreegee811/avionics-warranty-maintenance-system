@@ -1,9 +1,9 @@
 #pragma once
 
-#include "BaseState.h"
 #include <memory>
-
 #include <queue>
+
+#include "BaseState.h"
 
 class StateManager {
 private:

@@ -1,15 +1,15 @@
-#pragma once 
+#pragma once
 
 namespace aircraft {
-class Aircraft;
+  class Aircraft;
 }
 
 class StateManager;
 
 class BaseState {
 public:
-  BaseState(aircraft::Aircraft &aircraft, StateManager &stateManager)
-      : m_aircraft(aircraft), m_stateManager(stateManager){};
+  BaseState(aircraft::Aircraft& aircraft, StateManager& stateManager)
+      : m_aircraft(aircraft), m_stateManager(stateManager) {};
   virtual ~BaseState() {}
   virtual void UpdateState() = 0;
   virtual void DrawState() = 0;
@@ -17,8 +17,8 @@ public:
   virtual void CleanUpState() = 0;
 
 protected:
-  aircraft::Aircraft &m_aircraft;
+  aircraft::Aircraft& m_aircraft;
 
 private:
-  StateManager &m_stateManager;
+  StateManager& m_stateManager;
 };

@@ -1,5 +1,5 @@
-#include <aircraft/StateManager.h>
 #include <aircraft/BaseState.h>
+#include <aircraft/StateManager.h>
 
 StateManager::StateManager() : m_currentState(nullptr) {}
 
