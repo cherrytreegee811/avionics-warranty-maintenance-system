@@ -1,7 +1,6 @@
 #include <aircraft/Aircraft.h>
 #include <common/Packet.h>
 #include <spdlog/spdlog.h>
-
 #include <asio.hpp>
 #include <chrono>
 #include <iomanip>
@@ -30,7 +29,6 @@ Aircraft::Aircraft() : m_currentState("STANDBY") {
 }
 
 void Aircraft::initialize() {
-  // TODO: Implement network connection initialization
   // TODO: Load persisted data
 }
 

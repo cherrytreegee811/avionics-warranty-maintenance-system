@@ -1,7 +1,6 @@
 #pragma once
 
 #include <common/TcpConnection.h>
-
 #include <chrono>
 #include <memory>
 #include <string>
