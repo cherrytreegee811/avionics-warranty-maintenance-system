@@ -1,5 +1,6 @@
 #include <aircraft/Aircraft.h>
 #include <common/Packet.h>
+#include <common/WarrantyData.h>
 #include <spdlog/spdlog.h>
 #include <asio.hpp>
 #include <chrono>
