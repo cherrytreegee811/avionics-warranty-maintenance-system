@@ -7,7 +7,7 @@ pip install -r requirements.txt
 
 cmake-format --config-files .cmake-format -i $(find . -name "CMakeLists.txt" -type f)
 
-find . -name "*.cpp" -o -name "*.h" | grep -v "./build" | grep -v "./_deps" | grep -v "./cpm_modules" | xargs clang-format
+find . -name "*.cpp" -o -name "*.h" | grep -v "./build" | grep -v "./_deps" | grep -v "./cpm_modules" | xargs clang-format -i
 
 set -e
 

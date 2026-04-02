@@ -7,15 +7,15 @@
 #include <memory>
 
 int main() {
-    aircraft::Aircraft aircraft;
-    aircraft.initialize();
+  aircraft::Aircraft aircraft;
+  aircraft.initialize();
 
-    StateManager stateManager;
-    stateManager.SetState(std::make_unique<StandbyState>(aircraft, stateManager));
+  StateManager stateManager;
+  stateManager.SetState(std::make_unique<StandbyState>(aircraft, stateManager));
 
-    // Create and show CLI interface
-    aircraft::CliInterface cli(aircraft);
-    cli.showMainMenu();
+  // Create and show CLI interface
+  aircraft::CliInterface cli(aircraft);
+  cli.showMainMenu();
 
-    return 0;
+  return 0;
 }
