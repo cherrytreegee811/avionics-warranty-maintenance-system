@@ -1,8 +1,12 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <aircraft/Aircraft.h>
+#include <common/Packet.h>
 #include <doctest/doctest.h>
 
+#include <cstring>
+
 using namespace aircraft;
+using namespace network;
 
 // ============================================================================
 // REQ-CLT-002: The airplane (client) shall display its current state

@@ -1,6 +1,9 @@
 #pragma once
 
+#include <common/TcpConnection.h>
+
 #include <chrono>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -46,11 +49,17 @@ namespace aircraft {
 
     int token = 0;
 
+    void connectToMMA(const std::string& host, uint16_t port = 8000);
+    void onNetworkMessage(const std::vector<uint8_t>& data);
+
   private:
     std::string m_currentState;
     MaintenanceInfo m_lastMaintenance;
     std::vector<FaultCode> m_faultCodes;
     WarrantyInfo m_warranty;
+    std::shared_ptr<network::TcpConnection> connection_;
+    bool verified_ = false;
+    uint64_t aircraft_id_ = 12345;
   };
 
 }  // namespace aircraft

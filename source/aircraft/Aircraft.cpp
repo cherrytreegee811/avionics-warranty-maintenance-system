@@ -1,5 +1,8 @@
 #include <aircraft/Aircraft.h>
+#include <common/Packet.h>
+#include <spdlog/spdlog.h>
 
+#include <asio.hpp>
 #include <chrono>
 #include <iomanip>
 #include <sstream>
@@ -48,3 +51,55 @@ void Aircraft::addFaultCode(const FaultCode& code) { m_faultCodes.push_back(code
 void Aircraft::clearFaultCodes() { m_faultCodes.clear(); }
 
 void Aircraft::setWarranty(const WarrantyInfo& info) { m_warranty = info; }
+
+void Aircraft::connectToMMA(const std::string& host, uint16_t port) {
+  auto io = std::make_shared<asio::io_context>();
+  auto socket = std::make_shared<asio::ip::tcp::socket>(*io);
+  asio::ip::tcp::endpoint endpoint(asio::ip::make_address(host), port);
+
+  socket->async_connect(endpoint, [this, socket, io](std::error_code ec) {
+    if (ec) {
+      spdlog::error("Connect failed: {}", ec.message());
+      return;
+    }
+    spdlog::info("Connected to MMA server");
+
+    // Create TcpConnection with the connected socket
+    connection_ = network::TcpConnection::create(std::move(*socket));
+    connection_->setMessageHandler(
+        [this](const std::vector<uint8_t>& data) { onNetworkMessage(data); });
+    connection_->start();
+    io->run();
+  });
+
+  std::thread([io]() { io->run(); }).detach();
+}
+
+void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
+  network::PacketHeader header;
+  std::vector<uint8_t> payload;
+  if (!network::deserializePacket(data, header, payload)) return;
+
+  if (!verified_) {
+    if (header.type == network::PacketType::VERIFICATION_REQUEST) {
+      network::VerificationRequest req;
+      std::memcpy(&req, payload.data(), sizeof(req));
+      network::VerificationResponse resp;
+      resp.challenge_response = req.challenge ^ 0xDEADBEEF;
+      resp.client_id = aircraft_id_;
+      auto resp_packet = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, resp);
+      connection_->send(resp_packet);
+      verified_ = true;
+      connection_->setState(network::ConnectionState::VERIFIED);
+      spdlog::info("Verification successful, client ID {}", aircraft_id_);
+    } else {
+      spdlog::warn("Received non‑verification packet before handshake, closing");
+      connection_->close();
+    }
+  } else {
+    // Handle verified commands (e.g., state changes from server)
+    if (header.type == network::PacketType::STATE_CHANGE) {
+      // parse new state and call setCurrentState()
+    }
+  }
+}

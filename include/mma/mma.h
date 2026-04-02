@@ -1,21 +1,28 @@
 #pragma once
 
-namespace mma {
+#include <common/TcpConnection.h>
 
-  /**
-   * @brief MMA (Maintenance Management System) server component
-   */
-  class MMA {
-  public:
-    /**
-     * @brief Creates a new MMA server
-     */
-    MMA();
+#include <asio.hpp>
+#include <memory>
+#include <random>
+#include <vector>
 
-    /**
-     * @brief Initialize the MMA server
-     */
-    void initialize();
-  };
+class MMA {
+public:
+  MMA();
+  void initialize();
+  void startServer(uint16_t port = 8000);
+  void stopServer();
 
-}  // namespace mma
+private:
+  void doAccept();
+  void handleNewConnection(network::TcpConnection::Ptr conn);
+  void processMessage(const std::vector<uint8_t>& data, network::TcpConnection::Ptr conn);
+
+  std::unique_ptr<asio::io_context> io_context_;
+  std::unique_ptr<asio::ip::tcp::acceptor> acceptor_;
+  std::vector<network::TcpConnection::Ptr> connections_;
+  uint32_t expected_challenge_ = 0;
+  bool running_ = false;
+  std::thread io_thread_;
+};

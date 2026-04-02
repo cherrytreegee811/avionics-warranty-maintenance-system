@@ -3,17 +3,15 @@
 #include <aircraft/StandbyState.h>
 #include <aircraft/StateManager.h>
 
-#include <iostream>
-#include <memory>
-
 int main() {
   aircraft::Aircraft aircraft;
   aircraft.initialize();
+  // Start connection to MMA on localhost port 8000
+  aircraft.connectToMMA("127.0.0.1", 8000);
 
   StateManager stateManager;
   stateManager.SetState(std::make_unique<StandbyState>(aircraft, stateManager));
 
-  // Create and show CLI interface
   aircraft::CliInterface cli(aircraft);
   cli.showMainMenu();
 
