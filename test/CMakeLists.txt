@@ -19,16 +19,19 @@ CPMAddPackage("gh:TheLartians/Format.cmake@1.8.3")
 add_executable(AircraftUnitTests source/aircraft/AircraftUnitTests.cpp)
 target_link_libraries(AircraftUnitTests PRIVATE doctest::doctest Aircraft)
 target_include_directories(AircraftUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(AircraftUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 # Packet Unit Tests
 add_executable(PacketUnitTests source/common/PacketUnitTests.cpp)
 target_link_libraries(PacketUnitTests PRIVATE doctest::doctest Common)
 target_include_directories(PacketUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(PacketUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 # MMA Unit Tests
 add_executable(MMAUnitTests source/mma/MMAUnitTests.cpp)
 target_link_libraries(MMAUnitTests PRIVATE doctest::doctest MMA)
 target_include_directories(MMAUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(MMAUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 # ---- Discover Tests ----
 
