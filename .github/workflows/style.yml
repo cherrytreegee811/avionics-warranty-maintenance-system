@@ -28,7 +28,7 @@ jobs:
         run: pip3 install clang-format==22.1.1 cmake_format==0.6.13 pyyaml
 
       - name: configure
-        run: cmake -S. -Bbuild
+        run: cmake -Stest -Bbuild
 
       - name: check style
         run: cmake --build build --target check-format
