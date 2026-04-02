@@ -1,18 +1,12 @@
 #include <iostream>
+#include <thread>
 
 int main() {
-  std::cout << "MMA Server starting...\n";
-  std::cout << "Listening for aircraft connections on port 8000...\n";
+  MMA mma;
+  mma.initialize();
+  mma.startServer(8000);
 
-  // TODO: Implement server functionality
-  // - TCP server on port 8000
-  // - Handle client connections
-  // - Process landed notifications
-  // - State change commands
-  // - Large data transfer
-
-  std::cout << "Press Enter to exit...\n";
+  std::cout << "MMA server running on port 8000. Press Enter to exit.\n";
   std::cin.get();
-
   return 0;
 }

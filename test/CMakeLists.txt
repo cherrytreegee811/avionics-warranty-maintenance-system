@@ -13,15 +13,21 @@ include(../cmake/CPM.cmake)
 CPMAddPackage("gh:doctest/doctest@2.5.0")
 CPMAddPackage("gh:TheLartians/Format.cmake@1.8.3")
 
-# ---- Create Test Executable ----
+# ---- Create Test Executables ----
 
-add_executable(AircraftClientTests source/aircraft/AircraftUnitTests.cpp)
+# Aircraft Unit Tests
+add_executable(AircraftUnitTests source/aircraft/AircraftUnitTests.cpp)
+target_link_libraries(AircraftUnitTests PRIVATE doctest::doctest Aircraft)
+target_include_directories(AircraftUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-target_link_libraries(AircraftClientTests PRIVATE doctest::doctest Aircraft)
-target_include_directories(AircraftClientTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+# Packet Unit Tests
+add_executable(PacketUnitTests source/common/PacketUnitTests.cpp)
+target_link_libraries(PacketUnitTests PRIVATE doctest::doctest Common)
+target_include_directories(PacketUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
 # ---- Discover Tests ----
 
 enable_testing()
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
-doctest_discover_tests(AircraftClientTests)
+doctest_discover_tests(AircraftUnitTests)
+doctest_discover_tests(PacketUnitTests)
