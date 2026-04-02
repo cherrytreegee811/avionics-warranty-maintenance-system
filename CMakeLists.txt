@@ -50,6 +50,9 @@ add_library(Aircraft ${AIRCRAFT_HEADERS} ${AIRCRAFT_SOURCES})
 set_target_properties(Aircraft PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 target_link_libraries(Aircraft PUBLIC Common)
 target_link_libraries(Aircraft PUBLIC spdlog::spdlog)
+if(WIN32)
+  target_link_libraries(Aircraft PUBLIC ws2_32 mswsock)
+endif()
 
 # ---- MMA Library ----
 file(GLOB MMA_HEADERS CONFIGURE_DEPENDS "${PROJECT_SOURCE_DIR}/include/mma/*.h")
@@ -59,6 +62,9 @@ add_library(MMA ${MMA_HEADERS} ${MMA_SOURCES})
 set_target_properties(MMA PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 target_link_libraries(MMA PUBLIC Common)
 target_link_libraries(MMA PUBLIC spdlog::spdlog)
+if(WIN32)
+  target_link_libraries(MMA PUBLIC ws2_32 mswsock)
+endif()
 
 # ---- Executables ----
 add_executable(AircraftApp ${PROJECT_SOURCE_DIR}/source/aircraft/aircraft_main.cpp)

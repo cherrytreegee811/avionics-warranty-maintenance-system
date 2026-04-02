@@ -2,6 +2,7 @@
 
 #include <common/TcpConnection.h>
 #include <common/WarrantyData.h>
+
 #include <chrono>
 #include <memory>
 #include <string>
