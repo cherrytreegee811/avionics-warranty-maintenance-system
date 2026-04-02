@@ -7,7 +7,7 @@ pip install -r requirements.txt
 
 cmake-format --config-files .cmake-format -i $(find . -name "CMakeLists.txt" -type f)
 
-find . -name "*.cpp" -o -name "*.h" | grep -v "./build" | grep -v "./_deps" | grep -v "./cpm_modules" | xargs clang-form
+find . -name "*.cpp" -o -name "*.h" | grep -v "./build" | grep -v "./_deps" | grep -v "./cpm_modules" | xargs clang-format
 
 set -e
 
@@ -16,7 +16,7 @@ if [ ! -d "build" ]; then
 fi
 
 echo "Building all targets..."
-cmake -S all -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
+cmake -S . -B build -DCMAKE_EXPORT_COMPILE_COMMANDS=ON
 cmake --build build
 
 echo "Build completed successfully"

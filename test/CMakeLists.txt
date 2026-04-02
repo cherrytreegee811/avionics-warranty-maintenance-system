@@ -1,61 +1,22 @@
-cmake_minimum_required(VERSION 3.14...3.22)
+cmake_minimum_required(VERSION 3.22)
 
 project(AvionicsTests LANGUAGES CXX)
-
-# ---- Options ----
-
-option(ENABLE_TEST_COVERAGE "Enable test coverage" OFF)
-
-# --- Import tools ----
-
-include(../cmake/tools.cmake)
 
 # ---- Dependencies ----
 
 include(../cmake/CPM.cmake)
 
 CPMAddPackage("gh:doctest/doctest@2.4.12")
-CPMAddPackage("gh:TheLartians/Format.cmake@1.7.3")
 
-# Aircraft and MMA targets are expected to be built by parent project If this is being run
-# standalone, we need to build them
-if(NOT TARGET Aircraft)
-  add_subdirectory(${CMAKE_CURRENT_LIST_DIR}/.. ${CMAKE_BINARY_DIR}/avionics)
-endif()
+# ---- Create Test Executable ----
 
-# ---- Create binary ----
+add_executable(AircraftClientTests source/aircraft/AircraftUnitTests.cpp)
 
-file(GLOB sources CONFIGURE_DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/source/*.cpp)
-add_executable(${PROJECT_NAME} ${sources})
-target_link_libraries(${PROJECT_NAME} doctest::doctest Aircraft MMA)
-set_target_properties(${PROJECT_NAME} PROPERTIES CXX_STANDARD 17)
+target_link_libraries(AircraftClientTests PRIVATE doctest::doctest Aircraft)
+target_include_directories(AircraftClientTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
-# enable compiler warnings
-if(CMAKE_CXX_COMPILER_ID MATCHES "Clang" OR CMAKE_CXX_COMPILER_ID MATCHES "GNU")
-  target_compile_options(Aircraft PUBLIC -Wall -Wpedantic -Wextra -Werror)
-  target_compile_options(MMA PUBLIC -Wall -Wpedantic -Wextra -Werror)
-elseif(MSVC)
-  target_compile_options(Aircraft PUBLIC /W4 /WX)
-  target_compile_options(MMA PUBLIC /W4 /WX)
-  target_compile_definitions(${PROJECT_NAME} PUBLIC DOCTEST_CONFIG_USE_STD_HEADERS)
-endif()
-
-# ---- Add AvionicsTests ----
+# ---- Discover Tests ----
 
 enable_testing()
-
-# Note: doctest and similar testing frameworks can automatically configure CMake tests. For other
-# testing frameworks add the tests target instead: add_test(NAME ${PROJECT_NAME} COMMAND
-# ${PROJECT_NAME})
-
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
-doctest_discover_tests(${PROJECT_NAME})
-
-# ---- code coverage ----
-
-if(ENABLE_TEST_COVERAGE)
-  target_compile_options(Aircraft PUBLIC -O0 -g -fprofile-arcs -ftest-coverage)
-  target_link_options(Aircraft PUBLIC -fprofile-arcs -ftest-coverage)
-  target_compile_options(MMA PUBLIC -O0 -g -fprofile-arcs -ftest-coverage)
-  target_link_options(MMA PUBLIC -fprofile-arcs -ftest-coverage)
-endif()
+doctest_discover_tests(AircraftClientTests)
