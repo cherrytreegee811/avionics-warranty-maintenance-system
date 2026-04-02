@@ -1,6 +1,7 @@
 #pragma once
 
 #include <common/TcpConnection.h>
+#include <common/WarrantyData.h>
 
 #include <chrono>
 #include <memory>
@@ -15,11 +16,7 @@ namespace aircraft {
     std::chrono::system_clock::time_point timestamp;
   };
 
-  struct WarrantyInfo {
-    bool isActive;
-    std::string expiryDate;
-    std::string provider;
-  };
+  using WarrantyInfo = common::WarrantyInfo;
 
   struct MaintenanceInfo {
     std::chrono::system_clock::time_point lastMaintenance;

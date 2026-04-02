@@ -1,17 +1,24 @@
 #include <common/Packet.h>
+#include <mma/WarrantyManager.h>
 #include <mma/mma.h>
 #include <spdlog/spdlog.h>
 
 #include <asio.hpp>
 #include <chrono>
+#include <iostream>
 #include <random>
+#include <sstream>
 #include <thread>
 
-MMA::MMA() : io_context_(std::make_unique<asio::io_context>()) {}
-
-void MMA::initialize() {
-  // any other init
+MMA::MMA()
+    : io_context_(std::make_unique<asio::io_context>()),
+      warrantyManager_(std::make_unique<WarrantyManager>()) {
+  warrantyManager_->load();
 }
+
+MMA::~MMA() = default;
+
+void MMA::initialize() {}
 
 void MMA::startServer(uint16_t port) {
   if (running_) return;
@@ -25,9 +32,11 @@ void MMA::startServer(uint16_t port) {
 
 void MMA::stopServer() {
   if (!running_) return;
+  menuRunning_ = false;
   io_context_->stop();
   if (io_thread_.joinable()) io_thread_.join();
   running_ = false;
+  spdlog::info("MMA server stopped");
 }
 
 void MMA::doAccept() {
@@ -96,6 +105,61 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
 
   if (header.type == network::PacketType::LANDED_NOTIFICATION) {
     spdlog::info("Client landed notification received");
-    // TODO: change aircraft state to DIAGNOSTIC
+    // Future: change aircraft state to DIAGNOSTIC
   }
+}
+
+void MMA::runMenu() {
+  std::cout << "\n========== MMA Technician Console ==========\n";
+  std::cout << "1. View warranty status\n";
+  std::cout << "2. List connected aircraft\n";
+  std::cout << "3. Shutdown server\n";
+  std::cout << "============================================\n";
+  std::cout << "Enter choice: ";
+
+  std::string line;
+  while (menuRunning_ && std::getline(std::cin, line)) {
+    if (line == "1") {
+      std::cout << "Enter aircraft ID: ";
+      std::string idStr;
+      std::getline(std::cin, idStr);
+      try {
+        uint64_t id = std::stoull(idStr);
+        displayWarranty(id);
+      } catch (...) {
+        std::cout << "Invalid ID.\n";
+      }
+    } else if (line == "2") {
+      std::cout << "Connected aircraft (" << connections_.size() << "):\n";
+      for (auto& conn : connections_) {
+        std::cout << "  - " << conn->getRemoteAddress() << " [state: "
+                  << (conn->getState() == network::ConnectionState::VERIFIED ? "VERIFIED"
+                                                                             : "UNVERIFIED")
+                  << "]\n";
+      }
+    } else if (line == "3") {
+      std::cout << "Shutting down...\n";
+      menuRunning_ = false;
+      break;
+    } else {
+      std::cout << "Invalid choice. Please enter 1, 2, or 3.\n";
+    }
+    // Show menu again
+    std::cout << "\n1. View warranty status\n2. List connected aircraft\n3. Shutdown\nChoice: ";
+  }
+}
+
+void MMA::displayWarranty(uint64_t aircraftId) {
+  auto opt = warrantyManager_->getWarranty(aircraftId);
+  if (!opt) {
+    std::cout << "No warranty record found for aircraft " << aircraftId << "\n";
+    return;
+  }
+  const auto& info = *opt;
+  std::cout << "Warranty for aircraft " << aircraftId << ":\n";
+  std::cout << "  Status: " << (info.isActive ? "ACTIVE" : "EXPIRED") << "\n";
+  if (info.isActive) {
+    std::cout << "  Expiry Date: " << info.expiryDate << "\n";
+  }
+  std::cout << "  Provider: " << info.provider << "\n";
 }

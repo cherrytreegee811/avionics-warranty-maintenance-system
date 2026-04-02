@@ -25,9 +25,15 @@ add_executable(PacketUnitTests source/common/PacketUnitTests.cpp)
 target_link_libraries(PacketUnitTests PRIVATE doctest::doctest Common)
 target_include_directories(PacketUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 
+# MMA Unit Tests
+add_executable(MMAUnitTests source/mma/MMAUnitTests.cpp)
+target_link_libraries(MMAUnitTests PRIVATE doctest::doctest MMA)
+target_include_directories(MMAUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+
 # ---- Discover Tests ----
 
 enable_testing()
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 doctest_discover_tests(AircraftUnitTests)
 doctest_discover_tests(PacketUnitTests)
+doctest_discover_tests(MMAUnitTests)
