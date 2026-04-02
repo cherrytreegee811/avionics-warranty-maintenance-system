@@ -10,13 +10,12 @@ include(../cmake/tools.cmake)
 
 include(../cmake/CPM.cmake)
 
-CPMAddPackage("gh:doctest/doctest@2.4.12")
+CPMAddPackage("gh:doctest/doctest@2.5.0")
+CPMAddPackage("gh:TheLartians/Format.cmake@1.8.3")
 
 # ---- Create Test Executable ----
 
-add_executable(AircraftClientTests 
-    source/aircraft/AircraftUnitTests.cpp
-)
+add_executable(AircraftClientTests source/aircraft/AircraftUnitTests.cpp)
 
 target_link_libraries(AircraftClientTests PRIVATE doctest::doctest Aircraft)
 target_include_directories(AircraftClientTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
