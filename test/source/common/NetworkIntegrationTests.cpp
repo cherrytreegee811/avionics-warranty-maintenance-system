@@ -24,6 +24,10 @@ namespace {
 
 }  // namespace
 
+// ============================================================================
+// REQ-NET-081/US-001: Our applications shall use TCP/IP to communicate
+// ============================================================================
+
 TEST_CASE("US-001: Integration - client and server communicate over TcpConnection") {
   asio::io_context io_context;
   using tcp = asio::ip::tcp;
