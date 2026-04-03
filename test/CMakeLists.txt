@@ -49,7 +49,6 @@ target_link_libraries(MMAUnitTests PRIVATE doctest::doctest MMA)
 target_include_directories(MMAUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(MMAUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
-
 # ---- Discover Tests ----
 
 enable_testing()
