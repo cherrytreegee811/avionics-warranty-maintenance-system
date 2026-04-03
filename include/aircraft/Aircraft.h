@@ -2,6 +2,7 @@
 
 #include <common/TcpConnection.h>
 #include <common/WarrantyData.h>
+
 #include <chrono>
 #include <memory>
 #include <string>
@@ -46,6 +47,7 @@ namespace aircraft {
     int token = 0;
 
     void connectToMMA(const std::string& host, uint16_t port = 8000);
+    void sendLandedNotification();
     void onNetworkMessage(const std::vector<uint8_t>& data);
 
   private:

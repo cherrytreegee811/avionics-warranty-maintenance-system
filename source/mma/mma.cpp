@@ -2,6 +2,7 @@
 #include <mma/WarrantyManager.h>
 #include <mma/mma.h>
 #include <spdlog/spdlog.h>
+
 #include <asio.hpp>
 #include <chrono>
 #include <iostream>

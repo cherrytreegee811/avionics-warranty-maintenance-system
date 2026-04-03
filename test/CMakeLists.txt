@@ -13,11 +13,18 @@ include(../cmake/CPM.cmake)
 CPMAddPackage("gh:doctest/doctest@2.5.0")
 CPMAddPackage("gh:TheLartians/Format.cmake@1.8.3")
 
+# ---- Helper library (shared test utilities) ----
+add_library(TestHelpers STATIC source/helpers/TestHelpers.cpp)
+target_include_directories(TestHelpers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+set_target_properties(TestHelpers PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
+
 # ---- Create Test Executables ----
 
 # Aircraft Unit Tests
 add_executable(AircraftUnitTests source/aircraft/AircraftUnitTests.cpp)
-target_link_libraries(AircraftUnitTests PRIVATE doctest::doctest Aircraft)
+target_link_libraries(
+  AircraftUnitTests PRIVATE doctest::doctest Aircraft spdlog::spdlog TestHelpers
+)
 target_include_directories(AircraftUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(AircraftUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 

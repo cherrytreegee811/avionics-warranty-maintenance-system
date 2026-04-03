@@ -92,3 +92,16 @@ TEST_CASE("REQ-NET-012: Packet with wrong size fails deserialization") {
   std::vector<uint8_t> payload;
   CHECK(!deserializePacket(packet, header, payload));
 }
+
+// ============================================================================
+// REQ-CLT-005: The airplane should tell the MMA when it has landed.
+// ============================================================================
+TEST_CASE("REQ-CLT-005: LANDED packet serialization/deserialization") {
+  auto packet = serializePacket(PacketType::LANDED_NOTIFICATION, nullptr, 0);
+  PacketHeader header;
+  std::vector<uint8_t> payload;
+  CHECK(deserializePacket(packet, header, payload));
+  CHECK(header.type == PacketType::LANDED_NOTIFICATION);
+  CHECK(header.payload_size == 0);
+  CHECK(payload.empty());
+}

@@ -2,6 +2,7 @@
 #include <common/Packet.h>
 #include <common/WarrantyData.h>
 #include <spdlog/spdlog.h>
+
 #include <asio.hpp>
 #include <chrono>
 #include <iomanip>
@@ -35,7 +36,11 @@ void Aircraft::initialize() {
 
 std::string Aircraft::getCurrentState() const { return m_currentState; }
 
-void Aircraft::setCurrentState(const std::string& state) { m_currentState = state; }
+void Aircraft::setCurrentState(const std::string& state) {
+  // REQ-CLT-056
+  spdlog::info("Aircraft state changing from {} to {}", m_currentState, state);
+  m_currentState = state;
+}
 
 MaintenanceInfo Aircraft::getLastMaintenance() const { return m_lastMaintenance; }
 
@@ -54,22 +59,35 @@ void Aircraft::setWarranty(const WarrantyInfo& info) { m_warranty = info; }
 void Aircraft::connectToMMA(const std::string& host, uint16_t port) {
   auto io = std::make_shared<asio::io_context>();
   auto socket = std::make_shared<asio::ip::tcp::socket>(*io);
-  asio::ip::tcp::endpoint endpoint(asio::ip::make_address(host), port);
+  auto timer = std::make_shared<asio::steady_timer>(*io);
 
-  socket->async_connect(endpoint, [this, socket, io](std::error_code ec) {
-    if (ec) {
-      spdlog::error("Connect failed: {}", ec.message());
-      return;
+  timer->expires_after(std::chrono::seconds(5));
+  timer->async_wait([this, socket, io](std::error_code ec) {
+    if (!ec) {
+      // REQ-CLT-082
+      spdlog::error("Connection timeout, changing to DIAGNOSTIC");
+      setCurrentState("DIAGNOSTIC");
+
+      socket->close();
+      io->stop();
     }
-    spdlog::info("Connected to MMA server");
-
-    // Create TcpConnection with the connected socket
-    connection_ = network::TcpConnection::create(std::move(*socket));
-    connection_->setMessageHandler(
-        [this](const std::vector<uint8_t>& data) { onNetworkMessage(data); });
-    connection_->start();
-    io->run();
   });
+
+  socket->async_connect(
+      asio::ip::tcp::endpoint(asio::ip::make_address(host), port),
+      [this, socket, io, timer](std::error_code ec) {
+        timer->cancel();
+        if (ec) {
+          spdlog::error("Connect failed: {}", ec.message());
+          setCurrentState("DIAGNOSTIC");
+        } else {
+          spdlog::info("Connected to MMA server");
+          connection_ = network::TcpConnection::create(std::move(*socket));
+          connection_->setMessageHandler([this](const auto& data) { onNetworkMessage(data); });
+          connection_->start();
+        }
+        io->stop();
+      });
 
   std::thread([io]() { io->run(); }).detach();
 }
@@ -91,8 +109,10 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
       verified_ = true;
       connection_->setState(network::ConnectionState::VERIFIED);
       spdlog::info("Verification successful, client ID {}", aircraft_id_);
+      sendLandedNotification();
     } else {
       spdlog::warn("Received non‑verification packet before handshake, closing");
+      spdlog::default_logger()->flush();
       connection_->close();
     }
   } else {
@@ -101,4 +121,17 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
       // parse new state and call setCurrentState()
     }
   }
+}
+
+void Aircraft::sendLandedNotification() {
+  if (!connection_ || connection_->getState() != network::ConnectionState::VERIFIED) {
+    spdlog::error("Cannot send landed notification: not connected/verified");
+    spdlog::default_logger()->flush();
+    return;
+  }
+  auto packet = network::serializePacket(network::PacketType::LANDED_NOTIFICATION, nullptr, 0);
+  connection_->send(packet);
+
+  // REQ-CLT-054
+  spdlog::info("Landed notification sent to MMA");
 }
