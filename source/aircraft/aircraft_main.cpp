@@ -1,6 +1,5 @@
 #include <aircraft/Aircraft.h>
 #include <aircraft/CliInterface.h>
-#include <aircraft/StandbyState.h>
 #include <aircraft/StateManager.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
@@ -38,7 +37,8 @@ int main() {
   aircraft.connectToMMA("127.0.0.1", 8000);
 
   StateManager stateManager;
-  stateManager.SetState(std::make_unique<StandbyState>(aircraft, stateManager));
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
 
   aircraft::CliInterface cli(aircraft);
   cli.showMainMenu();

@@ -2,6 +2,8 @@
 #include <spdlog/spdlog.h>
 
 #include <algorithm>
+#include <limits>
+#include <utility>
 
 namespace network {
 
@@ -74,6 +76,78 @@ namespace network {
     }
 
     return true;
+  }
+
+  std::vector<uint8_t> serializeDiagnosticDataPayload(
+      const std::vector<DiagnosticFaultCode>& faults) {
+    constexpr size_t kCountSize = sizeof(uint16_t);
+    std::vector<uint8_t> payload;
+    payload.reserve(kCountSize + faults.size() * sizeof(DiagnosticFaultCodeHeader));
+
+    const auto capped_count = static_cast<uint16_t>(
+        std::min<size_t>(faults.size(), std::numeric_limits<uint16_t>::max()));
+    payload.resize(kCountSize);
+    std::memcpy(payload.data(), &capped_count, sizeof(capped_count));
+
+    for (size_t i = 0; i < capped_count; ++i) {
+      const auto& fault = faults[i];
+      const auto desc_size = static_cast<uint16_t>(
+          std::min<size_t>(fault.description.size(), std::numeric_limits<uint16_t>::max()));
+
+      DiagnosticFaultCodeHeader header{
+          fault.code,
+          fault.timestamp_epoch_ms,
+          desc_size,
+      };
+
+      const auto start = payload.size();
+      payload.resize(start + sizeof(header) + desc_size);
+      std::memcpy(payload.data() + start, &header, sizeof(header));
+      if (desc_size > 0) {
+        std::memcpy(payload.data() + start + sizeof(header), fault.description.data(), desc_size);
+      }
+    }
+
+    return payload;
+  }
+
+  bool deserializeDiagnosticDataPayload(const std::vector<uint8_t>& payload,
+                                        std::vector<DiagnosticFaultCode>& faults) {
+    faults.clear();
+    constexpr size_t kCountSize = sizeof(uint16_t);
+    if (payload.size() < kCountSize) {
+      return false;
+    }
+
+    uint16_t count = 0;
+    std::memcpy(&count, payload.data(), sizeof(count));
+
+    size_t offset = kCountSize;
+    faults.reserve(count);
+    for (uint16_t i = 0; i < count; ++i) {
+      if (offset + sizeof(DiagnosticFaultCodeHeader) > payload.size()) {
+        return false;
+      }
+
+      DiagnosticFaultCodeHeader wire{};
+      std::memcpy(&wire, payload.data() + offset, sizeof(wire));
+      offset += sizeof(wire);
+
+      if (offset + wire.description_size > payload.size()) {
+        return false;
+      }
+
+      DiagnosticFaultCode parsed{};
+      parsed.code = wire.code;
+      parsed.timestamp_epoch_ms = wire.timestamp_epoch_ms;
+      parsed.description.assign(reinterpret_cast<const char*>(payload.data() + offset),
+                                wire.description_size);
+      offset += wire.description_size;
+
+      faults.push_back(std::move(parsed));
+    }
+
+    return offset == payload.size();
   }
 
 }  // namespace network

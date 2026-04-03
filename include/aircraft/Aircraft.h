@@ -1,5 +1,6 @@
 #pragma once
 
+#include <common/Packet.h>
 #include <common/TcpConnection.h>
 #include <common/WarrantyData.h>
 
@@ -7,6 +8,8 @@
 #include <memory>
 #include <string>
 #include <vector>
+
+class StateManager;
 
 namespace aircraft {
 
@@ -49,6 +52,10 @@ namespace aircraft {
     void connectToMMA(const std::string& host, uint16_t port = 8000);
     void sendLandedNotification();
     void onNetworkMessage(const std::vector<uint8_t>& data);
+    void setStateManager(StateManager* stateManager);
+    void syncStateManagerToCurrentState();
+    bool transitionToState(network::StateId targetState);
+    bool sendDiagnosticData();
 
   private:
     std::string m_currentState;
@@ -56,6 +63,7 @@ namespace aircraft {
     std::vector<FaultCode> m_faultCodes;
     WarrantyInfo m_warranty;
     std::shared_ptr<network::TcpConnection> connection_;
+    StateManager* stateManager_ = nullptr;
     bool verified_ = false;
     uint64_t aircraft_id_ = 12345;
   };

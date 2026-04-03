@@ -12,7 +12,6 @@ public:
       : m_aircraft(aircraft), m_stateManager(stateManager) {};
   virtual ~BaseState() {}
   virtual void UpdateState() = 0;
-  virtual void DrawState() = 0;
   virtual void InitState() = 0;
   virtual void CleanUpState() = 0;
 
