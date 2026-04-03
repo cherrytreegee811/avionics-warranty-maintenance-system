@@ -12,7 +12,8 @@ StandbyState::StandbyState(aircraft::Aircraft& aircraft, StateManager& stateMana
 void StandbyState::UpdateState() {
   // Standby state update logic - pauses and waits for input
   int menu_selection = 0;
-  std::cout << "TESTING ONLY: Enter 1 to transition to Active State, or 0 to remain in Standby State: ";
+  std::cout
+      << "TESTING ONLY: Enter 1 to transition to Active State, or 0 to remain in Standby State: ";
   std::cin >> menu_selection;
 
   if (menu_selection == 1) {
