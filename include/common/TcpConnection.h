@@ -28,24 +28,27 @@ namespace network {
     void send(const std::vector<uint8_t>& data) {
       auto self = shared_from_this();
       asio::post(socket_.get_executor(), [self, data]() {
+        auto payload = std::make_shared<std::vector<uint8_t>>(data);
         if (self->state_.load() == ConnectionState::CLOSED || !self->socket_.is_open()) {
           return;
         }
-        asio::async_write(self->socket_, asio::buffer(data), [self](std::error_code ec, size_t) {
-          if (!ec) {
-            return;
-          }
+        asio::async_write(self->socket_, asio::buffer(*payload),
+                          [self, payload](std::error_code ec, size_t) {
+                            if (!ec) {
+                              return;
+                            }
 
-          if (ec == asio::error::operation_aborted || ec == asio::error::connection_reset
-              || ec == asio::error::broken_pipe || ec == asio::error::not_connected
-              || ec == asio::error::eof) {
-            spdlog::info("Connection send closed for {}: {}", self->getRemoteAddress(),
-                         ec.message());
-          } else {
-            spdlog::error("Send error: {}", ec.message());
-          }
-          self->markClosed();
-        });
+                            if (ec == asio::error::operation_aborted
+                                || ec == asio::error::connection_reset
+                                || ec == asio::error::broken_pipe
+                                || ec == asio::error::not_connected || ec == asio::error::eof) {
+                              spdlog::info("Connection send closed for {}: {}",
+                                           self->getRemoteAddress(), ec.message());
+                            } else {
+                              spdlog::error("Send error: {}", ec.message());
+                            }
+                            self->markClosed();
+                          });
       });
     }
 
