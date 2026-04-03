@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <format>
 #include <memory>
+#include <iostream>
 #include <thread>
 
 std::string getCurrentDate() {

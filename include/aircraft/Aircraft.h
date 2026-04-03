@@ -1,5 +1,4 @@
 #pragma once
-
 #include <common/Packet.h>
 #include <common/TcpConnection.h>
 #include <common/WarrantyData.h>
