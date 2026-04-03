@@ -73,6 +73,8 @@ target_link_libraries(AircraftApp PRIVATE Aircraft)
 add_executable(MMAApp ${PROJECT_SOURCE_DIR}/source/mma/mma_main.cpp)
 target_link_libraries(MMAApp PRIVATE MMA)
 
+set_target_properties(AircraftApp MMAApp PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
+
 # ---- Tests ----
 enable_testing()
 add_subdirectory(test)

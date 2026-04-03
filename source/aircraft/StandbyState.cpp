@@ -12,19 +12,19 @@ StandbyState::StandbyState(aircraft::Aircraft& aircraft, StateManager& stateMana
 void StandbyState::UpdateState() {
   // Standby state update logic - pauses and waits for input
   int menu_selection = 0;
-  std::cout << "Enter 1 to transition to Active State, or 0 to remain in Standby State: ";
+  std::cout
+      << "TESTING ONLY: Enter 1 to transition to Active State, or 0 to remain in Standby State: ";
   std::cin >> menu_selection;
 
   if (menu_selection == 1) {
-    m_stateManager.SetState(std::make_unique<DiagnosticState>(m_aircraft, m_stateManager));
+    m_aircraft.transitionToState(network::StateId::DIAGNOSTIC);
   } else {
     std::cout << "Remaining in Standby State...\n";
   }
 }
 
-void StandbyState::DrawState() { std::cout << "Aircraft is in Standby State\n"; }
-
 void StandbyState::InitState() {
+  m_aircraft.setCurrentState("STANDBY");
   std::cout << "Initializing Standby State\n";
   std::cout << std::format("Aircraft token: {}\n", m_aircraft.token);
 }
