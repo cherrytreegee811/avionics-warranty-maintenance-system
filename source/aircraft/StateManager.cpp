@@ -22,9 +22,3 @@ void StateManager::Update() {
     m_currentState->UpdateState();
   }
 }
-
-void StateManager::Draw() {
-  if (m_currentState) {
-    m_currentState->DrawState();
-  }
-}

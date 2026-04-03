@@ -8,8 +8,9 @@ FaultState::FaultState(aircraft::Aircraft& aircraft, StateManager& stateManager)
 
 void FaultState::UpdateState() {}
 
-void FaultState::DrawState() { std::cout << "Aircraft is in Fault State\n"; }
-
-void FaultState::InitState() { std::cout << "Initializing Fault State\n"; }
+void FaultState::InitState() {
+  m_aircraft.setCurrentState("FAULT");
+  std::cout << "Initializing Fault State\n";
+}
 
 void FaultState::CleanUpState() { std::cout << "Cleaning up Fault State\n"; }

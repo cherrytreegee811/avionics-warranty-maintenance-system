@@ -8,8 +8,10 @@ DiagnosticState::DiagnosticState(aircraft::Aircraft& aircraft, StateManager& sta
 
 void DiagnosticState::UpdateState() {}
 
-void DiagnosticState::DrawState() { std::cout << "Aircraft is in Diagnostic State\n"; }
-
-void DiagnosticState::InitState() { std::cout << "Initializing Diagnostic State\n"; }
+void DiagnosticState::InitState() {
+  m_aircraft.setCurrentState("DIAGNOSTIC");
+  std::cout << "Initializing Diagnostic State\n";
+  m_aircraft.sendDiagnosticData();
+}
 
 void DiagnosticState::CleanUpState() { std::cout << "Cleaning up Diagnostic State\n"; }

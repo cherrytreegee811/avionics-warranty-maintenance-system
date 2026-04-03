@@ -12,12 +12,6 @@ namespace aircraft {
     std::chrono::system_clock::time_point timestamp;
   };
 
-  struct WarrantyInfo {
-    bool isActive;
-    std::string expiryDate;
-    std::string provider;
-  };
-
   struct MaintenanceInfo {
     std::chrono::system_clock::time_point lastMaintenance;
     std::string technician;

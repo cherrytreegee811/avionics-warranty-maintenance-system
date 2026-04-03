@@ -15,5 +15,4 @@ public:
   void SetState(std::unique_ptr<BaseState> newState);
   void RequestStateChange(std::unique_ptr<BaseState> newState);
   void Update();
-  void Draw();
 };
