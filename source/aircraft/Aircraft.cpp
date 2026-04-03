@@ -62,11 +62,11 @@ namespace {
 using namespace aircraft;
 
 Aircraft::Aircraft()
-  : m_currentState("STANDBY"),
-    network_io_context_(std::make_unique<asio::io_context>()),
-    network_work_guard_(std::make_unique<NetworkWorkGuard>(
-      asio::make_work_guard(*network_io_context_))),
-    network_thread_([this]() { network_io_context_->run(); }) {
+    : m_currentState("STANDBY"),
+      network_io_context_(std::make_unique<asio::io_context>()),
+      network_work_guard_(
+          std::make_unique<NetworkWorkGuard>(asio::make_work_guard(*network_io_context_))),
+      network_thread_([this]() { network_io_context_->run(); }) {
   // Initialize with sample data for demonstration
   // In production, this would come from server/ persistence
 

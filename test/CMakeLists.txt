@@ -36,7 +36,7 @@ set_target_properties(PacketUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_RE
 
 # Network Integration Tests
 add_executable(NetworkIntegrationTests source/common/NetworkIntegrationTests.cpp)
-target_link_libraries(NetworkIntegrationTests PRIVATE doctest::doctest Common)
+target_link_libraries(NetworkIntegrationTests PRIVATE doctest::doctest Common MMA Aircraft)
 target_include_directories(NetworkIntegrationTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 if(WIN32)
   target_link_libraries(NetworkIntegrationTests PRIVATE ws2_32 mswsock)

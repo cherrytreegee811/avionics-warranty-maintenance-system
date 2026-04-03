@@ -3,9 +3,9 @@
 #include <common/Packet.h>
 #include <spdlog/spdlog.h>
 
-#include <atomic>
 #include <array>
 #include <asio.hpp>
+#include <atomic>
 #include <functional>
 #include <memory>
 #include <vector>
