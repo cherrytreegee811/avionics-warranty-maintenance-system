@@ -157,9 +157,7 @@ void MMA::runMenu() {
           state_label = "CLOSED";
         }
 
-        std::cout << "  - " << conn->getRemoteAddress() << " [state: "
-                  << state_label
-                  << "]\n";
+        std::cout << "  - " << conn->getRemoteAddress() << " [state: " << state_label << "]\n";
       }
     } else if (line == "3") {
       std::cout << "Shutting down...\n";
