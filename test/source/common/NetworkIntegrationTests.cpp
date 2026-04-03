@@ -1,17 +1,17 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <aircraft/Aircraft.h>
 #include <common/Packet.h>
 #include <common/TcpConnection.h>
 #include <doctest/doctest.h>
-#include <aircraft/Aircraft.h>
 #include <mma/mma.h>
 
 #include <asio.hpp>
 #include <atomic>
 #include <chrono>
+#include <cstring>
 #include <future>
 #include <memory>
 #include <thread>
-#include <cstring>
 
 using namespace std::chrono_literals;
 
@@ -55,21 +55,23 @@ TEST_CASE("US-001: Integration - client and server communicate over TcpConnectio
     }
 
     auto server_connection = TcpConnection::create(std::move(socket));
-    server_connection->setMessageHandler([&, server_connection](const std::vector<uint8_t>& packet) {
-      PacketHeader header{};
-      std::vector<uint8_t> payload;
-      if (!deserializePacket(packet, header, payload)) {
-        return;
-      }
+    server_connection->setMessageHandler(
+        [&, server_connection](const std::vector<uint8_t>& packet) {
+          PacketHeader header{};
+          std::vector<uint8_t> payload;
+          if (!deserializePacket(packet, header, payload)) {
+            return;
+          }
 
-      if (header.type == PacketType::LANDED_NOTIFICATION && !server_packet_recorded.exchange(true)) {
-        server_received_type_promise.set_value(header.type);
+          if (header.type == PacketType::LANDED_NOTIFICATION
+              && !server_packet_recorded.exchange(true)) {
+            server_received_type_promise.set_value(header.type);
 
-        const StateChangeRequest request{StateId::DIAGNOSTIC};
-        const auto response = serializePacket(PacketType::STATE_CHANGE, request);
-        server_connection->send(response);
-      }
-    });
+            const StateChangeRequest request{StateId::DIAGNOSTIC};
+            const auto response = serializePacket(PacketType::STATE_CHANGE, request);
+            server_connection->send(response);
+          }
+        });
     server_connection->start();
     accepted_connection_promise.set_value(server_connection);
   });

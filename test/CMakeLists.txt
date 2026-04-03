@@ -36,7 +36,7 @@ set_target_properties(PacketUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_RE
 
 # Network Integration Tests
 add_executable(NetworkIntegrationTests source/common/NetworkIntegrationTests.cpp)
-target_link_libraries(NetworkIntegrationTests PRIVATE doctest::doctest Common)
+target_link_libraries(NetworkIntegrationTests PRIVATE doctest::doctest Common MMA Aircraft)
 target_include_directories(NetworkIntegrationTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 if(WIN32)
   target_link_libraries(NetworkIntegrationTests PRIVATE ws2_32 mswsock)
@@ -49,21 +49,7 @@ target_link_libraries(MMAUnitTests PRIVATE doctest::doctest MMA)
 target_include_directories(MMAUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(MMAUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
-# Network Integration Tests
- add_executable(NetworkIntegrationTests source/common/NetworkIntegrationTests.cpp)
- target_link_libraries(NetworkIntegrationTests 
-    PRIVATE 
-    doctest::doctest 
-    MMA             # Provides the server logic
-    Aircraft        # Provides the client logic
-    Common          # Provides Packet serialization
-    spdlog::spdlog  # Logging dependency
- )
 
-target_include_directories(NetworkIntegrationTests PRIVATE
-    ${CMAKE_CURRENT_SOURCE_DIR}/../include   # your project headers
-    ${ASIO_INCLUDE_DIRS}                      # Asio headers
-)
 # ---- Discover Tests ----
 
 enable_testing()
