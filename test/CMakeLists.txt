@@ -34,6 +34,15 @@ target_link_libraries(PacketUnitTests PRIVATE doctest::doctest Common)
 target_include_directories(PacketUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(PacketUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
+# Network Integration Tests
+add_executable(NetworkIntegrationTests source/common/NetworkIntegrationTests.cpp)
+target_link_libraries(NetworkIntegrationTests PRIVATE doctest::doctest Common)
+target_include_directories(NetworkIntegrationTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+if(WIN32)
+  target_link_libraries(NetworkIntegrationTests PRIVATE ws2_32 mswsock)
+endif()
+set_target_properties(NetworkIntegrationTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
+
 # MMA Unit Tests
 add_executable(MMAUnitTests source/mma/MMAUnitTests.cpp)
 target_link_libraries(MMAUnitTests PRIVATE doctest::doctest MMA)
@@ -46,4 +55,5 @@ enable_testing()
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 doctest_discover_tests(AircraftUnitTests)
 doctest_discover_tests(PacketUnitTests)
+doctest_discover_tests(NetworkIntegrationTests)
 doctest_discover_tests(MMAUnitTests)
