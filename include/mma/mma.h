@@ -13,6 +13,7 @@ public:
   void initialize();
   void startServer(uint16_t port = 8000);
   void stopServer();
+  bool getRunningStatus() const { return running_; }
 
 private:
   void doAccept();

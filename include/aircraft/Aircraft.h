@@ -1,6 +1,7 @@
 #pragma once
 
 #include <common/TcpConnection.h>
+
 #include <chrono>
 #include <memory>
 #include <string>
@@ -45,6 +46,7 @@ namespace aircraft {
     void addFaultCode(const FaultCode& code);
     void clearFaultCodes();
     void setWarranty(const WarrantyInfo& info);
+    bool getRunningStatus() const { return verified_; }
 
     int token = 0;
 

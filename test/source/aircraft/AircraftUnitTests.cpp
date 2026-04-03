@@ -2,6 +2,7 @@
 #include <aircraft/Aircraft.h>
 #include <common/Packet.h>
 #include <doctest/doctest.h>
+
 #include <cstring>
 
 using namespace aircraft;

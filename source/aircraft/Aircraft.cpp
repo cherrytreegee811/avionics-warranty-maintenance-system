@@ -1,6 +1,7 @@
 #include <aircraft/Aircraft.h>
 #include <common/Packet.h>
 #include <spdlog/spdlog.h>
+
 #include <asio.hpp>
 #include <chrono>
 #include <iomanip>
