@@ -150,9 +150,15 @@ void MMA::runMenu() {
     } else if (line == "2") {
       std::cout << "Connected aircraft (" << connections_.size() << "):\n";
       for (auto& conn : connections_) {
+        const char* state_label = "UNVERIFIED";
+        if (conn->getState() == network::ConnectionState::VERIFIED) {
+          state_label = "VERIFIED";
+        } else if (conn->getState() == network::ConnectionState::CLOSED) {
+          state_label = "CLOSED";
+        }
+
         std::cout << "  - " << conn->getRemoteAddress() << " [state: "
-                  << (conn->getState() == network::ConnectionState::VERIFIED ? "VERIFIED"
-                                                                             : "UNVERIFIED")
+                  << state_label
                   << "]\n";
       }
     } else if (line == "3") {

@@ -136,7 +136,8 @@ TEST_CASE("REQ-SRV-006: STATE_CHANGE transition updates aircraft state through S
 }
 
 // ============================================================================
-// REQ-CLT-062: The airplane shall be prevented from transitioning to disallowed states from a given state.
+// REQ-CLT-062: The airplane shall be prevented from transitioning to disallowed states from a given
+// state.
 // ============================================================================
 
 TEST_CASE("REQ-CLT-062: Aircraft rejects invalid transitions") {

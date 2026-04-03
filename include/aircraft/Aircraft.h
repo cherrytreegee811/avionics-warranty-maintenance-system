@@ -4,9 +4,11 @@
 #include <common/TcpConnection.h>
 #include <common/WarrantyData.h>
 
+#include <asio.hpp>
 #include <chrono>
 #include <memory>
 #include <string>
+#include <thread>
 #include <vector>
 
 class StateManager;
@@ -30,6 +32,7 @@ namespace aircraft {
   class Aircraft {
   public:
     Aircraft();
+    ~Aircraft();
     void initialize();
 
     // State getters/setters
@@ -58,11 +61,16 @@ namespace aircraft {
     bool sendDiagnosticData();
 
   private:
+    using NetworkWorkGuard = asio::executor_work_guard<asio::io_context::executor_type>;
+
     std::string m_currentState;
     MaintenanceInfo m_lastMaintenance;
     std::vector<FaultCode> m_faultCodes;
     WarrantyInfo m_warranty;
     std::shared_ptr<network::TcpConnection> connection_;
+    std::unique_ptr<asio::io_context> network_io_context_;
+    std::unique_ptr<NetworkWorkGuard> network_work_guard_;
+    std::thread network_thread_;
     StateManager* stateManager_ = nullptr;
     bool verified_ = false;
     uint64_t aircraft_id_ = 12345;
