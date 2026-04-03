@@ -61,7 +61,12 @@ namespace {
 
 using namespace aircraft;
 
-Aircraft::Aircraft() : m_currentState("STANDBY") {
+Aircraft::Aircraft()
+  : m_currentState("STANDBY"),
+    network_io_context_(std::make_unique<asio::io_context>()),
+    network_work_guard_(std::make_unique<NetworkWorkGuard>(
+      asio::make_work_guard(*network_io_context_))),
+    network_thread_([this]() { network_io_context_->run(); }) {
   // Initialize with sample data for demonstration
   // In production, this would come from server/ persistence
 
@@ -79,6 +84,22 @@ Aircraft::Aircraft() : m_currentState("STANDBY") {
   m_warranty.isActive = true;
   m_warranty.expiryDate = "2027-12-31";
   m_warranty.provider = "Aviation Warranty Corp";
+}
+
+Aircraft::~Aircraft() {
+  if (connection_) {
+    connection_->close();
+  }
+
+  if (network_work_guard_) {
+    network_work_guard_->reset();
+  }
+  if (network_io_context_) {
+    network_io_context_->stop();
+  }
+  if (network_thread_.joinable()) {
+    network_thread_.join();
+  }
 }
 
 void Aircraft::initialize() {
@@ -108,25 +129,25 @@ void Aircraft::clearFaultCodes() { m_faultCodes.clear(); }
 void Aircraft::setWarranty(const WarrantyInfo& info) { m_warranty = info; }
 
 void Aircraft::connectToMMA(const std::string& host, uint16_t port) {
-  auto io = std::make_shared<asio::io_context>();
-  auto socket = std::make_shared<asio::ip::tcp::socket>(*io);
-  auto timer = std::make_shared<asio::steady_timer>(*io);
+  verified_ = false;
+
+  auto socket = std::make_shared<asio::ip::tcp::socket>(*network_io_context_);
+  auto timer = std::make_shared<asio::steady_timer>(*network_io_context_);
 
   timer->expires_after(std::chrono::seconds(5));
-  timer->async_wait([this, socket, io](std::error_code ec) {
+  timer->async_wait([this, socket](std::error_code ec) {
     if (!ec) {
       // REQ-CLT-082
       spdlog::error("Connection timeout, changing to DIAGNOSTIC");
       setCurrentState("DIAGNOSTIC");
 
       socket->close();
-      io->stop();
     }
   });
 
   socket->async_connect(
       asio::ip::tcp::endpoint(asio::ip::make_address(host), port),
-      [this, socket, io, timer](std::error_code ec) {
+      [this, socket, timer](std::error_code ec) {
         timer->cancel();
         if (ec) {
           spdlog::error("Connect failed: {}", ec.message());
@@ -137,10 +158,7 @@ void Aircraft::connectToMMA(const std::string& host, uint16_t port) {
           connection_->setMessageHandler([this](const auto& data) { onNetworkMessage(data); });
           connection_->start();
         }
-        io->stop();
       });
-
-  std::thread([io]() { io->run(); }).detach();
 }
 
 void Aircraft::setStateManager(StateManager* stateManager) { stateManager_ = stateManager; }
