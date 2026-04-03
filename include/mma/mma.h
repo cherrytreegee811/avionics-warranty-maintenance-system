@@ -22,6 +22,7 @@ public:
   void startServer(uint16_t port = 8000);
   void stopServer();
   void runMenu();
+  bool getRunningStatus() const { return running_; }
 
 private:
   void doAccept();

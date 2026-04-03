@@ -7,6 +7,7 @@
 #include <filesystem>
 #include <format>
 #include <memory>
+#include <thread>
 
 std::string getCurrentDate() {
   auto now = std::chrono::system_clock::now();
