@@ -1,6 +1,5 @@
 #include <aircraft/Aircraft.h>
 #include <aircraft/CliInterface.h>
-#include <aircraft/StandbyState.h>
 #include <aircraft/StateManager.h>
 
 int main() {
@@ -10,7 +9,8 @@ int main() {
   aircraft.connectToMMA("127.0.0.1", 8000);
 
   StateManager stateManager;
-  stateManager.SetState(std::make_unique<StandbyState>(aircraft, stateManager));
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
 
   aircraft::CliInterface cli(aircraft);
   cli.showMainMenu();

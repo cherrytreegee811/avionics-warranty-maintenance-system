@@ -13,7 +13,6 @@ public:
   virtual ~StandbyState() {}
 
   void UpdateState() override;
-  void DrawState() override;
   void InitState() override;
   void CleanUpState() override;
 

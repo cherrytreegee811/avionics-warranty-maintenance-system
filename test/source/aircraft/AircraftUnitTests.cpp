@@ -1,5 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <aircraft/Aircraft.h>
+#include <aircraft/StateManager.h>
 #include <doctest/doctest.h>
 
 using namespace aircraft;
@@ -116,4 +117,49 @@ TEST_CASE("REQ-SYS-040: Client CLI interface exists and is distinct from server"
     // The actual CLI display is verified through manual testing
     CHECK(aircraft.getCurrentState() == "STANDBY");
   }
+}
+
+// ============================================================================
+// REQ-SRV-006: The MMA should be able to change the airplane states to diagnostic
+// ============================================================================
+
+TEST_CASE("REQ-SRV-006: STATE_CHANGE transition updates aircraft state through StateManager") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
+}
+
+// ============================================================================
+// REQ-CLT-062: The airplane shall be prevented from transitioning to disallowed states from a given state.
+// ============================================================================
+
+TEST_CASE("REQ-CLT-062: Aircraft rejects invalid transitions") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.getCurrentState() == "STANDBY");
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::STANDBY));
+  CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
+}
+
+TEST_CASE("REQ-CLT-062: Aircraft allows valid transition") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.transitionToState(network::StateId::FAULT));
+  CHECK(aircraft.transitionToState(network::StateId::STANDBY));
+  CHECK(aircraft.getCurrentState() == "STANDBY");
 }

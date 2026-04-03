@@ -55,6 +55,49 @@ TEST_CASE("REQ-SYS-010/REQ-NET-013: VerificationResponse serialization/deseriali
   CHECK(deserialized.client_id == original.client_id);
 }
 
+TEST_CASE("REQ-NET-013: StateChangeRequest serialization/deserialization") {
+  StateChangeRequest original{StateId::DIAGNOSTIC};
+  auto packet = serializePacket(PacketType::STATE_CHANGE, original);
+
+  PacketHeader header;
+  std::vector<uint8_t> payload;
+  CHECK(deserializePacket(packet, header, payload));
+  CHECK(header.type == PacketType::STATE_CHANGE);
+  CHECK(header.payload_size == sizeof(StateChangeRequest));
+
+  StateChangeRequest parsed{};
+  std::memcpy(&parsed, payload.data(), sizeof(parsed));
+  CHECK(parsed.target_state == StateId::DIAGNOSTIC);
+}
+
+TEST_CASE("REQ-SYS-030/REQ-NET-031: Diagnostic payload roundtrip") {
+  std::vector<DiagnosticFaultCode> original{
+      {101, 1710000000000LL, "Engine temperature sensor fault"},
+      {202, 1710000001000LL, "Hydraulic pressure low"}};
+
+  const auto payload = serializeDiagnosticDataPayload(original);
+
+  std::vector<DiagnosticFaultCode> parsed;
+  CHECK(deserializeDiagnosticDataPayload(payload, parsed));
+  REQUIRE(parsed.size() == original.size());
+  CHECK(parsed[0].code == original[0].code);
+  CHECK(parsed[0].timestamp_epoch_ms == original[0].timestamp_epoch_ms);
+  CHECK(parsed[0].description == original[0].description);
+  CHECK(parsed[1].code == original[1].code);
+  CHECK(parsed[1].timestamp_epoch_ms == original[1].timestamp_epoch_ms);
+  CHECK(parsed[1].description == original[1].description);
+}
+
+TEST_CASE("REQ-NET-012: Diagnostic payload rejects malformed buffer") {
+  std::vector<uint8_t> malformed;
+  const uint16_t count = 1;
+  malformed.resize(sizeof(count));
+  std::memcpy(malformed.data(), &count, sizeof(count));
+
+  std::vector<DiagnosticFaultCode> parsed;
+  CHECK(!deserializeDiagnosticDataPayload(malformed, parsed));
+}
+
 // ============================================================================
 // REQ-NET-012: The packet shall contain packet integrity checks to ensure validity
 //              and authenticity of the information.
