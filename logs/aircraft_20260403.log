@@ -1,3 +1,5 @@
-[2026-04-02 22:40:38.708] [aircraft_logger] [info] Aircraft application started
-[2026-04-02 22:40:38.709] [aircraft_logger] [info] Aircraft state changing from STANDBY to STANDBY
-[2026-04-02 22:40:38.709] [aircraft_logger] [info] Connected to MMA server
+[2026-04-03 00:18:07.854] [aircraft_logger] [info] Aircraft application started
+[2026-04-03 00:18:07.854] [aircraft_logger] [info] Aircraft state changing from STANDBY to STANDBY
+[2026-04-03 00:18:07.854] [aircraft_logger] [error] Connect failed: Connection refused
+[2026-04-03 00:18:07.854] [aircraft_logger] [info] Aircraft state changing from STANDBY to DIAGNOSTIC
+[2026-04-03 00:18:16.516] [aircraft_logger] [info] Aircraft application exiting

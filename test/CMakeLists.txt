@@ -49,6 +49,14 @@ target_link_libraries(MMAUnitTests PRIVATE doctest::doctest MMA)
 target_include_directories(MMAUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(MMAUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
+# MMA Integration Tests
+add_executable(AircraftIntegrationTests source/aircraft/AircraftIntegrationTests.cpp)
+target_link_libraries(
+  AircraftIntegrationTests PRIVATE doctest::doctest spdlog::spdlog Aircraft MMA TestHelpers
+)
+target_include_directories(AircraftIntegrationTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(AircraftIntegrationTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
+
 # ---- Discover Tests ----
 
 enable_testing()
@@ -57,3 +65,4 @@ doctest_discover_tests(AircraftUnitTests)
 doctest_discover_tests(PacketUnitTests)
 doctest_discover_tests(NetworkIntegrationTests)
 doctest_discover_tests(MMAUnitTests)
+doctest_discover_tests(AircraftIntegrationTests)
