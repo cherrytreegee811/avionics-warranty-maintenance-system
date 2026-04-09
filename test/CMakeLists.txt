@@ -25,7 +25,7 @@ set_target_properties(TestHelpers PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIR
 
 # ---- Create Test Executables ----
 add_executable(AircraftUnitTests source/aircraft/AircraftUnitTests.cpp)
-target_link_libraries(AircraftUnitTests PRIVATE ${DOCTEST_LIB_TARGET} Aircraft spdlog::spdlog TestHelpers)
+target_link_libraries(AircraftUnitTests PRIVATE ${DOCTEST_LIB_TARGET} Aircraft TestHelpers)
 target_include_directories(AircraftUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(AircraftUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
