@@ -9,6 +9,7 @@
 #include <random>
 #include <sstream>
 #include <thread>
+#include <type_traits>
 
 MMA::MMA()
     : io_context_(std::make_unique<asio::io_context>()),
@@ -264,8 +265,8 @@ void MMA::printDiagnosticFaults(uint64_t aircraftId,
   }
 
   for (const auto& fault : faults) {
-    spdlog::info("Diagnostic fault code '{}' (aircraft {}): '{}'", fault.code, aircraftId,
-                 fault.description);
+    spdlog::info("Fault Code '{}' (aircraft: {}): [{}] - '{}'", fault.code, aircraftId,
+                 network::diagnosticFaultSeverityToString(fault.severity), fault.description);
   }
 }
 

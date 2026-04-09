@@ -160,6 +160,8 @@ void CliInterface::displayFaultCodes() {
     std::cout << "\nActive Fault Codes:\n\n";
     for (const auto& fault : faults) {
       std::cout << "  [CODE " << fault.code << "]\n";
+      std::cout << "    Severity: " << network::diagnosticFaultSeverityToString(fault.severity)
+                << "\n";
       std::cout << "    Description: " << fault.description << "\n";
       std::cout << "    Detected: " << formatTimePoint(fault.timestamp) << "\n\n";
     }
@@ -215,7 +217,9 @@ void CliInterface::displayAllInfo() {
     std::cout << "  None detected\n";
   } else {
     for (const auto& fault : faults) {
-      std::cout << "  " << fault.code << ": " << fault.description << "\n";
+      std::cout << "  " << fault.code << " ["
+                << network::diagnosticFaultSeverityToString(fault.severity)
+                << "]: " << fault.description << "\n";
     }
   }
 

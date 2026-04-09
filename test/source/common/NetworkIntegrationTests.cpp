@@ -277,6 +277,45 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state
   std::remove(testLogFile.c_str());
 }
 
+TEST_CASE("REQ-NET-013/US-011: DIAGNOSTIC_DATA severity is logged by MMA") {
+  const std::string testLogFile = "test_mma_diagnostic_severity_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("test_mma_diagnostic_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  MMA server;
+  const uint16_t testPort = 8007;
+  server.startServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  {
+    aircraft::Aircraft client;
+    client.connectToMMA("127.0.0.1", testPort);
+
+    REQUIRE(waitForCondition(
+        [&]() { return logContainsLine(testLogFile, "Client 12345 verified"); }, 4000ms));
+
+    CHECK(client.sendDiagnosticData());
+
+    CHECK(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Fault Code '101' \\(aircraft: 12345\\): \\[MINOR\\] - '.*'")
+                 && logContainsLine(testLogFile,
+                                    "Fault Code '102' \\(aircraft: 12345\\): \\[MAJOR\\] - '.*'");
+        },
+        4000ms));
+  }
+
+  server.stopServer();
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
 /* TEST_CASE("Verification timeout handling.") {} */
 
 /* TEST_CASE("Invalid verification response handling.") */
