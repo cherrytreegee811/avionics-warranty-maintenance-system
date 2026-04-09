@@ -21,7 +21,7 @@ if %errorlevel% neq 0 (
     exit /b %errorlevel%
 )
 
-for /f "delims=" %%f in ('dir /s /b CMakeLists.txt ^| findstr /i /v "\\build\\" ^| findstr /i /v "\\_deps\\" ^| findstr /i /v "\\cpm_modules\\"') do (
+for /f "delims=" %%f in ('dir /s /b CMakeLists.txt ^| findstr /i /v "\\build\\" ^| findstr /i /v "\\_deps\\" ^| findstr /i /v "\\cpm_modules\\" ^| findstr /i /v "\\cmake\\"') do (
     cmake-format --config-files .cmake-format -i "%%f"
     if !errorlevel! neq 0 (
         echo CMake formatting failed for %%f
