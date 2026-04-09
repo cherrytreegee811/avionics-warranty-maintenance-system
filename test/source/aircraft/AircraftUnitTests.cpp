@@ -183,14 +183,57 @@ TEST_CASE("REQ-CLT-056: Aircraft logs state changes") {
   spdlog::flush_on(spdlog::level::info);
 
   Aircraft aircraft;
-  aircraft.setCurrentState("DIAGNOSTIC");
-  aircraft.setCurrentState("MAINTENANCE");
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  CHECK(
+      aircraft.transitionToState(network::StateId::DIAGNOSTIC, aircraft::TransitionSource::MANUAL));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE,
+                                   aircraft::TransitionSource::AUTOMATIC));
 
   spdlog::shutdown();
-  CHECK(
-      test_helpers::logContains(testLogFile, "Aircraft state changing from STANDBY to DIAGNOSTIC"));
   CHECK(test_helpers::logContains(testLogFile,
-                                  "Aircraft state changing from DIAGNOSTIC to MAINTENANCE"));
+                                  "Operational state transition: STANDBY -> DIAGNOSTIC"));
+  CHECK(test_helpers::logContains(testLogFile,
+                                  "Operational state transition: DIAGNOSTIC -> MAINTENANCE"));
+
+  std::remove(testLogFile.c_str());
+}
+
+TEST_CASE("REQ-CLT-056/US-015: Aircraft logs transition metadata for all source labels") {
+  std::string testLogFile = "test_aircraft_transition_metadata_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("test_transition_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  CHECK(
+      aircraft.transitionToState(network::StateId::DIAGNOSTIC, aircraft::TransitionSource::MANUAL));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE,
+                                   aircraft::TransitionSource::AUTOMATIC));
+  CHECK(
+      aircraft.transitionToState(network::StateId::FAULT, aircraft::TransitionSource::MMA_COMMAND));
+  CHECK(aircraft.transitionToState(network::StateId::STANDBY,
+                                   aircraft::TransitionSource::CONNECTION_FALLBACK));
+
+  spdlog::shutdown();
+  CHECK(test_helpers::logContains(
+      testLogFile, "Operational state transition: STANDBY -> DIAGNOSTIC.*source: MANUAL"));
+  CHECK(test_helpers::logContains(
+      testLogFile, "Operational state transition: DIAGNOSTIC -> MAINTENANCE.*source: AUTOMATIC"));
+  CHECK(test_helpers::logContains(
+      testLogFile, "Operational state transition: MAINTENANCE -> FAULT.*source: MMA_COMMAND"));
+  CHECK(test_helpers::logContains(
+      testLogFile, "Operational state transition: FAULT -> STANDBY.*source: CONNECTION_FALLBACK"));
 
   std::remove(testLogFile.c_str());
 }

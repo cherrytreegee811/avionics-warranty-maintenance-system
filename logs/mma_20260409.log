@@ -1,9 +1,14 @@
-[2026-04-08 20:54:42.130] [mma_logger] [info] MMA server starting
-[2026-04-08 20:54:42.131] [mma_logger] [info] Loaded 2 warranty records
-[2026-04-08 20:54:42.132] [mma_logger] [info] MMA server listening on port 8000
-[2026-04-08 20:54:44.061] [mma_logger] [info] New connection from 127.0.0.1
-[2026-04-08 20:54:44.064] [mma_logger] [info] Client 12345 verified
-[2026-04-08 20:54:44.065] [mma_logger] [info] Client landed notification received
-[2026-04-08 20:54:48.507] [mma_logger] [info] State change confirmation received from aircraft 12345: state change to DIAGNOSTIC applied
-[2026-04-08 20:54:55.415] [mma_logger] [info] Connection closed by peer: 127.0.0.1
-[2026-04-08 20:54:58.007] [mma_logger] [info] MMA server shutting down
+[2026-04-08 22:41:34.260] [mma_logger] [info] MMA server starting
+[2026-04-08 22:41:34.261] [mma_logger] [info] Loaded 2 warranty records
+[2026-04-08 22:41:34.261] [mma_logger] [info] MMA server listening on port 8000
+[2026-04-08 22:41:37.201] [mma_logger] [info] New connection from 127.0.0.1
+[2026-04-08 22:41:37.205] [mma_logger] [info] Client 12345 verified
+[2026-04-08 22:41:37.205] [mma_logger] [info] Aircraft 12345 landed
+[2026-04-08 22:41:41.044] [mma_logger] [info] Sent DIAGNOSTIC state change command to aircraft 12345
+[2026-04-08 22:41:41.046] [mma_logger] [info] State change confirmation received from aircraft 12345: state change to DIAGNOSTIC applied
+[2026-04-08 22:41:41.047] [mma_logger] [info] Aircraft 12345 transitioned to DIAGNOSTIC state
+[2026-04-08 22:41:41.047] [mma_logger] [info] Diagnostic fault code '101' (aircraft 12345): 'Engine temperature sensor fault'
+[2026-04-08 22:41:41.048] [mma_logger] [info] Diagnostic fault code '202' (aircraft 12345): 'Hydraulic pressure low'
+[2026-04-08 22:41:41.048] [mma_logger] [info] State change confirmation received from aircraft 12345: state change to MAINTENANCE applied
+[2026-04-08 22:41:41.048] [mma_logger] [info] Aircraft 12345 transitioned to MAINTENANCE state
+[2026-04-08 22:42:48.315] [mma_logger] [info] MMA server shutting down

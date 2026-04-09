@@ -1,16 +1,22 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <aircraft/Aircraft.h>
+#include <aircraft/StateManager.h>
 #include <common/Packet.h>
 #include <common/TcpConnection.h>
 #include <doctest/doctest.h>
 #include <mma/mma.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
 
 #include <asio.hpp>
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <future>
 #include <memory>
+#include <regex>
 #include <thread>
 
 using namespace std::chrono_literals;
@@ -24,6 +30,37 @@ namespace {
   template <typename T>
   bool waitUntilReady(std::future<T>& future, std::chrono::milliseconds timeout = 2000ms) {
     return future.wait_for(timeout) == std::future_status::ready;
+  }
+
+  bool logContainsLine(const std::string& filename, const std::string& pattern) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+      return false;
+    }
+
+    std::regex re(pattern);
+    std::string line;
+    while (std::getline(file, line)) {
+      if (std::regex_search(line, re)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  template <typename F>
+  bool waitForCondition(F&& condition, std::chrono::milliseconds timeout = 4000ms) {
+    const auto start = std::chrono::steady_clock::now();
+    while (!condition()) {
+      if (std::chrono::steady_clock::now() - start > timeout) {
+        return false;
+      }
+
+      std::this_thread::sleep_for(50ms);
+    }
+
+    return true;
   }
 
 }  // namespace
@@ -126,7 +163,7 @@ TEST_CASE("US-001: Integration - client and server communicate over TcpConnectio
   }
 }
 
-TEST_CASE("Successful verification flow.") {
+TEST_CASE("US-014: Integration - Successful verification flow") {
   // We first need to initialize a server from which we are listening.
   // A connection must be simulated for testing flows.
   MMA server;
@@ -148,7 +185,7 @@ TEST_CASE("Successful verification flow.") {
   server.stopServer();
 }
 
-TEST_CASE("Command rejection when connection is UNVERIFIED.") {
+TEST_CASE("US-014: Integration - Command rejection when connection is UNVERIFIED") {
   MMA server;
   const uint16_t testPort = 8005;  // Use a fresh port
   server.startServer(testPort);
@@ -188,6 +225,56 @@ TEST_CASE("Command rejection when connection is UNVERIFIED.") {
   CHECK(ec == asio::error::eof);
 
   server.stopServer();
+}
+
+TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state transitions") {
+  const std::string testLogFile = "test_mma_landed_and_transition_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("test_mma_transition_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  MMA server;
+
+  const uint16_t testPort = 8006;
+  server.startServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  {
+    aircraft::Aircraft client;
+    StateManager stateManager;
+    client.setStateManager(&stateManager);
+    client.syncStateManagerToCurrentState();
+
+    client.connectToMMA("127.0.0.1", testPort);
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile, "Client 12345 verified")
+                 && logContainsLine(testLogFile, "Aircraft 12345 landed");
+        },
+        4000ms));
+
+    server.sendDiagnosticStateChange(12345);
+
+    CHECK(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile, "Aircraft 12345 landed")
+                 && logContainsLine(testLogFile,
+                                    "Sent DIAGNOSTIC state change command to aircraft 12345")
+                 && logContainsLine(testLogFile, "Aircraft 12345 transitioned to DIAGNOSTIC state")
+                 && logContainsLine(testLogFile,
+                                    "Aircraft 12345 transitioned to MAINTENANCE state");
+        },
+        4000ms));
+  }
+
+  server.stopServer();
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
 }
 
 /* TEST_CASE("Verification timeout handling.") {} */

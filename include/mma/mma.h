@@ -22,6 +22,7 @@ public:
   void startServer(uint16_t port = 8000);
   void stopServer();
   void runMenu();
+  void sendDiagnosticStateChange(uint64_t aircraftId);
   bool getRunningStatus() const { return running_; }
 
 private:
@@ -29,7 +30,6 @@ private:
   void handleNewConnection(network::TcpConnection::Ptr conn);
   void processMessage(const std::vector<uint8_t>& data, network::TcpConnection::Ptr conn);
   void displayWarranty(uint64_t aircraftId);
-  void sendDiagnosticStateChange(uint64_t aircraftId);
   void printDiagnosticFaults(uint64_t aircraftId,
                              const std::vector<network::DiagnosticFaultCode>& faults) const;
 

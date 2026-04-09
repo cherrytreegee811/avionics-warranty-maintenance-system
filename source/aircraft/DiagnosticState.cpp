@@ -10,10 +10,9 @@ void DiagnosticState::UpdateState() {}
 
 void DiagnosticState::InitState() {
   m_aircraft.setCurrentState("DIAGNOSTIC");
-  std::cout << "Initializing Diagnostic State\n";
   if (m_aircraft.sendDiagnosticData()) {
     m_aircraft.transitionToState(network::StateId::MAINTENANCE);
   }
 }
 
-void DiagnosticState::CleanUpState() { std::cout << "Cleaning up Diagnostic State\n"; }
+void DiagnosticState::CleanUpState() {}

@@ -8,9 +8,6 @@ MaintenanceState::MaintenanceState(aircraft::Aircraft& aircraft, StateManager& s
 
 void MaintenanceState::UpdateState() {}
 
-void MaintenanceState::InitState() {
-  m_aircraft.setCurrentState("MAINTENANCE");
-  std::cout << "Initializing Maintenance State\n";
-}
+void MaintenanceState::InitState() { m_aircraft.setCurrentState("MAINTENANCE"); }
 
-void MaintenanceState::CleanUpState() { std::cout << "Cleaning up Maintenance State\n"; }
+void MaintenanceState::CleanUpState() {}

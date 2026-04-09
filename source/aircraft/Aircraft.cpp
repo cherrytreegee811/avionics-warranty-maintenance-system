@@ -57,6 +57,36 @@ namespace {
     return std::nullopt;
   }
 
+  std::string_view stateNameFromId(network::StateId stateId) {
+    switch (stateId) {
+      case network::StateId::STANDBY:
+        return "STANDBY";
+      case network::StateId::DIAGNOSTIC:
+        return "DIAGNOSTIC";
+      case network::StateId::MAINTENANCE:
+        return "MAINTENANCE";
+      case network::StateId::FAULT:
+        return "FAULT";
+      default:
+        return "UNKNOWN";
+    }
+  }
+
+  std::string_view transitionSourceToString(aircraft::TransitionSource source) {
+    switch (source) {
+      case aircraft::TransitionSource::MMA_COMMAND:
+        return "MMA_COMMAND";
+      case aircraft::TransitionSource::AUTOMATIC:
+        return "AUTOMATIC";
+      case aircraft::TransitionSource::MANUAL:
+        return "MANUAL";
+      case aircraft::TransitionSource::CONNECTION_FALLBACK:
+        return "CONNECTION_FALLBACK";
+      default:
+        return "UNKNOWN";
+    }
+  }
+
 }  // namespace
 
 using namespace aircraft;
@@ -87,8 +117,12 @@ Aircraft::Aircraft()
 }
 
 Aircraft::~Aircraft() {
+  shutting_down_.store(true);
+
   if (connection_) {
+    connection_->setMessageHandler(nullptr);
     connection_->close();
+    connection_.reset();
   }
 
   if (network_work_guard_) {
@@ -109,8 +143,10 @@ void Aircraft::initialize() {
 std::string Aircraft::getCurrentState() const { return m_currentState; }
 
 void Aircraft::setCurrentState(const std::string& state) {
-  // REQ-CLT-056
-  spdlog::info("Aircraft state changing from {} to {}", m_currentState, state);
+  if (m_currentState == state) {
+    return;
+  }
+
   m_currentState = state;
 }
 
@@ -136,10 +172,16 @@ void Aircraft::connectToMMA(const std::string& host, uint16_t port) {
 
   timer->expires_after(std::chrono::seconds(5));
   timer->async_wait([this, socket](std::error_code ec) {
+    if (shutting_down_.load()) {
+      return;
+    }
+
     if (!ec) {
       // REQ-CLT-082
       spdlog::error("Connection timeout, changing to DIAGNOSTIC");
-      setCurrentState("DIAGNOSTIC");
+      if (!transitionToState(network::StateId::DIAGNOSTIC, TransitionSource::CONNECTION_FALLBACK)) {
+        spdlog::warn("Connection fallback transition to DIAGNOSTIC was rejected");
+      }
 
       socket->close();
     }
@@ -148,10 +190,17 @@ void Aircraft::connectToMMA(const std::string& host, uint16_t port) {
   socket->async_connect(
       asio::ip::tcp::endpoint(asio::ip::make_address(host), port),
       [this, socket, timer](std::error_code ec) {
+        if (shutting_down_.load()) {
+          return;
+        }
+
         timer->cancel();
         if (ec) {
           spdlog::error("Connect failed: {}", ec.message());
-          setCurrentState("DIAGNOSTIC");
+          if (!transitionToState(network::StateId::DIAGNOSTIC,
+                                 TransitionSource::CONNECTION_FALLBACK)) {
+            spdlog::warn("Connection fallback transition to DIAGNOSTIC was rejected");
+          }
         } else {
           spdlog::info("Connected to MMA server");
           connection_ = network::TcpConnection::create(std::move(*socket));
@@ -184,7 +233,7 @@ void Aircraft::syncStateManagerToCurrentState() {
   stateManager_->SetState(std::move(state));
 }
 
-bool Aircraft::transitionToState(network::StateId targetState) {
+bool Aircraft::transitionToState(network::StateId targetState, TransitionSource source) {
   const auto currentState = stateIdFromString(m_currentState);
   if (!currentState) {
     spdlog::warn("Cannot transition from unknown aircraft state {}", m_currentState);
@@ -193,35 +242,35 @@ bool Aircraft::transitionToState(network::StateId targetState) {
 
   if (!isAllowedTransition(*currentState, targetState)) {
     spdlog::warn("Rejected transition from {} to {}", m_currentState,
-                 static_cast<int>(targetState));
+                 network::stateIdToString(targetState));
     return false;
   }
 
-  std::string state_name;
-  switch (targetState) {
-    case network::StateId::STANDBY:
-      state_name = "STANDBY";
-      break;
-    case network::StateId::DIAGNOSTIC:
-      state_name = "DIAGNOSTIC";
-      break;
-    case network::StateId::MAINTENANCE:
-      state_name = "MAINTENANCE";
-      break;
-    case network::StateId::FAULT:
-      state_name = "FAULT";
-      break;
-    default:
-      return false;
+  const std::string targetStateName{stateNameFromId(targetState)};
+  if (targetStateName == "UNKNOWN") {
+    return false;
+  }
+
+  const std::string previousState = m_currentState;
+  setCurrentState(targetStateName);
+
+  spdlog::info("Operational state transition: {} -> {} (source: {})", previousState,
+               targetStateName, transitionSourceToString(source));
+
+  if (verified_ && connection_ && connection_->getState() == network::ConnectionState::VERIFIED) {
+    network::StateChangeConfirmation confirmation{targetState};
+    const auto confirmationPacket
+        = network::serializePacket(network::PacketType::STATE_CHANGE_CONFIRMATION, confirmation);
+    connection_->send(confirmationPacket);
+    spdlog::info("State change confirmation sent to MMA for state {}",
+                 network::stateIdToString(targetState));
   }
 
   if (!stateManager_) {
-    setCurrentState(state_name);
-    spdlog::warn("StateManager unavailable. State string updated to {} only", state_name);
+    spdlog::warn("StateManager unavailable. State string updated to {} only", targetStateName);
     return true;
   }
 
-  setCurrentState(state_name);
   stateManager_->SetState(makeStateForId(*this, *stateManager_, targetState));
 
   return true;
@@ -255,6 +304,10 @@ bool Aircraft::sendDiagnosticData() {
 }
 
 void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
+  if (shutting_down_.load()) {
+    return;
+  }
+
   network::PacketHeader header;
   std::vector<uint8_t> payload;
   if (!network::deserializePacket(data, header, payload)) return;
@@ -292,20 +345,11 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
 
       network::StateChangeRequest req{};
       std::memcpy(&req, payload.data(), sizeof(req));
-      if (!transitionToState(req.target_state)) {
+      if (!transitionToState(req.target_state, TransitionSource::MMA_COMMAND)) {
         spdlog::warn("STATE_CHANGE rejected: invalid target state {}",
-                     static_cast<int>(req.target_state));
+                     network::stateIdToString(req.target_state));
         return;
       }
-      spdlog::info("State changed to {} from MMA command", m_currentState);
-
-      // Send confirmation that state change was applied
-      network::StateChangeConfirmation confirmation{req.target_state};
-      auto confirmation_packet
-          = network::serializePacket(network::PacketType::STATE_CHANGE_CONFIRMATION, confirmation);
-      connection_->send(confirmation_packet);
-      spdlog::info("State change confirmation sent to MMA for state {}",
-                   network::stateIdToString(req.target_state));
     }
   }
 }

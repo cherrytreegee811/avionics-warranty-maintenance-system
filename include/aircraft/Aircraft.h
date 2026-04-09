@@ -4,6 +4,7 @@
 #include <common/WarrantyData.h>
 
 #include <asio.hpp>
+#include <atomic>
 #include <chrono>
 #include <memory>
 #include <string>
@@ -13,6 +14,13 @@
 class StateManager;
 
 namespace aircraft {
+
+  enum class TransitionSource {
+    MMA_COMMAND,
+    AUTOMATIC,
+    MANUAL,
+    CONNECTION_FALLBACK,
+  };
 
   struct FaultCode {
     int code;
@@ -57,7 +65,8 @@ namespace aircraft {
     void onNetworkMessage(const std::vector<uint8_t>& data);
     void setStateManager(StateManager* stateManager);
     void syncStateManagerToCurrentState();
-    bool transitionToState(network::StateId targetState);
+    bool transitionToState(network::StateId targetState,
+                           TransitionSource source = TransitionSource::AUTOMATIC);
     bool sendDiagnosticData();
 
   private:
@@ -74,6 +83,7 @@ namespace aircraft {
     StateManager* stateManager_ = nullptr;
     bool verified_ = false;
     uint64_t aircraft_id_ = 12345;
+    std::atomic<bool> shutting_down_{false};
   };
 
 }  // namespace aircraft

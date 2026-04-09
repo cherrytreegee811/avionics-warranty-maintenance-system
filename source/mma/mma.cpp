@@ -25,21 +25,41 @@ void MMA::startServer(uint16_t port) {
   asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
   acceptor_ = std::make_unique<asio::ip::tcp::acceptor>(*io_context_, endpoint);
   spdlog::info("MMA server listening on port {}", port);
-  doAccept();
   running_ = true;
+  doAccept();
   io_thread_ = std::thread([this]() { io_context_->run(); });
 }
 
 void MMA::stopServer() {
   if (!running_) return;
   menuRunning_ = false;
+  running_ = false;
+
+  if (acceptor_) {
+    std::error_code ignored;
+    acceptor_->close(ignored);
+  }
+
+  for (auto& conn : connections_) {
+    if (conn) {
+      conn->close();
+    }
+  }
+
+  verified_connections_.clear();
+  connection_to_id_.clear();
+  connections_.clear();
+
   io_context_->stop();
   if (io_thread_.joinable()) io_thread_.join();
-  running_ = false;
   spdlog::info("MMA server stopped");
 }
 
 void MMA::doAccept() {
+  if (!running_ || !acceptor_) {
+    return;
+  }
+
   acceptor_->async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
     if (!ec) {
       auto conn = network::TcpConnection::create(std::move(socket));
@@ -47,7 +67,9 @@ void MMA::doAccept() {
     } else {
       spdlog::error("Accept error: {}", ec.message());
     }
-    doAccept();
+    if (running_) {
+      doAccept();
+    }
   });
 }
 
@@ -106,8 +128,12 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
   }
 
   if (header.type == network::PacketType::LANDED_NOTIFICATION) {
-    spdlog::info("Client landed notification received");
-    // Future: change aircraft state to DIAGNOSTIC
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
+    spdlog::info("Aircraft {} landed", aircraft_id);
     return;
   }
 
@@ -140,8 +166,22 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
       aircraft_id = it->second;
     }
 
-    spdlog::info("State change confirmation received from aircraft {}: state change to {} applied",
+    spdlog::info("State change confirmation received from aircraft {}: state change to {}",
                  aircraft_id, network::stateIdToString(confirmation.applied_state));
+
+    switch (confirmation.applied_state) {
+      case network::StateId::DIAGNOSTIC:
+        spdlog::info("Aircraft {} transitioned to DIAGNOSTIC state", aircraft_id);
+        break;
+      case network::StateId::MAINTENANCE:
+        spdlog::info("Aircraft {} transitioned to MAINTENANCE state", aircraft_id);
+        break;
+      case network::StateId::FAULT:
+        spdlog::warn("Aircraft {} transitioned to FAULT state", aircraft_id);
+        break;
+      default:
+        break;
+    }
     return;
   }
 }
@@ -205,41 +245,41 @@ void MMA::runMenu() {
 void MMA::sendDiagnosticStateChange(uint64_t aircraftId) {
   const auto it = verified_connections_.find(aircraftId);
   if (it == verified_connections_.end()) {
-    std::cout << "No verified aircraft found with ID " << aircraftId << "\n";
+    spdlog::warn("Cannot send DIAGNOSTIC state change command: aircraft {} is not verified",
+                 aircraftId);
     return;
   }
 
   network::StateChangeRequest req{network::StateId::DIAGNOSTIC};
   const auto packet = network::serializePacket(network::PacketType::STATE_CHANGE, req);
   it->second->send(packet);
-  std::cout << "Sent DIAGNOSTIC state change command to aircraft " << aircraftId << "\n";
+  spdlog::info("Sent DIAGNOSTIC state change command to aircraft {}", aircraftId);
 }
 
 void MMA::printDiagnosticFaults(uint64_t aircraftId,
                                 const std::vector<network::DiagnosticFaultCode>& faults) const {
-  std::cout << "\nDiagnostic report from aircraft " << aircraftId << ":\n";
   if (faults.empty()) {
-    std::cout << "  No active fault codes.\n";
+    spdlog::info("Received diagnostic data from aircraft {} with no active faults", aircraftId);
     return;
   }
 
   for (const auto& fault : faults) {
-    std::cout << "  - Code " << fault.code << ": " << fault.description
-              << " [timestamp_ms=" << fault.timestamp_epoch_ms << "]\n";
+    spdlog::info("Diagnostic fault code '{}' (aircraft {}): '{}'", fault.code, aircraftId,
+                 fault.description);
   }
 }
 
 void MMA::displayWarranty(uint64_t aircraftId) {
   auto opt = warrantyManager_->getWarranty(aircraftId);
   if (!opt) {
-    std::cout << "No warranty record found for aircraft " << aircraftId << "\n";
+    spdlog::warn("No warranty record found for aircraft {}", aircraftId);
     return;
   }
   const auto& info = *opt;
-  std::cout << "Warranty for aircraft " << aircraftId << ":\n";
-  std::cout << "  Status: " << (info.isActive ? "ACTIVE" : "EXPIRED") << "\n";
+  spdlog::info("Displayed warranty information for aircraft {}", aircraftId);
+  spdlog::info("Warranty for aircraft {} is {}", aircraftId, info.isActive ? "ACTIVE" : "EXPIRED");
   if (info.isActive) {
-    std::cout << "  Expiry Date: " << info.expiryDate << "\n";
+    spdlog::info("Warranty for aircraft {} expires on {}", aircraftId, info.expiryDate);
   }
-  std::cout << "  Provider: " << info.provider << "\n";
+  spdlog::info("Warranty for aircraft {} is provided by {}", aircraftId, info.provider);
 }
