@@ -7,7 +7,12 @@ include(../cmake/tools.cmake)
 include(../cmake/CPM.cmake)
 
 CPMAddPackage("gh:doctest/doctest@2.5.0")
-CPMAddPackage("gh:TheLartians/Format.cmake@1.8.3")
+CPMAddPackage(
+  NAME Format.cmake
+  VERSION 1.8.3
+  GITHUB_REPOSITORY TheLartians/Format.cmake
+  OPTIONS "CMAKE_FORMAT_EXCLUDE (^|/)cmake/.*"
+)
 
 # ---- Normalize doctest target name (fixes missing ALIAS target) ----
 if(TARGET doctest::doctest)
