@@ -8,6 +8,7 @@
 #include <common/WarrantyData.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <asio.hpp>
 #include <chrono>
 #include <iomanip>
@@ -170,11 +171,80 @@ WarrantyInfo Aircraft::getWarranty() const { return m_warranty; }
 
 void Aircraft::setLastMaintenance(const MaintenanceInfo& info) { m_lastMaintenance = info; }
 
-void Aircraft::addFaultCode(const FaultCode& code) { m_faultCodes.push_back(code); }
+void Aircraft::addFaultCode(const FaultCode& code) {
+  m_faultCodes.push_back(code);
+  evaluateAutomaticTransitionFromCurrentState();
+}
 
-void Aircraft::clearFaultCodes() { m_faultCodes.clear(); }
+bool Aircraft::resolveFaultCode(int code) {
+  const auto beforeSize = m_faultCodes.size();
+  m_faultCodes.erase(std::remove_if(m_faultCodes.begin(), m_faultCodes.end(),
+                                    [code](const FaultCode& fault) { return fault.code == code; }),
+                     m_faultCodes.end());
+
+  if (m_faultCodes.size() == beforeSize) {
+    return false;
+  }
+
+  evaluateAutomaticTransitionFromCurrentState();
+  return true;
+}
+
+void Aircraft::clearFaultCodes() {
+  m_faultCodes.clear();
+  evaluateAutomaticTransitionFromCurrentState();
+}
 
 void Aircraft::setWarranty(const WarrantyInfo& info) { m_warranty = info; }
+
+bool Aircraft::hasAnyFaults() const { return !m_faultCodes.empty(); }
+
+bool Aircraft::hasMajorFaults() const {
+  return std::any_of(m_faultCodes.begin(), m_faultCodes.end(), [](const FaultCode& fault) {
+    return fault.severity == network::DiagnosticFaultSeverity::MAJOR;
+  });
+}
+
+bool Aircraft::hasOnlyMinorFaults() const { return hasAnyFaults() && !hasMajorFaults(); }
+
+void Aircraft::evaluateAutomaticTransitionFromCurrentState() {
+  if (automatic_transition_in_progress_) {
+    return;
+  }
+
+  const auto currentState = stateIdFromString(m_currentState);
+  if (!currentState) {
+    return;
+  }
+
+  std::optional<network::StateId> targetState;
+  switch (*currentState) {
+    case network::StateId::MAINTENANCE:
+      if (hasMajorFaults()) {
+        targetState = network::StateId::FAULT;
+      } else if (!hasAnyFaults()) {
+        targetState = network::StateId::STANDBY;
+      }
+      break;
+    case network::StateId::FAULT:
+      if (!hasAnyFaults()) {
+        targetState = network::StateId::STANDBY;
+      } else if (hasOnlyMinorFaults()) {
+        targetState = network::StateId::DIAGNOSTIC;
+      }
+      break;
+    default:
+      break;
+  }
+
+  if (!targetState) {
+    return;
+  }
+
+  automatic_transition_in_progress_ = true;
+  transitionToState(*targetState, TransitionSource::AUTOMATIC);
+  automatic_transition_in_progress_ = false;
+}
 
 void Aircraft::connectToMMA(const std::string& host, uint16_t port) {
   verified_ = false;

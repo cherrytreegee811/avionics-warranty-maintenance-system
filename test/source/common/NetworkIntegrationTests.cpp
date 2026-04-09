@@ -305,9 +305,8 @@ TEST_CASE("REQ-NET-013/US-011: DIAGNOSTIC_DATA severity is logged by MMA") {
         [&]() {
           return logContainsLine(testLogFile,
                                  "Fault Code '101' \\(aircraft: 12345\\): \\[MINOR\\] - '.*'")
-                 && logContainsLine(
-                     testLogFile,
-                     "Fault Code '102' \\(aircraft: 12345\\): \\[MAJOR\\] - '.*'");
+                 && logContainsLine(testLogFile,
+                                    "Fault Code '102' \\(aircraft: 12345\\): \\[MAJOR\\] - '.*'");
         },
         4000ms));
   }

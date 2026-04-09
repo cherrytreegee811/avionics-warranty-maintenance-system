@@ -240,6 +240,112 @@ TEST_CASE("REQ-CLT-056/US-015: Aircraft logs transition metadata for all source 
   std::remove(testLogFile.c_str());
 }
 
+TEST_CASE("US-012: Automatic transition MAINTENANCE -> FAULT when MAJOR fault is added") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.getCurrentState() == "MAINTENANCE");
+
+  aircraft.addFaultCode({777, network::DiagnosticFaultSeverity::MAJOR, "Hydraulic leak detected",
+                         std::chrono::system_clock::now()});
+
+  CHECK(aircraft.getCurrentState() == "FAULT");
+}
+
+TEST_CASE("US-012: Automatic transition MAINTENANCE -> STANDBY when faults are cleared") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({778, network::DiagnosticFaultSeverity::MINOR, "Cabin light anomaly",
+                         std::chrono::system_clock::now()});
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.getCurrentState() == "MAINTENANCE");
+
+  aircraft.clearFaultCodes();
+
+  CHECK(aircraft.getCurrentState() == "STANDBY");
+}
+
+TEST_CASE("US-012: Automatic transition FAULT -> STANDBY when all faults are resolved") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+
+  aircraft.addFaultCode({779, network::DiagnosticFaultSeverity::MAJOR, "Engine fire warning",
+                         std::chrono::system_clock::now()});
+  CHECK(aircraft.getCurrentState() == "FAULT");
+
+  aircraft.clearFaultCodes();
+
+  CHECK(aircraft.getCurrentState() == "STANDBY");
+}
+
+TEST_CASE("US-012: Automatic transition FAULT -> DIAGNOSTIC when only MINOR faults persist") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({780, network::DiagnosticFaultSeverity::MINOR,
+                         "Cabin pressure sensor drift", std::chrono::system_clock::now()});
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+
+  aircraft.addFaultCode({781, network::DiagnosticFaultSeverity::MAJOR,
+                         "Primary hydraulic bus failure", std::chrono::system_clock::now()});
+  CHECK(aircraft.getCurrentState() == "FAULT");
+
+  CHECK(aircraft.resolveFaultCode(781));
+  CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
+  CHECK_FALSE(aircraft.resolveFaultCode(9999));
+}
+
+TEST_CASE("US-012: Automatic transitions are logged with source AUTOMATIC") {
+  std::string testLogFile = "test_aircraft_automatic_transition_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("test_automatic_transition_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+
+  aircraft.addFaultCode({782, network::DiagnosticFaultSeverity::MAJOR,
+                         "Autopilot channel disagreement", std::chrono::system_clock::now()});
+
+  spdlog::shutdown();
+  CHECK(test_helpers::logContains(
+      testLogFile, "Operational state transition: MAINTENANCE -> FAULT.*source: AUTOMATIC"));
+
+  std::remove(testLogFile.c_str());
+}
+
 // ============================================================================
 // REQ-CLT-054: The airplane should log when it sends the landed signal
 // ============================================================================

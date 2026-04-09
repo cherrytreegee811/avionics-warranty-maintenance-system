@@ -55,6 +55,7 @@ namespace aircraft {
     // Data setters
     void setLastMaintenance(const MaintenanceInfo& info);
     void addFaultCode(const FaultCode& code);
+    bool resolveFaultCode(int code);
     void clearFaultCodes();
     void setWarranty(const WarrantyInfo& info);
     bool getRunningStatus() const { return verified_; }
@@ -71,6 +72,11 @@ namespace aircraft {
     bool sendDiagnosticData();
 
   private:
+    bool hasAnyFaults() const;
+    bool hasMajorFaults() const;
+    bool hasOnlyMinorFaults() const;
+    void evaluateAutomaticTransitionFromCurrentState();
+
     using NetworkWorkGuard = asio::executor_work_guard<asio::io_context::executor_type>;
 
     std::string m_currentState;
@@ -85,6 +91,7 @@ namespace aircraft {
     bool verified_ = false;
     uint64_t aircraft_id_ = 12345;
     std::atomic<bool> shutting_down_{false};
+    bool automatic_transition_in_progress_ = false;
   };
 
 }  // namespace aircraft
