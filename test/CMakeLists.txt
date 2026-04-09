@@ -32,7 +32,7 @@ target_include_directories(
   TestHelpers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/include
 )
 target_include_directories(TestHelpers PRIVATE ${asio_SOURCE_DIR}/include)
-target_link_libraries(TestHelpers PRIVATE Common spdlog::spdlog)
+target_link_libraries(TestHelpers PRIVATE Common)
 set_target_properties(TestHelpers PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 # ---- Create Test Executables ----
