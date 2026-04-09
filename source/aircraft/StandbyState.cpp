@@ -1,7 +1,6 @@
 #include <aircraft/Aircraft.h>
 #include <aircraft/DiagnosticState.h>
 #include <aircraft/StandbyState.h>
-
 #include <format>
 #include <iostream>
 #include <memory>
