@@ -278,7 +278,7 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
       spdlog::info("Verification successful, client ID {}", aircraft_id_);
       sendLandedNotification();
     } else {
-      spdlog::warn("Received non‑verification packet before handshake, closing");
+      spdlog::warn("Received non-verification packet before handshake, closing");
       spdlog::default_logger()->flush();
       connection_->close();
     }
@@ -298,6 +298,14 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
         return;
       }
       spdlog::info("State changed to {} from MMA command", m_currentState);
+
+      // Send confirmation that state change was applied
+      network::StateChangeConfirmation confirmation{req.target_state};
+      auto confirmation_packet
+          = network::serializePacket(network::PacketType::STATE_CHANGE_CONFIRMATION, confirmation);
+      connection_->send(confirmation_packet);
+      spdlog::info("State change confirmation sent to MMA for state {}",
+                   network::stateIdToString(req.target_state));
     }
   }
 }

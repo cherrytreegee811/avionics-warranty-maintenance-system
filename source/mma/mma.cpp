@@ -123,6 +123,26 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
       aircraft_id = it->second;
     }
     printDiagnosticFaults(aircraft_id, faults);
+    return;
+  }
+
+  if (header.type == network::PacketType::STATE_CHANGE_CONFIRMATION) {
+    if (payload.size() != sizeof(network::StateChangeConfirmation)) {
+      spdlog::warn("Invalid STATE_CHANGE_CONFIRMATION payload size: {}", payload.size());
+      return;
+    }
+
+    network::StateChangeConfirmation confirmation{};
+    std::memcpy(&confirmation, payload.data(), sizeof(confirmation));
+
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
+    spdlog::info("State change confirmation received from aircraft {}: state change to {} applied",
+                 aircraft_id, network::stateIdToString(confirmation.applied_state));
+    return;
   }
 }
 

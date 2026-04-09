@@ -21,7 +21,7 @@ int main() {
   std::filesystem::create_directories("logs");
 
   // Build log filename with date
-  std::string logFileName = "logs/mma_" + getCurrentDate() + ".log";
+  std::string logFileName = std::format("logs/mma_{}.log", getCurrentDate());
 
   // File sink (truncate each run, or use false to append)
   auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFileName, true);

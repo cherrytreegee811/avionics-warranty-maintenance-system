@@ -18,7 +18,8 @@ namespace network {
     STATE_CHANGE = 3,
     LANDED_NOTIFICATION = 4,
     DIAGNOSTIC_DATA = 5,
-    SCHEMATIC_CHUNK = 6
+    SCHEMATIC_CHUNK = 6,
+    STATE_CHANGE_CONFIRMATION = 7
   };
 
   enum class StateId : uint8_t { STANDBY = 0, DIAGNOSTIC = 1, MAINTENANCE = 2, FAULT = 3 };
@@ -46,6 +47,10 @@ namespace network {
 
   struct StateChangeRequest {
     StateId target_state;
+  };
+
+  struct StateChangeConfirmation {
+    StateId applied_state;
   };
 
   struct DiagnosticFaultCodeHeader {
@@ -80,4 +85,19 @@ namespace network {
   uint32_t computePacketChecksum(const PacketHeader& header, const void* payload,
                                  size_t payload_size);
 
+  // For logging: converts StateId to string
+  inline constexpr std::string_view stateIdToString(StateId state) {
+    switch (state) {
+      case StateId::STANDBY:
+        return "STANDBY";
+      case StateId::DIAGNOSTIC:
+        return "DIAGNOSTIC";
+      case StateId::MAINTENANCE:
+        return "MAINTENANCE";
+      case StateId::FAULT:
+        return "FAULT";
+      default:
+        return "UNKNOWN";
+    }
+  }
 }  // namespace network

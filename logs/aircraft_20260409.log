@@ -1,0 +1,13 @@
+[2026-04-08 20:54:44.056] [aircraft_logger] [info] Aircraft application started
+[2026-04-08 20:54:44.061] [aircraft_logger] [info] Aircraft state changing from STANDBY to STANDBY
+[2026-04-08 20:54:44.061] [aircraft_logger] [info] Connected to MMA server
+[2026-04-08 20:54:44.063] [aircraft_logger] [info] Verification successful, client ID 12345
+[2026-04-08 20:54:44.064] [aircraft_logger] [info] Landed notification sent to MMA
+[2026-04-08 20:54:48.502] [aircraft_logger] [info] Aircraft state changing from STANDBY to DIAGNOSTIC
+[2026-04-08 20:54:48.503] [aircraft_logger] [info] Aircraft state changing from DIAGNOSTIC to DIAGNOSTIC
+[2026-04-08 20:54:48.504] [aircraft_logger] [info] Sent 2 fault codes to MMA
+[2026-04-08 20:54:48.504] [aircraft_logger] [info] Aircraft state changing from DIAGNOSTIC to MAINTENANCE
+[2026-04-08 20:54:48.505] [aircraft_logger] [info] Aircraft state changing from MAINTENANCE to MAINTENANCE
+[2026-04-08 20:54:48.506] [aircraft_logger] [info] State changed to MAINTENANCE from MMA command
+[2026-04-08 20:54:48.506] [aircraft_logger] [info] State change confirmation sent to MMA for state DIAGNOSTIC
+[2026-04-08 20:54:55.414] [aircraft_logger] [info] Aircraft application exiting
