@@ -24,6 +24,11 @@ namespace network {
 
   enum class StateId : uint8_t { STANDBY = 0, DIAGNOSTIC = 1, MAINTENANCE = 2, FAULT = 3 };
 
+  enum class DiagnosticFaultSeverity : uint8_t {
+    MINOR = 0,
+    MAJOR = 1,
+  };
+
 #pragma pack(push, 1)
   struct PacketHeader {
     uint32_t magic;
@@ -56,6 +61,7 @@ namespace network {
   struct DiagnosticFaultCodeHeader {
     int32_t code;
     int64_t timestamp_epoch_ms;
+    DiagnosticFaultSeverity severity;
     uint16_t description_size;
   };
 #pragma pack(pop)
@@ -63,6 +69,7 @@ namespace network {
   struct DiagnosticFaultCode {
     int32_t code;
     int64_t timestamp_epoch_ms;
+    DiagnosticFaultSeverity severity;
     std::string description;
   };
 
@@ -96,6 +103,18 @@ namespace network {
         return "MAINTENANCE";
       case StateId::FAULT:
         return "FAULT";
+      default:
+        return "UNKNOWN";
+    }
+  }
+
+  inline constexpr std::string_view diagnosticFaultSeverityToString(
+      DiagnosticFaultSeverity severity) {
+    switch (severity) {
+      case DiagnosticFaultSeverity::MINOR:
+        return "MINOR";
+      case DiagnosticFaultSeverity::MAJOR:
+        return "MAJOR";
       default:
         return "UNKNOWN";
     }

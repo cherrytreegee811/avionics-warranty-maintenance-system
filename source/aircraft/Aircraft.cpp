@@ -106,9 +106,21 @@ Aircraft::Aircraft()
   m_lastMaintenance.notes = "Routine checkup";
 
   // Sample fault codes
-  m_faultCodes.push_back(
-      {101, "Engine temperature sensor fault", std::chrono::system_clock::now()});
-  m_faultCodes.push_back({202, "Hydraulic pressure low", std::chrono::system_clock::now()});
+  m_faultCodes.push_back({101, network::DiagnosticFaultSeverity::MINOR,
+                          "Engine temperature sensor fault - left engine",
+                          std::chrono::system_clock::now()});
+  m_faultCodes.push_back({102, network::DiagnosticFaultSeverity::MAJOR,
+                          "Hydraulic pressure low - right wing", std::chrono::system_clock::now()});
+  m_faultCodes.push_back({203, network::DiagnosticFaultSeverity::MINOR,
+                          "Altitude indicator disagreement", std::chrono::system_clock::now()});
+  m_faultCodes.push_back({900, network::DiagnosticFaultSeverity::MINOR,
+                          "Galley refrigeration fault - forward galley",
+                          std::chrono::system_clock::now()});
+  m_faultCodes.push_back({903, network::DiagnosticFaultSeverity::MINOR,
+                          "In-flight entertainment system fault",
+                          std::chrono::system_clock::now()});
+  m_faultCodes.push_back({909, network::DiagnosticFaultSeverity::MINOR, "WiFi connectivity issue",
+                          std::chrono::system_clock::now()});
 
   // Sample warranty data
   m_warranty.isActive = true;
@@ -291,6 +303,7 @@ bool Aircraft::sendDiagnosticData() {
     fault_payload.push_back(network::DiagnosticFaultCode{
         fault.code,
         timestamp_ms,
+        fault.severity,
         fault.description,
     });
   }

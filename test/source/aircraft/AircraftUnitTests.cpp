@@ -59,13 +59,13 @@ TEST_CASE("REQ-CLT-003: Aircraft returns last maintenance time") {
 TEST_CASE("REQ-CLT-004: Aircraft returns fault codes") {
   Aircraft aircraft;
 
-  // Aircraft constructor adds 2 sample fault codes (101 and 202)
+  // Aircraft constructor adds 6 sample fault codes.
   auto faults = aircraft.getFaultCodes();
-  CHECK(faults.size() == 2);
+  CHECK(faults.size() == 6);
   CHECK(faults[0].code == 101);
-  CHECK(faults[0].description == "Engine temperature sensor fault");
-  CHECK(faults[1].code == 202);
-  CHECK(faults[1].description == "Hydraulic pressure low");
+  CHECK(faults[0].severity == network::DiagnosticFaultSeverity::MINOR);
+  CHECK(faults[1].code == 102);
+  CHECK(faults[1].severity == network::DiagnosticFaultSeverity::MAJOR);
 }
 
 TEST_CASE("REQ-CLT-004: Aircraft can view all fault codes") {
@@ -74,11 +74,13 @@ TEST_CASE("REQ-CLT-004: Aircraft can view all fault codes") {
   auto faults = aircraft.getFaultCodes();
 
   // Verify we can access all fault codes (view functionality)
-  CHECK(faults.size() == 2);
+  CHECK(faults.size() == 6);
 
   // Verify we can read each fault code's properties
   for (const auto& fault : faults) {
     CHECK(fault.code > 0);
+    CHECK((fault.severity == network::DiagnosticFaultSeverity::MINOR
+           || fault.severity == network::DiagnosticFaultSeverity::MAJOR));
     CHECK(!fault.description.empty());
   }
 }

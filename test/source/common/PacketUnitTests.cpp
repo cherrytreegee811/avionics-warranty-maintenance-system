@@ -72,8 +72,8 @@ TEST_CASE("REQ-NET-013: StateChangeRequest serialization/deserialization") {
 
 TEST_CASE("REQ-SYS-030/REQ-NET-031: Diagnostic payload roundtrip") {
   std::vector<DiagnosticFaultCode> original{
-      {101, 1710000000000LL, "Engine temperature sensor fault"},
-      {202, 1710000001000LL, "Hydraulic pressure low"}};
+      {101, 1710000000000LL, DiagnosticFaultSeverity::MINOR, "Engine temperature sensor fault"},
+      {202, 1710000001000LL, DiagnosticFaultSeverity::MAJOR, "Hydraulic pressure low"}};
 
   const auto payload = serializeDiagnosticDataPayload(original);
 
@@ -82,9 +82,11 @@ TEST_CASE("REQ-SYS-030/REQ-NET-031: Diagnostic payload roundtrip") {
   REQUIRE(parsed.size() == original.size());
   CHECK(parsed[0].code == original[0].code);
   CHECK(parsed[0].timestamp_epoch_ms == original[0].timestamp_epoch_ms);
+  CHECK(parsed[0].severity == DiagnosticFaultSeverity::MINOR);
   CHECK(parsed[0].description == original[0].description);
   CHECK(parsed[1].code == original[1].code);
   CHECK(parsed[1].timestamp_epoch_ms == original[1].timestamp_epoch_ms);
+  CHECK(parsed[1].severity == DiagnosticFaultSeverity::MAJOR);
   CHECK(parsed[1].description == original[1].description);
 }
 
@@ -95,6 +97,11 @@ TEST_CASE("REQ-NET-012: Diagnostic payload rejects malformed buffer") {
   std::memcpy(malformed.data(), &count, sizeof(count));
 
   std::vector<DiagnosticFaultCode> parsed;
+  CHECK(!deserializeDiagnosticDataPayload(malformed, parsed));
+
+  malformed.clear();
+  malformed.resize(sizeof(uint16_t) + sizeof(DiagnosticFaultCodeHeader) - 1);
+  std::memcpy(malformed.data(), &count, sizeof(count));
   CHECK(!deserializeDiagnosticDataPayload(malformed, parsed));
 }
 

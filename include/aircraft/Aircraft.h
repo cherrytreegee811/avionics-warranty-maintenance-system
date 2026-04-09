@@ -24,6 +24,7 @@ namespace aircraft {
 
   struct FaultCode {
     int code;
+    network::DiagnosticFaultSeverity severity;
     std::string description;
     std::chrono::system_clock::time_point timestamp;
   };

@@ -97,6 +97,7 @@ namespace network {
       DiagnosticFaultCodeHeader header{
           fault.code,
           fault.timestamp_epoch_ms,
+          fault.severity,
           desc_size,
       };
 
@@ -140,6 +141,7 @@ namespace network {
       DiagnosticFaultCode parsed{};
       parsed.code = wire.code;
       parsed.timestamp_epoch_ms = wire.timestamp_epoch_ms;
+      parsed.severity = wire.severity;
       parsed.description.assign(reinterpret_cast<const char*>(payload.data() + offset),
                                 wire.description_size);
       offset += wire.description_size;
