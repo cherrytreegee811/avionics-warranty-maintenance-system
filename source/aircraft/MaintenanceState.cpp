@@ -1,6 +1,5 @@
 #include <aircraft/Aircraft.h>
 #include <aircraft/MaintenanceState.h>
-
 #include <iostream>
 
 MaintenanceState::MaintenanceState(aircraft::Aircraft& aircraft, StateManager& stateManager)

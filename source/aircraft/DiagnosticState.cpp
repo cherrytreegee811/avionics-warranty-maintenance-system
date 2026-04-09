@@ -1,6 +1,5 @@
 #include <aircraft/Aircraft.h>
 #include <aircraft/DiagnosticState.h>
-
 #include <iostream>
 
 DiagnosticState::DiagnosticState(aircraft::Aircraft& aircraft, StateManager& stateManager)
