@@ -3,15 +3,23 @@
 #include <mma/mma.h>
 #include <spdlog/spdlog.h>
 
+#include <algorithm>
 #include <asio.hpp>
 #include <chrono>
 #include <filesystem>
 #include <fstream>
+#include <future>
 #include <iostream>
 #include <random>
 #include <sstream>
 #include <thread>
 #include <type_traits>
+
+namespace {
+  constexpr auto kMissingChunkTimeout = std::chrono::seconds(2);
+  constexpr auto kMissingChunkCheckInterval = std::chrono::milliseconds(500);
+  constexpr uint8_t kMaxMissingChunkRetryAttempts = 1;
+}  // namespace
 
 // Helper function to map ImageFormat to file extension
 static std::string formatToExtension(network::ImageFormat format) {
@@ -63,7 +71,45 @@ static bool saveReceivedImage(uint64_t aircraft_id, uint32_t image_id,
     }
 
     file.close();
+
+    // Post-write integrity verification: read the file back and compare byte-for-byte.
+    std::ifstream verify_file(filepath, std::ios::binary | std::ios::ate);
+    if (!verify_file.is_open()) {
+      spdlog::error("Failed to open image file for integrity verification: {}", filepath);
+      return false;
+    }
+
+    const auto saved_size_pos = verify_file.tellg();
+    if (saved_size_pos < 0) {
+      spdlog::error("Failed to determine saved image size during verification: {}", filepath);
+      return false;
+    }
+
+    const size_t saved_size = static_cast<size_t>(saved_size_pos);
+    if (saved_size != image_data.size()) {
+      spdlog::error("Saved image size mismatch for {}: expected {} bytes, got {} bytes", filepath,
+                    image_data.size(), saved_size);
+      return false;
+    }
+
+    verify_file.seekg(0, std::ios::beg);
+    std::vector<uint8_t> saved_data(saved_size);
+    if (saved_size > 0) {
+      verify_file.read(reinterpret_cast<char*>(saved_data.data()),
+                       static_cast<std::streamsize>(saved_size));
+      if (!verify_file || verify_file.gcount() != static_cast<std::streamsize>(saved_size)) {
+        spdlog::error("Failed to read saved image data for verification: {}", filepath);
+        return false;
+      }
+    }
+
+    if (!std::equal(saved_data.begin(), saved_data.end(), image_data.begin())) {
+      spdlog::error("Image integrity verification failed (byte mismatch): {}", filepath);
+      return false;
+    }
+
     spdlog::info("Successfully saved image to: {}", filepath);
+    spdlog::info("Image integrity verified byte-for-byte: {}", filepath);
     return true;
   } catch (const std::exception& e) {
     spdlog::error("Exception while saving image {}: {}", filepath, e.what());
@@ -94,6 +140,8 @@ void MMA::startServer(uint16_t port) {
 
   spdlog::info("MMA server listening on port {}", port);
   running_ = true;
+  chunk_timeout_timer_ = std::make_unique<asio::steady_timer>(*io_context_);
+  scheduleChunkTimeoutChecks();
   doAccept();
   io_thread_ = std::thread([this]() { io_context_->run(); });
 }
@@ -108,16 +156,41 @@ void MMA::stopServer() {
     acceptor_->close(ignored);
   }
 
-  for (auto& conn : connections_) {
-    if (conn) {
-      conn->close();
-    }
+  if (chunk_timeout_timer_) {
+    chunk_timeout_timer_->cancel();
   }
 
-  verified_connections_.clear();
-  connection_to_id_.clear();
-  aircraft_states_.clear();
-  connections_.clear();
+  auto cleanup_done = std::make_shared<std::promise<void>>();
+  auto cleanup_future = cleanup_done->get_future();
+  asio::post(*io_context_, [this, cleanup_done]() mutable {
+    for (auto& conn : connections_) {
+      if (conn) {
+        conn->close();
+      }
+    }
+
+    verified_connections_.clear();
+    connection_to_id_.clear();
+    aircraft_states_.clear();
+    connections_.clear();
+    image_reassembly_buffers_.clear();
+    image_reassembly_retry_state_.clear();
+
+    if (chunk_timeout_timer_) {
+      chunk_timeout_timer_.reset();
+    }
+
+    cleanup_done->set_value();
+  });
+
+  if (cleanup_future.wait_for(std::chrono::milliseconds(200)) != std::future_status::ready) {
+    io_context_->restart();
+    while (cleanup_future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
+      if (io_context_->poll_one() == 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+    }
+  }
 
   io_context_->stop();
   if (io_thread_.joinable()) io_thread_.join();
@@ -235,6 +308,23 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
     return;
   }
 
+  if (header.type == network::PacketType::WARRANTY_DATA) {
+    common::WarrantyInfo warranty{};
+    if (!network::deserializeWarrantyDataPayload(payload, warranty)) {
+      spdlog::warn("Received malformed WARRANTY_DATA payload");
+      return;
+    }
+
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
+    warrantyManager_->setWarranty(aircraft_id, warranty);
+    spdlog::info("Persisted warranty data for aircraft {} to mma_warranty_data.csv", aircraft_id);
+    return;
+  }
+
   if (header.type == network::PacketType::STATE_CHANGE_CONFIRMATION) {
     if (payload.size() != sizeof(network::StateChangeConfirmation)) {
       spdlog::warn("Invalid STATE_CHANGE_CONFIRMATION payload size: {}", payload.size());
@@ -291,6 +381,7 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
 
     // Get or create reassembly buffer for this aircraft/image combination
     auto& aircraft_buffers = image_reassembly_buffers_[aircraft_id];
+    auto& retry_states = image_reassembly_retry_state_[aircraft_id];
     auto buffer_it = aircraft_buffers.find(chunk_header.image_id);
     if (buffer_it == aircraft_buffers.end()) {
       // Create new reassembly buffer
@@ -298,12 +389,43 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
                                network::ImageBuffer(chunk_header.image_id, chunk_header.format,
                                                     chunk_header.total_chunks));
       buffer_it = aircraft_buffers.find(chunk_header.image_id);
+
+      ReassemblyRetryState retry_state{};
+      retry_state.last_chunk_time = std::chrono::steady_clock::now();
+      retry_state.retry_attempts_per_chunk.resize(chunk_header.total_chunks, 0);
+      retry_states.emplace(chunk_header.image_id, std::move(retry_state));
+    }
+
+    auto retry_it = retry_states.find(chunk_header.image_id);
+    if (retry_it != retry_states.end()) {
+      retry_it->second.last_chunk_time = std::chrono::steady_clock::now();
+    }
+
+    if (!buffer_it->second.setExpectedImageCrc(chunk_header.image_crc32)) {
+      spdlog::warn(
+          "Rejected image chunk for aircraft {} image {} due to inconsistent full-image CRC "
+          "(expected 0x{:08X}, got 0x{:08X})",
+          aircraft_id, chunk_header.image_id, buffer_it->second.expected_image_crc32,
+          chunk_header.image_crc32);
+      return;
     }
 
     // Add chunk to buffer
     if (buffer_it->second.addChunk(chunk_header.chunk_index, chunk_data)) {
       // Image is now complete
       const auto complete_image = buffer_it->second.reassemble();
+
+      if (!buffer_it->second.validateReassembledCrc(complete_image)) {
+        spdlog::error(
+            "Reassembled image {} from aircraft {} failed CRC validation (expected 0x{:08X}, "
+            "computed 0x{:08X})",
+            chunk_header.image_id, aircraft_id, buffer_it->second.expected_image_crc32,
+            network::Crc32::calculate(complete_image.data(), complete_image.size()));
+        aircraft_buffers.erase(buffer_it);
+        retry_states.erase(chunk_header.image_id);
+        return;
+      }
+
       spdlog::info(
           "Image {} from aircraft {} received and reassembled ({} bytes total, format: {})",
           chunk_header.image_id, aircraft_id, complete_image.size(),
@@ -320,6 +442,7 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
 
       // Remove from reassembly buffer
       aircraft_buffers.erase(buffer_it);
+      retry_states.erase(chunk_header.image_id);
     }
 
     return;
@@ -355,6 +478,97 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
   }
 }
 
+void MMA::scheduleChunkTimeoutChecks() {
+  if (!running_ || !chunk_timeout_timer_) {
+    return;
+  }
+
+  chunk_timeout_timer_->expires_after(kMissingChunkCheckInterval);
+  chunk_timeout_timer_->async_wait([this](const std::error_code& ec) {
+    if (ec || !running_) {
+      return;
+    }
+
+    processMissingChunkTimeouts();
+    scheduleChunkTimeoutChecks();
+  });
+}
+
+void MMA::processMissingChunkTimeouts() {
+  const auto now = std::chrono::steady_clock::now();
+
+  for (auto& [aircraft_id, aircraft_buffers] : image_reassembly_buffers_) {
+    auto retry_state_aircraft_it = image_reassembly_retry_state_.find(aircraft_id);
+    if (retry_state_aircraft_it == image_reassembly_retry_state_.end()) {
+      continue;
+    }
+
+    auto& retry_states = retry_state_aircraft_it->second;
+    std::vector<uint32_t> images_to_drop;
+
+    for (auto& [image_id, buffer] : aircraft_buffers) {
+      auto retry_state_it = retry_states.find(image_id);
+      if (retry_state_it == retry_states.end()) {
+        continue;
+      }
+
+      auto& retry_state = retry_state_it->second;
+      if (now - retry_state.last_chunk_time < kMissingChunkTimeout) {
+        continue;
+      }
+
+      bool should_drop_image = false;
+
+      for (uint16_t idx = 0; idx < buffer.total_chunks; ++idx) {
+        if (buffer.received[idx]) {
+          continue;
+        }
+
+        if (idx >= retry_state.retry_attempts_per_chunk.size()) {
+          continue;
+        }
+
+        if (retry_state.retry_attempts_per_chunk[idx] < kMaxMissingChunkRetryAttempts) {
+          sendChunkRetryRequest(aircraft_id, image_id, idx);
+          ++retry_state.retry_attempts_per_chunk[idx];
+        } else {
+          spdlog::error(
+              "Image {} from aircraft {} missing chunk {} after retry; aborting reassembly",
+              image_id, aircraft_id, idx);
+          should_drop_image = true;
+        }
+      }
+
+      retry_state.last_chunk_time = now;
+      if (should_drop_image) {
+        images_to_drop.push_back(image_id);
+      }
+    }
+
+    for (const auto image_id : images_to_drop) {
+      aircraft_buffers.erase(image_id);
+      retry_states.erase(image_id);
+    }
+  }
+}
+
+void MMA::sendChunkRetryRequest(uint64_t aircraftId, uint32_t imageId, uint16_t chunkIndex) {
+  const auto connection_it = verified_connections_.find(aircraftId);
+  if (connection_it == verified_connections_.end()) {
+    spdlog::warn("Cannot request missing chunk {} for image {}: aircraft {} not verified/connected",
+                 chunkIndex, imageId, aircraftId);
+    return;
+  }
+
+  const network::SchematicChunkRetryRequest request{imageId, chunkIndex};
+  const auto packet
+      = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK_RETRY_REQUEST, request);
+  connection_it->second->send(packet);
+
+  spdlog::warn("Requested retry for missing chunk {} of image {} from aircraft {}", chunkIndex,
+               imageId, aircraftId);
+}
+
 void MMA::runMenu() {
   std::cout << "\n========== MMA Technician Console ==========\n";
   std::cout << "1. View warranty status\n";
@@ -378,16 +592,9 @@ void MMA::runMenu() {
         std::cout << "Invalid ID.\n";
       }
     } else if (line == "2") {
-      std::cout << "Connected aircraft (" << connections_.size() << "):\n";
-      for (auto& conn : connections_) {
-        const char* state_label = "UNVERIFIED";
-        if (conn->getState() == network::ConnectionState::VERIFIED) {
-          state_label = "VERIFIED";
-        } else if (conn->getState() == network::ConnectionState::CLOSED) {
-          state_label = "CLOSED";
-        }
-
-        std::cout << std::format("  - {} [state: {}]\n", conn->getRemoteAddress(), state_label);
+      std::cout << "Connected aircraft (" << verified_connections_.size() << "):\n";
+      for (auto& [aircraft_id, conn] : verified_connections_) {
+        std::cout << std::format("  - Aircraft {} [state: VERIFIED]\n", aircraft_id);
       }
     } else if (line == "3") {
       std::cout << "Shutting down...\n";

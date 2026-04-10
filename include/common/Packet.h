@@ -1,6 +1,7 @@
 #pragma once
 
 #include <common/Crc32.h>
+#include <common/WarrantyData.h>
 
 #include <cstdint>
 #include <cstring>
@@ -20,9 +21,10 @@ namespace network {
     DIAGNOSTIC_DATA = 5,
     SCHEMATIC_CHUNK = 6,
     STATE_CHANGE_CONFIRMATION = 7,
-    WARRANTY_DATA = 8,
-    CLEAR_DIAGNOSTIC_CODE = 9,
-    CLEAR_DIAGNOSTIC_CODE_CONFIRMATION = 10
+    CLEAR_DIAGNOSTIC_CODE = 8,
+    CLEAR_DIAGNOSTIC_CODE_CONFIRMATION = 9,
+    SCHEMATIC_CHUNK_RETRY_REQUEST = 10,
+    WARRANTY_DATA = 11
   };
 
   enum class StateId : uint8_t { STANDBY = 0, DIAGNOSTIC = 1, MAINTENANCE = 2, FAULT = 3 };
@@ -83,6 +85,11 @@ namespace network {
     StateId resulting_state;
   };
 
+  struct SchematicChunkRetryRequest {
+    uint32_t image_id;
+    uint16_t chunk_index;
+  };
+
   struct DiagnosticFaultCodeHeader {
     int32_t code;
     int64_t timestamp_epoch_ms;
@@ -96,6 +103,8 @@ namespace network {
     uint16_t total_chunks;     // Total chunks for this image
     uint32_t chunk_data_size;  // Bytes of image data in this chunk
     ImageFormat format;        // Image format (RAW, PNG, JPEG, etc.)
+    uint32_t chunk_crc32;      // CRC32 of this chunk's raw data bytes
+    uint32_t image_crc32;      // CRC32 of the full original image bytes
   };
 #pragma pack(pop)
 
@@ -121,6 +130,10 @@ namespace network {
       const std::vector<DiagnosticFaultCode>& faults);
   bool deserializeDiagnosticDataPayload(const std::vector<uint8_t>& payload,
                                         std::vector<DiagnosticFaultCode>& faults);
+
+  std::vector<uint8_t> serializeWarrantyDataPayload(const common::WarrantyInfo& warranty);
+  bool deserializeWarrantyDataPayload(const std::vector<uint8_t>& payload,
+                                      common::WarrantyInfo& warranty);
 
   // Image chunk serialization (handles multi-chunk images)
   // Returns vector of serialized chunk payloads (one per packet to send)
@@ -203,14 +216,30 @@ namespace network {
     ImageFormat format;
     uint16_t total_chunks;
     size_t total_size_bytes;
+    uint32_t expected_image_crc32;
+    bool expected_image_crc32_set;
     std::vector<std::vector<uint8_t>>
         chunks;                  // chunks[i] = data for chunk i, empty if not received
     std::vector<bool> received;  // received[i] = true if chunk i has been received
 
     ImageBuffer(uint32_t id, ImageFormat fmt, uint16_t total)
-        : image_id(id), format(fmt), total_chunks(total), total_size_bytes(0) {
+        : image_id(id),
+          format(fmt),
+          total_chunks(total),
+          total_size_bytes(0),
+          expected_image_crc32(0),
+          expected_image_crc32_set(false) {
       chunks.resize(total);
       received.resize(total, false);
+    }
+
+    bool setExpectedImageCrc(uint32_t crc32) {
+      if (!expected_image_crc32_set) {
+        expected_image_crc32 = crc32;
+        expected_image_crc32_set = true;
+        return true;
+      }
+      return expected_image_crc32 == crc32;
     }
 
     // Add a chunk to the buffer. Returns true if image is now complete.
@@ -243,6 +272,13 @@ namespace network {
         result.insert(result.end(), chunk.begin(), chunk.end());
       }
       return result;
+    }
+
+    bool validateReassembledCrc(const std::vector<uint8_t>& reassembled) const {
+      if (!expected_image_crc32_set) {
+        return false;
+      }
+      return Crc32::calculate(reassembled.data(), reassembled.size()) == expected_image_crc32;
     }
   };
 }  // namespace network

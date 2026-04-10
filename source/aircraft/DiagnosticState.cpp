@@ -11,7 +11,12 @@ void DiagnosticState::UpdateState() {}
 void DiagnosticState::InitState() {
   m_aircraft.setCurrentState("DIAGNOSTIC");
   const bool diagnostic_sent = m_aircraft.sendDiagnosticData();
+  const bool warranty_sent = m_aircraft.sendWarrantyData();
   m_aircraft.sendImageFromFile("res/Boeing737-800_diagram.png");
+
+  if (!warranty_sent) {
+    std::cout << "Warning: warranty data did not transmit to MMA.\n";
+  }
 
   if (diagnostic_sent) {
     // After diagnostics are reported, move into maintenance so the server can
