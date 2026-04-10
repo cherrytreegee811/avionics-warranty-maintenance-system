@@ -2,58 +2,87 @@ cmake_minimum_required(VERSION 3.22)
 
 project(AvionicsTests LANGUAGES CXX)
 
-# --- Import tools ----
-
 include(../cmake/tools.cmake)
-
-# ---- Dependencies ----
 
 include(../cmake/CPM.cmake)
 
 CPMAddPackage("gh:doctest/doctest@2.5.0")
-CPMAddPackage("gh:TheLartians/Format.cmake@1.8.3")
+CPMAddPackage(
+  NAME Format.cmake
+  VERSION 1.8.3
+  GITHUB_REPOSITORY TheLartians/Format.cmake
+  OPTIONS "CMAKE_FORMAT_EXCLUDE (^|/)cmake/.*"
+)
+
+# ---- Normalize doctest target name (fixes missing ALIAS target) ----
+if(TARGET doctest::doctest)
+  set(DOCTEST_LIB_TARGET doctest::doctest)
+elseif(TARGET doctest)
+  set(DOCTEST_LIB_TARGET doctest)
+else()
+  message(FATAL_ERROR "doctest target not found (expected doctest::doctest or doctest)")
+endif()
 
 # ---- Helper library (shared test utilities) ----
-add_library(TestHelpers STATIC source/helpers/TestHelpers.cpp)
-target_include_directories(TestHelpers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
+add_library(
+  TestHelpers STATIC source/helpers/TestHelpers.cpp source/helpers/MockMMA.cpp
+                     source/helpers/MockAircraft.cpp
+)
+target_include_directories(
+  TestHelpers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/include
+)
+target_include_directories(TestHelpers PRIVATE ${asio_SOURCE_DIR}/include)
+target_link_libraries(TestHelpers PRIVATE Common)
 set_target_properties(TestHelpers PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 # ---- Create Test Executables ----
-
-# Aircraft Unit Tests
 add_executable(AircraftUnitTests source/aircraft/AircraftUnitTests.cpp)
-target_link_libraries(
-  AircraftUnitTests PRIVATE doctest::doctest Aircraft spdlog::spdlog TestHelpers
-)
+target_link_libraries(AircraftUnitTests PRIVATE ${DOCTEST_LIB_TARGET} Aircraft TestHelpers)
 target_include_directories(AircraftUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(AircraftUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
-# Packet Unit Tests
 add_executable(PacketUnitTests source/common/PacketUnitTests.cpp)
-target_link_libraries(PacketUnitTests PRIVATE doctest::doctest Common)
+target_link_libraries(PacketUnitTests PRIVATE ${DOCTEST_LIB_TARGET} Common)
 target_include_directories(PacketUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(PacketUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
-# Network Integration Tests
 add_executable(NetworkIntegrationTests source/common/NetworkIntegrationTests.cpp)
-target_link_libraries(NetworkIntegrationTests PRIVATE doctest::doctest Common MMA Aircraft)
+target_link_libraries(NetworkIntegrationTests PRIVATE ${DOCTEST_LIB_TARGET} Common MMA Aircraft)
 target_include_directories(NetworkIntegrationTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 if(WIN32)
   target_link_libraries(NetworkIntegrationTests PRIVATE ws2_32 mswsock)
 endif()
 set_target_properties(NetworkIntegrationTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
-# MMA Unit Tests
+add_executable(AircraftIntegrationTests source/aircraft/AircraftIntegrationTests.cpp)
+target_link_libraries(
+  AircraftIntegrationTests PRIVATE ${DOCTEST_LIB_TARGET} Common MMA Aircraft TestHelpers
+)
+target_include_directories(AircraftIntegrationTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(AircraftIntegrationTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
+
 add_executable(MMAUnitTests source/mma/MMAUnitTests.cpp)
-target_link_libraries(MMAUnitTests PRIVATE doctest::doctest MMA)
+target_link_libraries(MMAUnitTests PRIVATE ${DOCTEST_LIB_TARGET} MMA)
 target_include_directories(MMAUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(MMAUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
-# ---- Discover Tests ----
+add_executable(MMAIntegrationTests source/mma/MMAIntegrationTests.cpp)
+target_link_libraries(MMAIntegrationTests PRIVATE ${DOCTEST_LIB_TARGET} Common MMA TestHelpers)
+target_include_directories(MMAIntegrationTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(MMAIntegrationTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
+# ---- Discover Tests ----
 enable_testing()
+
+# This include path is fine *if* doctest_SOURCE_DIR is set by CPM; keep it but fail early if not.
+if(NOT DEFINED doctest_SOURCE_DIR)
+  message(FATAL_ERROR "doctest_SOURCE_DIR not set; CPMAddPackage(doctest) did not populate it")
+endif()
+
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 doctest_discover_tests(AircraftUnitTests)
 doctest_discover_tests(PacketUnitTests)
 doctest_discover_tests(NetworkIntegrationTests)
 doctest_discover_tests(MMAUnitTests)
+doctest_discover_tests(AircraftIntegrationTests)
+doctest_discover_tests(MMAIntegrationTests)

@@ -1,16 +1,22 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <aircraft/Aircraft.h>
+#include <aircraft/StateManager.h>
 #include <common/Packet.h>
 #include <common/TcpConnection.h>
 #include <doctest/doctest.h>
 #include <mma/mma.h>
+#include <spdlog/sinks/basic_file_sink.h>
+#include <spdlog/spdlog.h>
 
 #include <asio.hpp>
 #include <atomic>
 #include <chrono>
+#include <cstdio>
 #include <cstring>
+#include <fstream>
 #include <future>
 #include <memory>
+#include <regex>
 #include <thread>
 
 using namespace std::chrono_literals;
@@ -24,6 +30,37 @@ namespace {
   template <typename T>
   bool waitUntilReady(std::future<T>& future, std::chrono::milliseconds timeout = 2000ms) {
     return future.wait_for(timeout) == std::future_status::ready;
+  }
+
+  bool logContainsLine(const std::string& filename, const std::string& pattern) {
+    std::ifstream file(filename);
+    if (!file.is_open()) {
+      return false;
+    }
+
+    std::regex re(pattern);
+    std::string line;
+    while (std::getline(file, line)) {
+      if (std::regex_search(line, re)) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  template <typename F>
+  bool waitForCondition(F&& condition, std::chrono::milliseconds timeout = 4000ms) {
+    const auto start = std::chrono::steady_clock::now();
+    while (!condition()) {
+      if (std::chrono::steady_clock::now() - start > timeout) {
+        return false;
+      }
+
+      std::this_thread::sleep_for(50ms);
+    }
+
+    return true;
   }
 
 }  // namespace
@@ -126,15 +163,16 @@ TEST_CASE("US-001: Integration - client and server communicate over TcpConnectio
   }
 }
 
-TEST_CASE("Successful verification flow.") {
+TEST_CASE("US-014: Integration - Successful verification flow") {
   // We first need to initialize a server from which we are listening.
   // A connection must be simulated for testing flows.
   MMA server;
   // client must be referenced directly from namespace.
   aircraft::Aircraft client;
 
-  auto port = 8000;  // server port. Maps to uint16_t
-  server.startServer(port);
+  server.startServer(0);
+  const auto port = server.getListeningPort();
+  REQUIRE(port != 0);
 
   // Now we simulate a connection from the client.
   std::string host = "127.0.0.1";
@@ -148,7 +186,7 @@ TEST_CASE("Successful verification flow.") {
   server.stopServer();
 }
 
-TEST_CASE("Command rejection when connection is UNVERIFIED.") {
+TEST_CASE("US-014: Integration - Command rejection when connection is UNVERIFIED") {
   MMA server;
   const uint16_t testPort = 8005;  // Use a fresh port
   server.startServer(testPort);
@@ -190,6 +228,342 @@ TEST_CASE("Command rejection when connection is UNVERIFIED.") {
   server.stopServer();
 }
 
+TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state transitions") {
+  const std::string testLogFile = "test_mma_landed_and_transition_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("test_mma_transition_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  MMA server;
+
+  const uint16_t testPort = 8006;
+  server.startServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  {
+    aircraft::Aircraft client;
+    StateManager stateManager;
+    client.setStateManager(&stateManager);
+    client.syncStateManagerToCurrentState();
+
+    client.connectToMMA("127.0.0.1", testPort);
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile, "Client 12345 verified")
+                 && logContainsLine(testLogFile, "Aircraft 12345 landed");
+        },
+        4000ms));
+
+    server.sendDiagnosticStateChange(12345);
+
+    CHECK(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile, "Aircraft 12345 landed")
+                 && logContainsLine(testLogFile,
+                                    "Sent DIAGNOSTIC state change command to aircraft 12345")
+                 && logContainsLine(testLogFile, "Aircraft 12345 transitioned to DIAGNOSTIC state");
+        },
+        10000ms));
+  }
+
+  server.stopServer();
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
+TEST_CASE("REQ-NET-013/US-011: DIAGNOSTIC_DATA severity is logged by MMA") {
+  const std::string testLogFile = "test_mma_diagnostic_severity_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("test_mma_diagnostic_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  MMA server;
+  const uint16_t testPort = 8007;
+  server.startServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  {
+    aircraft::Aircraft client;
+    client.connectToMMA("127.0.0.1", testPort);
+
+    REQUIRE(waitForCondition(
+        [&]() { return logContainsLine(testLogFile, "Client 12345 verified"); }, 4000ms));
+
+    CHECK(client.sendDiagnosticData());
+
+    CHECK(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Fault Code '101' \\(aircraft: 12345\\): \\[MINOR\\] - '.*'")
+                 && logContainsLine(testLogFile,
+                                    "Fault Code '102' \\(aircraft: 12345\\): \\[MAJOR\\] - '.*'");
+        },
+        4000ms));
+  }
+
+  server.stopServer();
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
+TEST_CASE(
+    "US-012: MMA can clear one diagnostic code when aircraft is in MAINTENANCE with explicit "
+    "confirmation") {
+  const std::string testLogFile = "test_mma_clear_diagnostic_code_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("test_mma_clear_code_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  MMA server;
+  const uint16_t testPort = 8008;
+  server.startServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  {
+    aircraft::Aircraft client;
+    StateManager stateManager;
+    client.setStateManager(&stateManager);
+    client.syncStateManagerToCurrentState();
+
+    client.connectToMMA("127.0.0.1", testPort);
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile, "Client 12345 verified")
+                 && logContainsLine(testLogFile, "Aircraft 12345 landed");
+        },
+        4000ms));
+
+    server.sendDiagnosticStateChange(12345);
+    spdlog::default_logger()->flush();
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Sent DIAGNOSTIC state change command to aircraft 12345")
+                 && logContainsLine(testLogFile,
+                                    "Aircraft 12345 transitioned to MAINTENANCE state");
+        },
+        4000ms));
+
+    server.sendDiagnosticCodeClearRequest(12345, 101);
+
+    CHECK(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Sent diagnostic code clear command to aircraft 12345 for "
+                                 "code 101")
+                 && logContainsLine(testLogFile,
+                                    "Diagnostic code clear succeeded for aircraft 12345 \\(code: "
+                                    "101, state: FAULT\\)");
+        },
+        4000ms));
+  }
+
+  server.stopServer();
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
+TEST_CASE("US-012: MMA allows clear request in FAULT state") {
+  const std::string testLogFile = "test_mma_clear_diagnostic_code_blocked_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("test_mma_clear_code_blocked_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  MMA server;
+  const uint16_t testPort = 8009;
+  server.startServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  {
+    aircraft::Aircraft client;
+    StateManager stateManager;
+    client.setStateManager(&stateManager);
+    client.syncStateManagerToCurrentState();
+
+    client.connectToMMA("127.0.0.1", testPort);
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile, "Client 12345 verified")
+                 && logContainsLine(testLogFile, "Aircraft 12345 landed");
+        },
+        4000ms));
+
+    server.sendDiagnosticStateChange(12345);
+    spdlog::default_logger()->flush();
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile, "Aircraft 12345 transitioned to MAINTENANCE state");
+        },
+        4000ms));
+
+    server.sendDiagnosticCodeClearRequest(12345, 101);
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Diagnostic code clear succeeded for aircraft 12345 \\(code: "
+                                 "101, state: FAULT\\)");
+        },
+        4000ms));
+
+    server.sendDiagnosticCodeClearRequest(12345, 203);
+
+    CHECK(waitForCondition(
+        [&]() {
+          return logContainsLine(
+                     testLogFile,
+                     "Sent diagnostic code clear command to aircraft 12345 for code 203")
+                 && logContainsLine(
+                     testLogFile,
+                     "Diagnostic code clear succeeded for aircraft 12345 \\(code: 203, "
+                     "state: FAULT\\)");
+        },
+        4000ms));
+  }
+
+  server.stopServer();
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
 /* TEST_CASE("Verification timeout handling.") {} */
 
 /* TEST_CASE("Invalid verification response handling.") */
+
+// ============================================================================
+// Image transfer integration: Client sends multi-chunk image to Server
+// ============================================================================
+
+TEST_CASE("Integration: Aircraft sends multi-chunk image to MMA") {
+  // Setup MMA server
+  const std::string testLogFile = "/tmp/image_transfer_test.log";
+  std::remove(testLogFile.c_str());
+
+  auto logger_source = spdlog::basic_logger_mt("file_logger", testLogFile);
+  spdlog::set_default_logger(logger_source);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  {
+    MMA server;
+    server.initialize();
+
+    std::thread server_thread([&]() { server.startServer(9001); });
+
+    // Give server time to start
+    std::this_thread::sleep_for(100ms);
+
+    // Setup Aircraft client
+    aircraft::Aircraft client;
+    client.initialize();
+
+    std::thread client_thread([&]() { client.connectToMMA("127.0.0.1", 9001); });
+
+    // Give client time to connect and verify
+    std::this_thread::sleep_for(1000ms);
+
+    CHECK(client.getRunningStatus());
+
+    // Now test image transmission
+    // Create a 2MB test image
+    const size_t image_size = 2 * 1024 * 1024;
+    std::vector<uint8_t> test_image(image_size);
+    for (size_t i = 0; i < image_size; ++i) {
+      test_image[i] = static_cast<uint8_t>(i % 256);
+    }
+
+    // Send image
+    CHECK(client.sendImage(test_image, ImageFormat::PNG));
+
+    // Wait for server to receive and reassemble all chunks
+    CHECK(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Image .* received and reassembled \\(2097152 bytes.*");
+        },
+        10000ms));
+
+    // Verify correct log entries for chunk reception
+    CHECK(logContainsLine(testLogFile, "Received image chunk"));
+    CHECK(logContainsLine(testLogFile, "format: PNG"));
+
+    server.stopServer();
+    client_thread.join();
+    server_thread.join();
+  }
+
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
+TEST_CASE("Integration: Image transfer with small payload") {
+  // Setup MMA server
+  const std::string testLogFile = "/tmp/image_transfer_small_test.log";
+  std::remove(testLogFile.c_str());
+
+  auto logger_source = spdlog::basic_logger_mt("file_logger", testLogFile);
+  spdlog::set_default_logger(logger_source);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  {
+    MMA server;
+    server.initialize();
+
+    std::thread server_thread([&]() { server.startServer(9002); });
+
+    // Give server time to start
+    std::this_thread::sleep_for(100ms);
+
+    // Setup Aircraft client
+    aircraft::Aircraft client;
+    client.initialize();
+
+    std::thread client_thread([&]() { client.connectToMMA("127.0.0.1", 9002); });
+
+    // Give client time to connect and verify
+    std::this_thread::sleep_for(1000ms);
+
+    CHECK(client.getRunningStatus());
+
+    // Send small image (single chunk)
+    const std::vector<uint8_t> small_image(10240, 0xAB);  // 10KB
+    CHECK(client.sendImage(small_image, ImageFormat::JPEG));
+
+    // Wait for server to receive
+    CHECK(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Image .* received and reassembled \\(10240 bytes.*format: JPEG");
+        },
+        5000ms));
+
+    server.stopServer();
+    client_thread.join();
+    server_thread.join();
+  }
+
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}

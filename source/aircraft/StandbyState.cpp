@@ -17,16 +17,12 @@ void StandbyState::UpdateState() {
   std::cin >> menu_selection;
 
   if (menu_selection == 1) {
-    m_aircraft.transitionToState(network::StateId::DIAGNOSTIC);
+    m_aircraft.transitionToState(network::StateId::DIAGNOSTIC, aircraft::TransitionSource::MANUAL);
   } else {
     std::cout << "Remaining in Standby State...\n";
   }
 }
 
-void StandbyState::InitState() {
-  m_aircraft.setCurrentState("STANDBY");
-  std::cout << "Initializing Standby State\n";
-  std::cout << std::format("Aircraft token: {}\n", m_aircraft.token);
-}
+void StandbyState::InitState() { m_aircraft.setCurrentState("STANDBY"); }
 
-void StandbyState::CleanUpState() { std::cout << "Cleaning up Standby State\n"; }
+void StandbyState::CleanUpState() {}

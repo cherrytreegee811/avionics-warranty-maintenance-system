@@ -15,7 +15,6 @@ namespace test_helpers {
 
 }  // namespace test_helpers
 
-// Include template definition (must be in header)
 template <typename F> bool test_helpers::waitFor(F&& condition, int timeout_ms) {
   auto start = std::chrono::steady_clock::now();
   while (!condition()) {
@@ -27,4 +26,4 @@ template <typename F> bool test_helpers::waitFor(F&& condition, int timeout_ms) 
     std::this_thread::sleep_for(std::chrono::milliseconds(50));
   }
   return true;
-}
+}  // namespace test_helpers

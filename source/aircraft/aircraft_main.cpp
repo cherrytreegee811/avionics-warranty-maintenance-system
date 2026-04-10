@@ -18,12 +18,14 @@ std::string getCurrentDate() {
 
 int main() {
   std::filesystem::create_directories("logs");
-  std::string logFileName = "logs/aircraft_" + getCurrentDate() + ".log";
+  std::string logFileName = std::format("logs/aircraft_{}.log", getCurrentDate());
+
   auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFileName, true);
   auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();
   console_sink->set_level(spdlog::level::info);
   file_sink->set_level(spdlog::level::info);
   std::vector<spdlog::sink_ptr> sinks{console_sink, file_sink};
+
   auto logger = std::make_shared<spdlog::logger>("aircraft_logger", sinks.begin(), sinks.end());
   logger->set_level(spdlog::level::info);
   spdlog::set_default_logger(logger);

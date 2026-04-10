@@ -5,10 +5,71 @@
 
 #include <asio.hpp>
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <random>
 #include <sstream>
 #include <thread>
+#include <type_traits>
+
+// Helper function to map ImageFormat to file extension
+static std::string formatToExtension(network::ImageFormat format) {
+  switch (format) {
+    case network::ImageFormat::PNG:
+      return ".png";
+    case network::ImageFormat::JPEG:
+      return ".jpg";
+    case network::ImageFormat::RAW:
+      return ".raw";
+    default:
+      return ".bin";
+  }
+}
+
+// Helper function to ensure directory exists and save image to disk
+static bool saveReceivedImage(uint64_t aircraft_id, uint32_t image_id,
+                              const std::vector<uint8_t>& image_data, network::ImageFormat format) {
+  const std::string recv_dir = "res/recv";
+
+  // Create directory if it doesn't exist
+  try {
+    std::filesystem::create_directories(recv_dir);
+  } catch (const std::exception& e) {
+    spdlog::error("Failed to create recv directory: {}", e.what());
+    return false;
+  }
+
+  // Generate unique filename: aircraft_<id>_image_<id>.<ext>
+  std::ostringstream filename_stream;
+  filename_stream << recv_dir << "/aircraft_" << aircraft_id << "_image_" << image_id
+                  << formatToExtension(format);
+
+  const std::string filepath = filename_stream.str();
+
+  // Write image to file
+  try {
+    std::ofstream file(filepath, std::ios::binary);
+    if (!file.is_open()) {
+      spdlog::error("Failed to open image file for writing: {}", filepath);
+      return false;
+    }
+
+    file.write(reinterpret_cast<const char*>(image_data.data()), image_data.size());
+
+    if (!file) {
+      spdlog::error("Error writing image data to file: {}", filepath);
+      return false;
+    }
+
+    file.close();
+    spdlog::info("Successfully saved image to: {}", filepath);
+    return true;
+  } catch (const std::exception& e) {
+    spdlog::error("Exception while saving image {}: {}", filepath, e.what());
+    return false;
+  }
+}
 
 MMA::MMA()
     : io_context_(std::make_unique<asio::io_context>()),
@@ -22,24 +83,66 @@ void MMA::initialize() {}
 
 void MMA::startServer(uint16_t port) {
   if (running_) return;
+  io_context_->restart();
   asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
-  acceptor_ = std::make_unique<asio::ip::tcp::acceptor>(*io_context_, endpoint);
+
+  acceptor_ = std::make_unique<asio::ip::tcp::acceptor>(*io_context_);
+  acceptor_->open(endpoint.protocol());
+  acceptor_->set_option(asio::socket_base::reuse_address(true));
+  acceptor_->bind(endpoint);
+  acceptor_->listen();
+
   spdlog::info("MMA server listening on port {}", port);
-  doAccept();
   running_ = true;
+  doAccept();
   io_thread_ = std::thread([this]() { io_context_->run(); });
 }
 
 void MMA::stopServer() {
   if (!running_) return;
   menuRunning_ = false;
+  running_ = false;
+
+  if (acceptor_) {
+    std::error_code ignored;
+    acceptor_->close(ignored);
+  }
+
+  for (auto& conn : connections_) {
+    if (conn) {
+      conn->close();
+    }
+  }
+
+  verified_connections_.clear();
+  connection_to_id_.clear();
+  aircraft_states_.clear();
+  connections_.clear();
+
   io_context_->stop();
   if (io_thread_.joinable()) io_thread_.join();
-  running_ = false;
   spdlog::info("MMA server stopped");
 }
 
+uint16_t MMA::getListeningPort() const {
+  if (!acceptor_) {
+    return 0;
+  }
+
+  std::error_code ec;
+  const auto endpoint = acceptor_->local_endpoint(ec);
+  if (ec) {
+    return 0;
+  }
+
+  return endpoint.port();
+}
+
 void MMA::doAccept() {
+  if (!running_ || !acceptor_) {
+    return;
+  }
+
   acceptor_->async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
     if (!ec) {
       auto conn = network::TcpConnection::create(std::move(socket));
@@ -47,7 +150,9 @@ void MMA::doAccept() {
     } else {
       spdlog::error("Accept error: {}", ec.message());
     }
-    doAccept();
+    if (running_) {
+      doAccept();
+    }
   });
 }
 
@@ -106,8 +211,12 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
   }
 
   if (header.type == network::PacketType::LANDED_NOTIFICATION) {
-    spdlog::info("Client landed notification received");
-    // Future: change aircraft state to DIAGNOSTIC
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
+    spdlog::info("Aircraft {} landed", aircraft_id);
     return;
   }
 
@@ -123,6 +232,126 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
       aircraft_id = it->second;
     }
     printDiagnosticFaults(aircraft_id, faults);
+    return;
+  }
+
+  if (header.type == network::PacketType::STATE_CHANGE_CONFIRMATION) {
+    if (payload.size() != sizeof(network::StateChangeConfirmation)) {
+      spdlog::warn("Invalid STATE_CHANGE_CONFIRMATION payload size: {}", payload.size());
+      return;
+    }
+
+    network::StateChangeConfirmation confirmation{};
+    std::memcpy(&confirmation, payload.data(), sizeof(confirmation));
+
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
+    aircraft_states_[aircraft_id] = confirmation.applied_state;
+
+    spdlog::info("State change confirmation received from aircraft {}: state change to {}",
+                 aircraft_id, network::stateIdToString(confirmation.applied_state));
+    spdlog::default_logger()->flush();
+
+    switch (confirmation.applied_state) {
+      case network::StateId::DIAGNOSTIC:
+        spdlog::info("Aircraft {} transitioned to DIAGNOSTIC state", aircraft_id);
+        break;
+      case network::StateId::MAINTENANCE:
+        spdlog::info("Aircraft {} transitioned to MAINTENANCE state", aircraft_id);
+        break;
+      case network::StateId::FAULT:
+        spdlog::warn("Aircraft {} transitioned to FAULT state", aircraft_id);
+        break;
+      default:
+        break;
+    }
+    return;
+  }
+
+  if (header.type == network::PacketType::SCHEMATIC_CHUNK) {
+    // Handle image chunk reception
+    network::ImageChunkHeader chunk_header;
+    std::vector<uint8_t> chunk_data;
+    if (!network::deserializeImageChunk(payload, chunk_header, chunk_data)) {
+      spdlog::warn("Invalid image chunk format");
+      return;
+    }
+
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
+    spdlog::info("Received image chunk {}/{} from aircraft {} (image_id: {}, data: {} bytes)",
+                 chunk_header.chunk_index + 1, chunk_header.total_chunks, aircraft_id,
+                 chunk_header.image_id, chunk_data.size());
+
+    // Get or create reassembly buffer for this aircraft/image combination
+    auto& aircraft_buffers = image_reassembly_buffers_[aircraft_id];
+    auto buffer_it = aircraft_buffers.find(chunk_header.image_id);
+    if (buffer_it == aircraft_buffers.end()) {
+      // Create new reassembly buffer
+      aircraft_buffers.emplace(chunk_header.image_id,
+                               network::ImageBuffer(chunk_header.image_id, chunk_header.format,
+                                                    chunk_header.total_chunks));
+      buffer_it = aircraft_buffers.find(chunk_header.image_id);
+    }
+
+    // Add chunk to buffer
+    if (buffer_it->second.addChunk(chunk_header.chunk_index, chunk_data)) {
+      // Image is now complete
+      const auto complete_image = buffer_it->second.reassemble();
+      spdlog::info(
+          "Image {} from aircraft {} received and reassembled ({} bytes total, format: {})",
+          chunk_header.image_id, aircraft_id, complete_image.size(),
+          network::imageFormatToString(chunk_header.format));
+
+      // Save image to disk with proper naming and error handling
+      if (saveReceivedImage(aircraft_id, chunk_header.image_id, complete_image,
+                            chunk_header.format)) {
+        spdlog::info("Image successfully archived for aircraft {}", aircraft_id);
+      } else {
+        spdlog::warn("Failed to save image {} from aircraft {}", chunk_header.image_id,
+                     aircraft_id);
+      }
+
+      // Remove from reassembly buffer
+      aircraft_buffers.erase(buffer_it);
+    }
+
+    return;
+  }
+
+  if (header.type == network::PacketType::CLEAR_DIAGNOSTIC_CODE_CONFIRMATION) {
+    if (payload.size() != sizeof(network::DiagnosticCodeClearConfirmation)) {
+      spdlog::warn("Invalid CLEAR_DIAGNOSTIC_CODE_CONFIRMATION payload size: {}", payload.size());
+      return;
+    }
+
+    network::DiagnosticCodeClearConfirmation confirmation{};
+    std::memcpy(&confirmation, payload.data(), sizeof(confirmation));
+
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
+    aircraft_states_[aircraft_id] = confirmation.resulting_state;
+
+    if (confirmation.status == network::DiagnosticCodeClearStatus::SUCCESS) {
+      spdlog::info("Diagnostic code clear succeeded for aircraft {} (code: {}, state: {})",
+                   aircraft_id, confirmation.code,
+                   network::stateIdToString(confirmation.resulting_state));
+    } else {
+      spdlog::warn("Diagnostic code clear failed for aircraft {} (code: {}, status: {}, state: {})",
+                   aircraft_id, confirmation.code,
+                   network::diagnosticCodeClearStatusToString(confirmation.status),
+                   network::stateIdToString(confirmation.resulting_state));
+    }
+    return;
   }
 }
 
@@ -132,6 +361,7 @@ void MMA::runMenu() {
   std::cout << "2. List connected aircraft\n";
   std::cout << "3. Shutdown server\n";
   std::cout << "4. Set aircraft to DIAGNOSTIC\n";
+  std::cout << "5. Clear one diagnostic code (MAINTENANCE or FAULT)\n";
   std::cout << "============================================\n";
   std::cout << "Enter choice: ";
 
@@ -157,7 +387,7 @@ void MMA::runMenu() {
           state_label = "CLOSED";
         }
 
-        std::cout << "  - " << conn->getRemoteAddress() << " [state: " << state_label << "]\n";
+        std::cout << std::format("  - {} [state: {}]\n", conn->getRemoteAddress(), state_label);
       }
     } else if (line == "3") {
       std::cout << "Shutting down...\n";
@@ -173,53 +403,101 @@ void MMA::runMenu() {
       } catch (...) {
         std::cout << "Invalid ID.\n";
       }
+    } else if (line == "5") {
+      std::cout << "Enter aircraft ID: ";
+      std::string idStr;
+      std::getline(std::cin, idStr);
+      std::cout << "Enter diagnostic code to clear: ";
+      std::string codeStr;
+      std::getline(std::cin, codeStr);
+      try {
+        const uint64_t id = std::stoull(idStr);
+        const int32_t code = std::stoi(codeStr);
+        sendDiagnosticCodeClearRequest(id, code);
+      } catch (...) {
+        std::cout << "Invalid input.\n";
+      }
     } else {
-      std::cout << "Invalid choice. Please enter 1, 2, 3, or 4.\n";
+      std::cout << "Invalid choice. Please enter 1, 2, 3, 4, or 5.\n";
     }
     // Show menu again
-    std::cout << "\n1. View warranty status\n2. List connected aircraft\n3. Shutdown\n4. Set "
-                 "aircraft to DIAGNOSTIC\nChoice: ";
+    std::cout
+        << "\n1. View warranty status\n2. List connected aircraft\n3. Shutdown\n4. Set "
+           "aircraft to DIAGNOSTIC\n5. Clear one diagnostic code (MAINTENANCE or FAULT)\nChoice: ";
   }
 }
 
 void MMA::sendDiagnosticStateChange(uint64_t aircraftId) {
   const auto it = verified_connections_.find(aircraftId);
   if (it == verified_connections_.end()) {
-    std::cout << "No verified aircraft found with ID " << aircraftId << "\n";
+    spdlog::warn("Cannot send DIAGNOSTIC state change command: aircraft {} is not verified",
+                 aircraftId);
     return;
   }
 
   network::StateChangeRequest req{network::StateId::DIAGNOSTIC};
   const auto packet = network::serializePacket(network::PacketType::STATE_CHANGE, req);
   it->second->send(packet);
-  std::cout << "Sent DIAGNOSTIC state change command to aircraft " << aircraftId << "\n";
+  spdlog::info("Sent DIAGNOSTIC state change command to aircraft {}", aircraftId);
+  spdlog::default_logger()->flush();
+}
+
+void MMA::sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code) {
+  const auto connection_it = verified_connections_.find(aircraftId);
+  if (connection_it == verified_connections_.end()) {
+    spdlog::warn("Cannot send diagnostic code clear command: aircraft {} is not verified",
+                 aircraftId);
+    return;
+  }
+
+  const auto state_it = aircraft_states_.find(aircraftId);
+  if (state_it == aircraft_states_.end()) {
+    spdlog::warn(
+        "Cannot send diagnostic code clear command to aircraft {}: state is unknown. "
+        "Wait for state confirmation from the aircraft.",
+        aircraftId);
+    return;
+  }
+
+  if (state_it->second != network::StateId::MAINTENANCE
+      && state_it->second != network::StateId::FAULT) {
+    spdlog::warn(
+        "Cannot send diagnostic code clear command to aircraft {}: aircraft is in {} (requires "
+        "MAINTENANCE or FAULT)",
+        aircraftId, network::stateIdToString(state_it->second));
+    return;
+  }
+
+  network::DiagnosticCodeClearRequest request{code};
+  const auto packet = network::serializePacket(network::PacketType::CLEAR_DIAGNOSTIC_CODE, request);
+  connection_it->second->send(packet);
+  spdlog::info("Sent diagnostic code clear command to aircraft {} for code {}", aircraftId, code);
 }
 
 void MMA::printDiagnosticFaults(uint64_t aircraftId,
                                 const std::vector<network::DiagnosticFaultCode>& faults) const {
-  std::cout << "\nDiagnostic report from aircraft " << aircraftId << ":\n";
   if (faults.empty()) {
-    std::cout << "  No active fault codes.\n";
+    spdlog::info("Received diagnostic data from aircraft {} with no active faults", aircraftId);
     return;
   }
 
   for (const auto& fault : faults) {
-    std::cout << "  - Code " << fault.code << ": " << fault.description
-              << " [timestamp_ms=" << fault.timestamp_epoch_ms << "]\n";
+    spdlog::info("Fault Code '{}' (aircraft: {}): [{}] - '{}'", fault.code, aircraftId,
+                 network::diagnosticFaultSeverityToString(fault.severity), fault.description);
   }
 }
 
 void MMA::displayWarranty(uint64_t aircraftId) {
   auto opt = warrantyManager_->getWarranty(aircraftId);
   if (!opt) {
-    std::cout << "No warranty record found for aircraft " << aircraftId << "\n";
+    spdlog::warn("No warranty record found for aircraft {}", aircraftId);
     return;
   }
   const auto& info = *opt;
-  std::cout << "Warranty for aircraft " << aircraftId << ":\n";
-  std::cout << "  Status: " << (info.isActive ? "ACTIVE" : "EXPIRED") << "\n";
+  spdlog::info("Displayed warranty information for aircraft {}", aircraftId);
+  spdlog::info("Warranty for aircraft {} is {}", aircraftId, info.isActive ? "ACTIVE" : "EXPIRED");
   if (info.isActive) {
-    std::cout << "  Expiry Date: " << info.expiryDate << "\n";
+    spdlog::info("Warranty for aircraft {} expires on {}", aircraftId, info.expiryDate);
   }
-  std::cout << "  Provider: " << info.provider << "\n";
+  spdlog::info("Warranty for aircraft {} is provided by {}", aircraftId, info.provider);
 }
