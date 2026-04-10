@@ -164,6 +164,11 @@ TEST_CASE("REQ-CLT-062: Aircraft allows valid transition") {
   aircraft.setStateManager(&stateManager);
   aircraft.syncStateManagerToCurrentState();
 
+  // Keep MAINTENANCE stable for this transition test.
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({700, network::DiagnosticFaultSeverity::MINOR, "Minor maintenance advisory",
+                         std::chrono::system_clock::now()});
+
   CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
   CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
   CHECK(aircraft.transitionToState(network::StateId::FAULT));
@@ -217,6 +222,11 @@ TEST_CASE("REQ-CLT-056/US-015: Aircraft logs transition metadata for all source 
   StateManager stateManager;
   aircraft.setStateManager(&stateManager);
   aircraft.syncStateManagerToCurrentState();
+
+  // Keep MAINTENANCE stable so MAINTENANCE -> FAULT is logged with MMA_COMMAND source.
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({701, network::DiagnosticFaultSeverity::MINOR,
+                         "Minor metadata transition advisory", std::chrono::system_clock::now()});
 
   CHECK(
       aircraft.transitionToState(network::StateId::DIAGNOSTIC, aircraft::TransitionSource::MANUAL));
