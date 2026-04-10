@@ -108,11 +108,15 @@ void MMA::stopServer() {
     acceptor_->close(ignored);
   }
 
-  for (auto& conn : connections_) {
+  std::vector<network::TcpConnection::Ptr> connections_snapshot = connections_;
+  for (auto& conn : connections_snapshot) {
     if (conn) {
       conn->close();
     }
   }
+
+  io_context_->stop();
+  if (io_thread_.joinable()) io_thread_.join();
 
   verified_connections_.clear();
   connection_to_id_.clear();
@@ -120,10 +124,8 @@ void MMA::stopServer() {
   diagnostic_confirmed_aircraft_.clear();
   session_warranty_available_.clear();
   aircraft_states_.clear();
+  image_reassembly_buffers_.clear();
   connections_.clear();
-
-  io_context_->stop();
-  if (io_thread_.joinable()) io_thread_.join();
   spdlog::info("MMA server stopped");
 }
 

@@ -8,6 +8,7 @@
 #include <cstdint>
 #include <map>
 #include <memory>
+#include <mutex>
 #include <random>
 #include <thread>
 #include <unordered_map>
@@ -52,4 +53,5 @@ private:
   std::atomic<bool> menuRunning_{true};
   // Per aircraft, per image: aircraft_id -> (image_id -> ImageBuffer)
   std::unordered_map<uint64_t, std::map<uint32_t, network::ImageBuffer>> image_reassembly_buffers_;
+  mutable std::mutex state_mutex_;
 };
