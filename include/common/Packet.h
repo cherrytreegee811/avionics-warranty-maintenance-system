@@ -19,7 +19,9 @@ namespace network {
     LANDED_NOTIFICATION = 4,
     DIAGNOSTIC_DATA = 5,
     SCHEMATIC_CHUNK = 6,
-    STATE_CHANGE_CONFIRMATION = 7
+    STATE_CHANGE_CONFIRMATION = 7,
+    CLEAR_DIAGNOSTIC_CODE = 8,
+    CLEAR_DIAGNOSTIC_CODE_CONFIRMATION = 9
   };
 
   enum class StateId : uint8_t { STANDBY = 0, DIAGNOSTIC = 1, MAINTENANCE = 2, FAULT = 3 };
@@ -27,6 +29,13 @@ namespace network {
   enum class DiagnosticFaultSeverity : uint8_t {
     MINOR = 0,
     MAJOR = 1,
+  };
+
+  enum class DiagnosticCodeClearStatus : uint8_t {
+    SUCCESS = 0,
+    REJECTED_NOT_IN_CLEARABLE_STATE = 1,
+    CODE_NOT_FOUND = 2,
+    MALFORMED_REQUEST = 3,
   };
 
 #pragma pack(push, 1)
@@ -56,6 +65,16 @@ namespace network {
 
   struct StateChangeConfirmation {
     StateId applied_state;
+  };
+
+  struct DiagnosticCodeClearRequest {
+    int32_t code;
+  };
+
+  struct DiagnosticCodeClearConfirmation {
+    int32_t code;
+    DiagnosticCodeClearStatus status;
+    StateId resulting_state;
   };
 
   struct DiagnosticFaultCodeHeader {
@@ -115,6 +134,22 @@ namespace network {
         return "MINOR";
       case DiagnosticFaultSeverity::MAJOR:
         return "MAJOR";
+      default:
+        return "UNKNOWN";
+    }
+  }
+
+  inline constexpr std::string_view diagnosticCodeClearStatusToString(
+      DiagnosticCodeClearStatus status) {
+    switch (status) {
+      case DiagnosticCodeClearStatus::SUCCESS:
+        return "SUCCESS";
+      case DiagnosticCodeClearStatus::REJECTED_NOT_IN_CLEARABLE_STATE:
+        return "REJECTED_NOT_IN_CLEARABLE_STATE";
+      case DiagnosticCodeClearStatus::CODE_NOT_FOUND:
+        return "CODE_NOT_FOUND";
+      case DiagnosticCodeClearStatus::MALFORMED_REQUEST:
+        return "MALFORMED_REQUEST";
       default:
         return "UNKNOWN";
     }

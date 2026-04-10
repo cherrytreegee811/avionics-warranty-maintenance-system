@@ -23,6 +23,7 @@ public:
   void stopServer();
   void runMenu();
   void sendDiagnosticStateChange(uint64_t aircraftId);
+  void sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code);
   bool getRunningStatus() const { return running_; }
 
 private:
@@ -38,6 +39,7 @@ private:
   std::vector<network::TcpConnection::Ptr> connections_;
   std::unordered_map<uint64_t, network::TcpConnection::Ptr> verified_connections_;
   std::unordered_map<network::TcpConnection*, uint64_t> connection_to_id_;
+  std::unordered_map<uint64_t, network::StateId> aircraft_states_;
   uint32_t expected_challenge_ = 0;
   bool running_ = false;
   std::thread io_thread_;
