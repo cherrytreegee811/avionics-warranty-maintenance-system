@@ -213,6 +213,8 @@ TEST_CASE("Image packet: Single chunk serialization/deserialization") {
   CHECK(header.chunk_index == 0);
   CHECK(header.total_chunks == 1);
   CHECK(header.format == ImageFormat::PNG);
+  CHECK(header.chunk_crc32 == Crc32::calculate(image_data.data(), image_data.size()));
+  CHECK(header.image_crc32 == Crc32::calculate(image_data.data(), image_data.size()));
   CHECK(chunk_data == image_data);
 }
 
@@ -239,6 +241,8 @@ TEST_CASE("Image packet: Multi-chunk image serialization") {
     CHECK(header.total_chunks == static_cast<uint16_t>(chunks.size()));
     CHECK(header.format == ImageFormat::JPEG);
     CHECK(header.chunk_data_size == chunk_data.size());
+    CHECK(header.chunk_crc32 == Crc32::calculate(chunk_data.data(), chunk_data.size()));
+    CHECK(header.image_crc32 == Crc32::calculate(large_image.data(), large_image.size()));
   }
 }
 
@@ -253,6 +257,9 @@ TEST_CASE("Image packet: ImageBuffer add single chunk") {
 
   const auto reassembled = buffer.reassemble();
   CHECK(reassembled == data);
+
+  CHECK(buffer.setExpectedImageCrc(Crc32::calculate(data.data(), data.size())));
+  CHECK(buffer.validateReassembledCrc(reassembled));
 }
 
 TEST_CASE("Image packet: ImageBuffer multi-chunk reassembly") {
@@ -347,6 +354,9 @@ TEST_CASE("Image packet: Multi-chunk full round trip") {
   // Verify reassembled data matches original
   const auto reassembled = buffer.reassemble();
   CHECK(reassembled == original_image);
+
+  CHECK(buffer.setExpectedImageCrc(Crc32::calculate(original_image.data(), original_image.size())));
+  CHECK(buffer.validateReassembledCrc(reassembled));
 }
 
 TEST_CASE("Image packet: Boundary - exactly 1MB chunk size") {
@@ -396,8 +406,21 @@ TEST_CASE("Image packet: Malformed chunk deserialization fails") {
   CHECK(!deserializeImageChunk(malformed, header, chunk_data));
 
   // Payload with wrong size
-  ImageChunkHeader hdr{100, 0, 1, 500, ImageFormat::PNG};
+  ImageChunkHeader hdr{100, 0, 1, 500, ImageFormat::PNG, 0, 0};
   std::vector<uint8_t> invalid_payload(sizeof(hdr) + 100);  // Says 500 bytes but has 100
   std::memcpy(invalid_payload.data(), &hdr, sizeof(hdr));
   CHECK(!deserializeImageChunk(invalid_payload, header, chunk_data));
+}
+
+TEST_CASE("Image packet: Corrupted chunk CRC is rejected") {
+  std::vector<uint8_t> image_data(512, 0x5A);
+  auto chunks = serializeImagePayload(777, image_data, ImageFormat::PNG);
+  REQUIRE(chunks.size() == 1);
+
+  // Corrupt one payload byte after the chunk header.
+  chunks[0][sizeof(ImageChunkHeader)] ^= 0xFF;
+
+  ImageChunkHeader header;
+  std::vector<uint8_t> chunk_data;
+  CHECK(!deserializeImageChunk(chunks[0], header, chunk_data));
 }

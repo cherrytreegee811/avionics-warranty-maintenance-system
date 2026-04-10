@@ -449,6 +449,14 @@ bool Aircraft::sendImage(const std::vector<uint8_t>& image_data, network::ImageF
     connection_->send(packet);
   }
 
+  sent_image_chunk_payloads_[image_id] = chunk_payloads;
+  sent_image_cache_order_.push_back(image_id);
+  while (sent_image_cache_order_.size() > kMaxCachedImagesForRetry) {
+    const uint32_t evict_image_id = sent_image_cache_order_.front();
+    sent_image_cache_order_.pop_front();
+    sent_image_chunk_payloads_.erase(evict_image_id);
+  }
+
   spdlog::info("Sent image {} in {} chunks ({} bytes total)", image_id, chunk_payloads.size(),
                image_data.size());
   return true;
@@ -524,17 +532,64 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
         it = image_reassembly_buffers_.find(chunk_header.image_id);
       }
 
+      if (!it->second.setExpectedImageCrc(chunk_header.image_crc32)) {
+        spdlog::warn(
+            "Rejected image chunk for image {} due to inconsistent full-image CRC (expected "
+            "0x{:08X}, got 0x{:08X})",
+            chunk_header.image_id, it->second.expected_image_crc32, chunk_header.image_crc32);
+        return;
+      }
+
       // Add chunk to buffer
       if (it->second.addChunk(chunk_header.chunk_index, chunk_data)) {
         // Image is now complete
         const auto complete_image = it->second.reassemble();
+
+        if (!it->second.validateReassembledCrc(complete_image)) {
+          spdlog::error(
+              "Reassembled image {} failed CRC validation (expected 0x{:08X}, computed "
+              "0x{:08X})",
+              chunk_header.image_id, it->second.expected_image_crc32,
+              network::Crc32::calculate(complete_image.data(), complete_image.size()));
+          image_reassembly_buffers_.erase(it);
+          return;
+        }
+
         spdlog::info("Image {} received and reassembled ({} bytes total, format: {})",
                      chunk_header.image_id, complete_image.size(),
                      network::imageFormatToString(chunk_header.format));
-        // TODO: Process or store the complete image here
-        // For now, just log and remove from buffer
         image_reassembly_buffers_.erase(it);
       }
+      return;
+    }
+
+    if (header.type == network::PacketType::SCHEMATIC_CHUNK_RETRY_REQUEST) {
+      if (payload.size() != sizeof(network::SchematicChunkRetryRequest)) {
+        spdlog::warn("Invalid SCHEMATIC_CHUNK_RETRY_REQUEST payload size: {}", payload.size());
+        return;
+      }
+
+      network::SchematicChunkRetryRequest request{};
+      std::memcpy(&request, payload.data(), sizeof(request));
+
+      const auto cached_image_it = sent_image_chunk_payloads_.find(request.image_id);
+      if (cached_image_it == sent_image_chunk_payloads_.end()) {
+        spdlog::warn("Retry requested for unknown/evicted image {}", request.image_id);
+        return;
+      }
+
+      if (request.chunk_index >= cached_image_it->second.size()) {
+        spdlog::warn("Retry requested with invalid chunk index {} for image {}",
+                     request.chunk_index, request.image_id);
+        return;
+      }
+
+      const auto& chunk_payload = cached_image_it->second[request.chunk_index];
+      const auto packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
+                                                   chunk_payload.data(), chunk_payload.size());
+      connection_->send(packet);
+      spdlog::info("Resent chunk {} for image {} after MMA retry request", request.chunk_index,
+                   request.image_id);
       return;
     }
 

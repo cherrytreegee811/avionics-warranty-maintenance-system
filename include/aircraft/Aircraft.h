@@ -6,6 +6,7 @@
 #include <asio.hpp>
 #include <atomic>
 #include <chrono>
+#include <deque>
 #include <map>
 #include <memory>
 #include <string>
@@ -96,6 +97,9 @@ namespace aircraft {
     std::atomic<bool> shutting_down_{false};
     bool automatic_transition_in_progress_ = false;
     std::map<uint32_t, network::ImageBuffer> image_reassembly_buffers_;  // image_id -> ImageBuffer
+    std::map<uint32_t, std::vector<std::vector<uint8_t>>> sent_image_chunk_payloads_;
+    std::deque<uint32_t> sent_image_cache_order_;
+    static constexpr size_t kMaxCachedImagesForRetry = 8;
     uint32_t next_image_id_ = 1;
   };
 

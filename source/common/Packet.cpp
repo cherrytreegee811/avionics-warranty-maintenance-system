@@ -173,6 +173,7 @@ namespace network {
     }
 
     const auto total_chunks_u16 = static_cast<uint16_t>(total_chunks);
+    const uint32_t image_crc32 = Crc32::calculate(image_data.data(), image_data.size());
 
     // Serialize each chunk
     size_t bytes_serialized = 0;
@@ -180,9 +181,11 @@ namespace network {
       const size_t chunk_start = bytes_serialized;
       const size_t chunk_end = std::min(bytes_serialized + kMaxDataPerChunk, image_data.size());
       const size_t chunk_size = chunk_end - chunk_start;
+      const uint32_t chunk_crc32 = Crc32::calculate(image_data.data() + chunk_start, chunk_size);
 
       ImageChunkHeader header{
-          image_id, chunk_index, total_chunks_u16, static_cast<uint32_t>(chunk_size), format,
+          image_id, chunk_index, total_chunks_u16, static_cast<uint32_t>(chunk_size),
+          format,   chunk_crc32, image_crc32,
       };
 
       std::vector<uint8_t> chunk_payload(sizeof(header) + chunk_size);
@@ -231,6 +234,15 @@ namespace network {
     if (header_out.chunk_data_size > 0) {
       std::memcpy(chunk_data_out.data(), payload.data() + sizeof(ImageChunkHeader),
                   header_out.chunk_data_size);
+    }
+
+    const uint32_t computed_chunk_crc
+        = Crc32::calculate(chunk_data_out.data(), chunk_data_out.size());
+    if (computed_chunk_crc != header_out.chunk_crc32) {
+      spdlog::warn("Chunk CRC mismatch for image {} chunk {}: expected 0x{:08X}, computed 0x{:08X}",
+                   header_out.image_id, header_out.chunk_index, header_out.chunk_crc32,
+                   computed_chunk_crc);
+      return false;
     }
 
     return true;
