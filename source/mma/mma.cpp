@@ -258,15 +258,6 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
       return;
     }
 
-  if (header.type == network::PacketType::CLEAR_DIAGNOSTIC_CODE_CONFIRMATION) {
-    if (payload.size() != sizeof(network::DiagnosticCodeClearConfirmation)) {
-      spdlog::warn("Invalid CLEAR_DIAGNOSTIC_CODE_CONFIRMATION payload size: {}", payload.size());
-      return;
-    }
-
-    network::DiagnosticCodeClearConfirmation confirmation{};
-    std::memcpy(&confirmation, payload.data(), sizeof(confirmation));
-
     uint64_t aircraft_id = 0;
     if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
       aircraft_id = it->second;
@@ -278,19 +269,19 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
 
     // Get or create reassembly buffer for this aircraft/image combination
     auto& aircraft_buffers = image_reassembly_buffers_[aircraft_id];
-    auto it = aircraft_buffers.find(chunk_header.image_id);
-    if (it == aircraft_buffers.end()) {
+    auto buffer_it = aircraft_buffers.find(chunk_header.image_id);
+    if (buffer_it == aircraft_buffers.end()) {
       // Create new reassembly buffer
       aircraft_buffers.emplace(chunk_header.image_id,
                                network::ImageBuffer(chunk_header.image_id, chunk_header.format,
                                                     chunk_header.total_chunks));
-      it = aircraft_buffers.find(chunk_header.image_id);
+      buffer_it = aircraft_buffers.find(chunk_header.image_id);
     }
 
     // Add chunk to buffer
-    if (it->second.addChunk(chunk_header.chunk_index, chunk_data)) {
+    if (buffer_it->second.addChunk(chunk_header.chunk_index, chunk_data)) {
       // Image is now complete
-      const auto complete_image = it->second.reassemble();
+      const auto complete_image = buffer_it->second.reassemble();
       spdlog::info(
           "Image {} from aircraft {} received and reassembled ({} bytes total, format: {})",
           chunk_header.image_id, aircraft_id, complete_image.size(),
@@ -306,7 +297,26 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
       }
 
       // Remove from reassembly buffer
-      aircraft_buffers.erase(it);
+      aircraft_buffers.erase(buffer_it);
+    }
+
+    return;
+  }
+
+  if (header.type == network::PacketType::CLEAR_DIAGNOSTIC_CODE_CONFIRMATION) {
+    if (payload.size() != sizeof(network::DiagnosticCodeClearConfirmation)) {
+      spdlog::warn("Invalid CLEAR_DIAGNOSTIC_CODE_CONFIRMATION payload size: {}", payload.size());
+      return;
+    }
+
+    network::DiagnosticCodeClearConfirmation confirmation{};
+    std::memcpy(&confirmation, payload.data(), sizeof(confirmation));
+
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
     aircraft_states_[aircraft_id] = confirmation.resulting_state;
 
     if (confirmation.status == network::DiagnosticCodeClearStatus::SUCCESS) {
