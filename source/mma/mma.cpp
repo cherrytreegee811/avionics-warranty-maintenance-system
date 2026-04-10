@@ -183,7 +183,14 @@ void MMA::stopServer() {
     cleanup_done->set_value();
   });
 
-  cleanup_future.wait();
+  if (cleanup_future.wait_for(std::chrono::milliseconds(200)) != std::future_status::ready) {
+    io_context_->restart();
+    while (cleanup_future.wait_for(std::chrono::milliseconds(0)) != std::future_status::ready) {
+      if (io_context_->poll_one() == 0) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1));
+      }
+    }
+  }
 
   io_context_->stop();
   if (io_thread_.joinable()) io_thread_.join();
