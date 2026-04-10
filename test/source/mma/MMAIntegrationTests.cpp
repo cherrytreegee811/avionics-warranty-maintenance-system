@@ -15,7 +15,7 @@ using namespace std::chrono_literals;
 // REQ-SRV-053: The MMA logs when it receives a landed notification from an aircraft.
 // ============================================================================
 
-TEST_CASE("MMA server logs landed notification from client") {
+TEST_CASE("REQ-SRV-053: MMA server logs landed notification from client") {
   const std::string mmaLogFile = "test_mma_server_landed.log";
   std::remove(mmaLogFile.c_str());
 
