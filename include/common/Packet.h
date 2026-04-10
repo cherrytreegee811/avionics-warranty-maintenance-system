@@ -23,6 +23,7 @@ namespace network {
     CLEAR_DIAGNOSTIC_CODE = 8,
     CLEAR_DIAGNOSTIC_CODE_CONFIRMATION = 9,
     SCHEMATIC_CHUNK_RETRY_REQUEST = 10
+    WARRANTY_DATA = 8,
   };
 
   enum class StateId : uint8_t { STANDBY = 0, DIAGNOSTIC = 1, MAINTENANCE = 2, FAULT = 3 };
