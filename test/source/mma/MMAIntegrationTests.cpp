@@ -17,7 +17,7 @@ using namespace std::chrono_literals;
 // REQ-SRV-053: The MMA logs when it receives a landed notification from an aircraft.
 // ============================================================================
 
-TEST_CASE("REQ-SRV-053: MMA server logs landed notification from client") {
+TEST_CASE("MMA server logs landed notification from client") {
   const std::string mmaLogFile = "test_mma_server_landed.log";
   std::remove(mmaLogFile.c_str());
 
@@ -67,25 +67,29 @@ TEST_CASE("MMA persists warranty from aircraft during DIAGNOSTIC after verificat
   std::this_thread::sleep_for(100ms);
 
   {
-    aircraft::Aircraft client;
     StateManager stateManager;
+    aircraft::Aircraft client;
     client.setStateManager(&stateManager);
     client.syncStateManagerToCurrentState();
     client.connectToMMA("127.0.0.1", testPort);
 
     const bool verified = test_helpers::waitFor(
-        [&]() { return test_helpers::logContains(mmaLogFile, "Client 12345 verified"); }, 3000);
+        [&]() { return test_helpers::logContains(mmaLogFile, "Client 12345 verified"); },
+        3000);
     REQUIRE(verified);
 
     server.sendDiagnosticStateChange(12345);
 
     const bool updated = test_helpers::waitFor(
         [&]() {
-          return test_helpers::logContains(warrantyFile,
-                                           "^12345,1,2027-12-31,Aviation Warranty Corp$");
+          return test_helpers::logContains(
+              warrantyFile, "^12345,1,2027-12-31,Aviation Warranty Corp$");
         },
         3000);
     CHECK(updated);
+
+    // Reduce teardown race likelihood on Windows CI.
+    std::this_thread::sleep_for(150ms);
   }
 
   server.stopServer();

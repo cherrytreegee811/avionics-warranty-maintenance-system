@@ -245,8 +245,8 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state
   std::this_thread::sleep_for(100ms);
 
   {
-    aircraft::Aircraft client;
     StateManager stateManager;
+    aircraft::Aircraft client;
     client.setStateManager(&stateManager);
     client.syncStateManagerToCurrentState();
 
@@ -371,6 +371,9 @@ TEST_CASE(
                                     "101, state: FAULT\\)");
         },
         4000ms));
+
+    // Allow async callbacks to drain before client teardown on slower CI runners.
+    std::this_thread::sleep_for(150ms);
   }
 
   server.stopServer();
