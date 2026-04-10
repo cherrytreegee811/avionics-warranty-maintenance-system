@@ -1,11 +1,12 @@
 #include <mma/mma.h>
+#include <spdlog/fmt/chrono.h>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 #include <chrono>
 #include <filesystem>
-#include <format>
 #include <iostream>
 #include <memory>
 #include <thread>
@@ -13,7 +14,7 @@
 std::string getCurrentDate() {
   auto now = std::chrono::system_clock::now();
   auto year_month_day = std::chrono::floor<std::chrono::days>(now);
-  return std::format("{:%Y%m%d}", year_month_day);
+  return fmt::format("{:%Y%m%d}", year_month_day);
 }
 
 int main() {
@@ -21,7 +22,7 @@ int main() {
   std::filesystem::create_directories("logs");
 
   // Build log filename with date
-  std::string logFileName = std::format("logs/mma_{}.log", getCurrentDate());
+  std::string logFileName = fmt::format("logs/mma_{}.log", getCurrentDate());
 
   // File sink (truncate each run, or use false to append)
   auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFileName, true);

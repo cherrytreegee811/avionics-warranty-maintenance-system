@@ -1,6 +1,7 @@
 #include <common/Packet.h>
 #include <mma/WarrantyManager.h>
 #include <mma/mma.h>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/spdlog.h>
 
 #include <asio.hpp>
@@ -492,7 +493,7 @@ void MMA::runMenu() {
           state_label = "CLOSED";
         }
 
-        std::cout << std::format("  - {} [state: {}]\n", conn->getRemoteAddress(), state_label);
+        std::cout << fmt::format("  - {} [state: {}]\n", conn->getRemoteAddress(), state_label);
       }
     } else if (line == "3") {
       std::cout << "Shutting down...\n";

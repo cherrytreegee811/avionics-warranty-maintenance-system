@@ -88,6 +88,7 @@ TEST_CASE("MMA persists warranty from aircraft during DIAGNOSTIC after verificat
         3000);
     CHECK(updated);
 
+    client.setStateManager(nullptr);
     // Reduce teardown race likelihood on Windows CI.
     std::this_thread::sleep_for(150ms);
   }

@@ -1,24 +1,25 @@
 #include <aircraft/Aircraft.h>
 #include <aircraft/CliInterface.h>
 #include <aircraft/StateManager.h>
+#include <spdlog/fmt/chrono.h>
+#include <spdlog/fmt/fmt.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>
 #include <spdlog/spdlog.h>
 
 #include <chrono>
 #include <filesystem>
-#include <format>
 #include <memory>
 
 std::string getCurrentDate() {
   auto now = std::chrono::system_clock::now();
   auto year_month_day = std::chrono::floor<std::chrono::days>(now);
-  return std::format("{:%Y%m%d}", year_month_day);
+  return fmt::format("{:%Y%m%d}", year_month_day);
 }
 
 int main() {
   std::filesystem::create_directories("logs");
-  std::string logFileName = std::format("logs/aircraft_{}.log", getCurrentDate());
+  std::string logFileName = fmt::format("logs/aircraft_{}.log", getCurrentDate());
 
   auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFileName, true);
   auto console_sink = std::make_shared<spdlog::sinks::stdout_color_sink_mt>();

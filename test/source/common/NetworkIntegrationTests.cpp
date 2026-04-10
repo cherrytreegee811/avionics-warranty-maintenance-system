@@ -269,6 +269,10 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state
                  && logContainsLine(testLogFile, "Aircraft 12345 transitioned to DIAGNOSTIC state");
         },
         10000ms));
+
+    client.setStateManager(nullptr);
+    // Drain network callbacks before client/state teardown on Windows CI.
+    std::this_thread::sleep_for(200ms);
   }
 
   server.stopServer();
@@ -333,8 +337,8 @@ TEST_CASE(
   std::this_thread::sleep_for(100ms);
 
   {
-    aircraft::Aircraft client;
     StateManager stateManager;
+    aircraft::Aircraft client;
     client.setStateManager(&stateManager);
     client.syncStateManagerToCurrentState();
 
@@ -372,8 +376,9 @@ TEST_CASE(
         },
         4000ms));
 
+    client.setStateManager(nullptr);
     // Allow async callbacks to drain before client teardown on slower CI runners.
-    std::this_thread::sleep_for(150ms);
+    std::this_thread::sleep_for(200ms);
   }
 
   server.stopServer();
@@ -397,8 +402,8 @@ TEST_CASE("US-012: MMA allows clear request in FAULT state") {
   std::this_thread::sleep_for(100ms);
 
   {
-    aircraft::Aircraft client;
     StateManager stateManager;
+    aircraft::Aircraft client;
     client.setStateManager(&stateManager);
     client.syncStateManagerToCurrentState();
 
@@ -443,6 +448,10 @@ TEST_CASE("US-012: MMA allows clear request in FAULT state") {
                      "state: FAULT\\)");
         },
         4000ms));
+
+    client.setStateManager(nullptr);
+    // Drain network callbacks before client/state teardown on Windows CI.
+    std::this_thread::sleep_for(200ms);
   }
 
   server.stopServer();
