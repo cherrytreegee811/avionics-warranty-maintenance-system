@@ -344,7 +344,6 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state
         4000ms));
 
     server.sendDiagnosticStateChange(12345);
-    spdlog::default_logger()->flush();
 
     CHECK(waitForCondition(
         [&]() {
@@ -353,8 +352,7 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state
                                     "Sent DIAGNOSTIC state change command to aircraft 12345")
                  && logContainsLine(testLogFile,
                                     "Operational state transition: STANDBY -> DIAGNOSTIC")
-                 && logContainsLine(testLogFile,
-                                    "Aircraft 12345 transitioned to DIAGNOSTIC state");
+                 && logContainsLine(testLogFile, "Aircraft 12345 transitioned to DIAGNOSTIC state");
         },
         4000ms));
   }
