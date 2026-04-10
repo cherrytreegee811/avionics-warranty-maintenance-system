@@ -6,6 +6,7 @@
 #include <array>
 #include <asio.hpp>
 #include <atomic>
+#include <deque>
 #include <functional>
 #include <memory>
 #include <vector>
@@ -28,26 +29,11 @@ namespace network {
     void send(const std::vector<uint8_t>& data) {
       auto self = shared_from_this();
       asio::post(socket_.get_executor(), [self, data]() {
-        auto payload = std::make_shared<std::vector<uint8_t>>(data);
         if (self->state_.load() == ConnectionState::CLOSED || !self->socket_.is_open()) {
           return;
         }
-        asio::async_write(
-            self->socket_, asio::buffer(*payload), [self, payload](std::error_code ec, size_t) {
-              if (!ec) {
-                return;
-              }
-
-              if (ec == asio::error::operation_aborted || ec == asio::error::connection_reset
-                  || ec == asio::error::broken_pipe || ec == asio::error::not_connected
-                  || ec == asio::error::eof) {
-                spdlog::info("Connection send closed for {}: {}", self->getRemoteAddress(),
-                             ec.message());
-              } else {
-                spdlog::error("Send error: {}", ec.message());
-              }
-              self->markClosed();
-            });
+        self->outgoing_queue_.push_back(std::make_shared<std::vector<uint8_t>>(data));
+        self->startNextWrite();
       });
     }
 
@@ -79,6 +65,36 @@ namespace network {
     TcpConnection(asio::ip::tcp::socket socket) : socket_(std::move(socket)) {}
 
     void markClosed() { state_.store(ConnectionState::CLOSED); }
+
+    void startNextWrite() {
+      if (write_in_progress_ || outgoing_queue_.empty() || !socket_.is_open()) {
+        return;
+      }
+
+      write_in_progress_ = true;
+      auto payload = outgoing_queue_.front();
+      auto self = shared_from_this();
+      asio::async_write(
+          socket_, asio::buffer(*payload), [self, payload](std::error_code ec, size_t) {
+            self->write_in_progress_ = false;
+            if (ec) {
+              if (ec == asio::error::operation_aborted || ec == asio::error::connection_reset
+                  || ec == asio::error::broken_pipe || ec == asio::error::not_connected
+                  || ec == asio::error::eof) {
+                spdlog::info("Connection send closed for {}: {}", self->getRemoteAddress(),
+                             ec.message());
+              } else {
+                spdlog::error("Send error: {}", ec.message());
+              }
+              self->markClosed();
+              self->outgoing_queue_.clear();
+              return;
+            }
+
+            self->outgoing_queue_.pop_front();
+            self->startNextWrite();
+          });
+    }
 
     void processIncomingBuffer() {
       while (true) {
@@ -138,10 +154,12 @@ namespace network {
       });
     }
 
-    static constexpr size_t kMaxPacketSizeBytes = 1024 * 1024;
+    static constexpr size_t kMaxPacketSizeBytes = 50 * 1024 * 1024;
     asio::ip::tcp::socket socket_;
     std::array<uint8_t, 4096> buffer_;
     std::vector<uint8_t> incoming_buffer_;
+    std::deque<std::shared_ptr<std::vector<uint8_t>>> outgoing_queue_;
+    bool write_in_progress_ = false;
     MessageHandler handler_;
     std::atomic<ConnectionState> state_{ConnectionState::UNVERIFIED};
   };

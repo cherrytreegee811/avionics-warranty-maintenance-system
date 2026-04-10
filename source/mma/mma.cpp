@@ -2,13 +2,74 @@
 #include <mma/WarrantyManager.h>
 #include <mma/mma.h>
 #include <spdlog/spdlog.h>
+
 #include <asio.hpp>
 #include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <iostream>
 #include <random>
 #include <sstream>
 #include <thread>
 #include <type_traits>
+
+// Helper function to map ImageFormat to file extension
+static std::string formatToExtension(network::ImageFormat format) {
+  switch (format) {
+    case network::ImageFormat::PNG:
+      return ".png";
+    case network::ImageFormat::JPEG:
+      return ".jpg";
+    case network::ImageFormat::RAW:
+      return ".raw";
+    default:
+      return ".bin";
+  }
+}
+
+// Helper function to ensure directory exists and save image to disk
+static bool saveReceivedImage(uint64_t aircraft_id, uint32_t image_id,
+                              const std::vector<uint8_t>& image_data, network::ImageFormat format) {
+  const std::string recv_dir = "res/recv";
+
+  // Create directory if it doesn't exist
+  try {
+    std::filesystem::create_directories(recv_dir);
+  } catch (const std::exception& e) {
+    spdlog::error("Failed to create recv directory: {}", e.what());
+    return false;
+  }
+
+  // Generate unique filename: aircraft_<id>_image_<id>.<ext>
+  std::ostringstream filename_stream;
+  filename_stream << recv_dir << "/aircraft_" << aircraft_id << "_image_" << image_id
+                  << formatToExtension(format);
+
+  const std::string filepath = filename_stream.str();
+
+  // Write image to file
+  try {
+    std::ofstream file(filepath, std::ios::binary);
+    if (!file.is_open()) {
+      spdlog::error("Failed to open image file for writing: {}", filepath);
+      return false;
+    }
+
+    file.write(reinterpret_cast<const char*>(image_data.data()), image_data.size());
+
+    if (!file) {
+      spdlog::error("Error writing image data to file: {}", filepath);
+      return false;
+    }
+
+    file.close();
+    spdlog::info("Successfully saved image to: {}", filepath);
+    return true;
+  } catch (const std::exception& e) {
+    spdlog::error("Exception while saving image {}: {}", filepath, e.what());
+    return false;
+  }
+}
 
 MMA::MMA()
     : io_context_(std::make_unique<asio::io_context>()),
@@ -188,6 +249,15 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
     return;
   }
 
+  if (header.type == network::PacketType::SCHEMATIC_CHUNK) {
+    // Handle image chunk reception
+    network::ImageChunkHeader chunk_header;
+    std::vector<uint8_t> chunk_data;
+    if (!network::deserializeImageChunk(payload, chunk_header, chunk_data)) {
+      spdlog::warn("Invalid image chunk format");
+      return;
+    }
+
   if (header.type == network::PacketType::CLEAR_DIAGNOSTIC_CODE_CONFIRMATION) {
     if (payload.size() != sizeof(network::DiagnosticCodeClearConfirmation)) {
       spdlog::warn("Invalid CLEAR_DIAGNOSTIC_CODE_CONFIRMATION payload size: {}", payload.size());
@@ -202,6 +272,41 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
       aircraft_id = it->second;
     }
 
+    spdlog::info("Received image chunk {}/{} from aircraft {} (image_id: {}, data: {} bytes)",
+                 chunk_header.chunk_index + 1, chunk_header.total_chunks, aircraft_id,
+                 chunk_header.image_id, chunk_data.size());
+
+    // Get or create reassembly buffer for this aircraft/image combination
+    auto& aircraft_buffers = image_reassembly_buffers_[aircraft_id];
+    auto it = aircraft_buffers.find(chunk_header.image_id);
+    if (it == aircraft_buffers.end()) {
+      // Create new reassembly buffer
+      aircraft_buffers.emplace(chunk_header.image_id,
+                               network::ImageBuffer(chunk_header.image_id, chunk_header.format,
+                                                    chunk_header.total_chunks));
+      it = aircraft_buffers.find(chunk_header.image_id);
+    }
+
+    // Add chunk to buffer
+    if (it->second.addChunk(chunk_header.chunk_index, chunk_data)) {
+      // Image is now complete
+      const auto complete_image = it->second.reassemble();
+      spdlog::info(
+          "Image {} from aircraft {} received and reassembled ({} bytes total, format: {})",
+          chunk_header.image_id, aircraft_id, complete_image.size(),
+          network::imageFormatToString(chunk_header.format));
+
+      // Save image to disk with proper naming and error handling
+      if (saveReceivedImage(aircraft_id, chunk_header.image_id, complete_image,
+                            chunk_header.format)) {
+        spdlog::info("Image successfully archived for aircraft {}", aircraft_id);
+      } else {
+        spdlog::warn("Failed to save image {} from aircraft {}", chunk_header.image_id,
+                     aircraft_id);
+      }
+
+      // Remove from reassembly buffer
+      aircraft_buffers.erase(it);
     aircraft_states_[aircraft_id] = confirmation.resulting_state;
 
     if (confirmation.status == network::DiagnosticCodeClearStatus::SUCCESS) {

@@ -31,6 +31,11 @@ namespace network {
     MAJOR = 1,
   };
 
+  enum class ImageFormat : uint8_t {
+    RAW = 0,   // Uncompressed pixel data
+    PNG = 1,   // PNG compressed image
+    JPEG = 2,  // JPEG compressed image
+  };
   enum class DiagnosticCodeClearStatus : uint8_t {
     SUCCESS = 0,
     REJECTED_NOT_IN_CLEARABLE_STATE = 1,
@@ -83,6 +88,14 @@ namespace network {
     DiagnosticFaultSeverity severity;
     uint16_t description_size;
   };
+
+  struct ImageChunkHeader {
+    uint32_t image_id;         // Unique identifier for image sequence
+    uint16_t chunk_index;      // 0-based chunk number
+    uint16_t total_chunks;     // Total chunks for this image
+    uint32_t chunk_data_size;  // Bytes of image data in this chunk
+    ImageFormat format;        // Image format (RAW, PNG, JPEG, etc.)
+  };
 #pragma pack(pop)
 
   struct DiagnosticFaultCode {
@@ -91,6 +104,11 @@ namespace network {
     DiagnosticFaultSeverity severity;
     std::string description;
   };
+
+  // Image transfer constants
+  constexpr size_t kMaxImageChunkPayloadSize
+      = 1024 * 1024 - sizeof(ImageChunkHeader);  // ~1 MB minus header
+  constexpr uint32_t kMaxImageId = 0xFFFFFFFFU;
 
   // Serialization helpers
   std::vector<uint8_t> serializePacket(PacketType type, const void* payload, size_t payload_size);
@@ -102,6 +120,16 @@ namespace network {
       const std::vector<DiagnosticFaultCode>& faults);
   bool deserializeDiagnosticDataPayload(const std::vector<uint8_t>& payload,
                                         std::vector<DiagnosticFaultCode>& faults);
+
+  // Image chunk serialization (handles multi-chunk images)
+  // Returns vector of serialized chunk payloads (one per packet to send)
+  std::vector<std::vector<uint8_t>> serializeImagePayload(uint32_t image_id,
+                                                          const std::vector<uint8_t>& image_data,
+                                                          ImageFormat format);
+
+  // Extracts chunk metadata from a SCHEMATIC_CHUNK packet payload
+  bool deserializeImageChunk(const std::vector<uint8_t>& payload, ImageChunkHeader& header_out,
+                             std::vector<uint8_t>& chunk_data_out);
 
   // Deserialization: returns true if valid (magic + CRC), extracts header and payload
   bool deserializePacket(const std::vector<uint8_t>& data, PacketHeader& header,
@@ -139,6 +167,16 @@ namespace network {
     }
   }
 
+  inline constexpr std::string_view imageFormatToString(ImageFormat format) {
+    switch (format) {
+      case ImageFormat::RAW:
+        return "RAW";
+      case ImageFormat::PNG:
+        return "PNG";
+      case ImageFormat::JPEG:
+        return "JPEG";
+    }
+  }
   inline constexpr std::string_view diagnosticCodeClearStatusToString(
       DiagnosticCodeClearStatus status) {
     switch (status) {
@@ -154,4 +192,54 @@ namespace network {
         return "UNKNOWN";
     }
   }
+
+  // Image reassembly buffer: holds partial/complete images keyed by image_id
+  struct ImageBuffer {
+    uint32_t image_id;
+    ImageFormat format;
+    uint16_t total_chunks;
+    size_t total_size_bytes;
+    std::vector<std::vector<uint8_t>>
+        chunks;                  // chunks[i] = data for chunk i, empty if not received
+    std::vector<bool> received;  // received[i] = true if chunk i has been received
+
+    ImageBuffer(uint32_t id, ImageFormat fmt, uint16_t total)
+        : image_id(id), format(fmt), total_chunks(total), total_size_bytes(0) {
+      chunks.resize(total);
+      received.resize(total, false);
+    }
+
+    // Add a chunk to the buffer. Returns true if image is now complete.
+    bool addChunk(uint16_t chunk_index, const std::vector<uint8_t>& data) {
+      if (chunk_index >= total_chunks) {
+        return false;  // Invalid chunk index
+      }
+      if (received[chunk_index]) {
+        return isComplete();  // Already have this chunk
+      }
+
+      chunks[chunk_index] = data;
+      received[chunk_index] = true;
+      total_size_bytes += data.size();
+      return isComplete();
+    }
+
+    bool isComplete() const {
+      for (bool r : received) {
+        if (!r) return false;
+      }
+      return true;
+    }
+
+    // Reassemble all chunks into a single vector
+    std::vector<uint8_t> reassemble() const {
+      std::vector<uint8_t> result;
+      result.reserve(total_size_bytes);
+      for (const auto& chunk : chunks) {
+        result.insert(result.end(), chunk.begin(), chunk.end());
+      }
+      return result;
+    }
+  };
 }  // namespace network
+
