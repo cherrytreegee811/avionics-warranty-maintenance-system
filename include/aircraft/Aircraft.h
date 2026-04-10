@@ -73,6 +73,10 @@ namespace aircraft {
     bool transitionToState(network::StateId targetState,
                            TransitionSource source = TransitionSource::AUTOMATIC);
     bool sendDiagnosticData();
+    bool sendWarrantyData();
+    bool canSendDiagnosticStageData() const;
+    void markDiagnosticRequestedByMMA();
+
     bool sendImageFromFile(const std::string& filepath);
     bool sendImage(const std::vector<uint8_t>& image_data, network::ImageFormat format);
 

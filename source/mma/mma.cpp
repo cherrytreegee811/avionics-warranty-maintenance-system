@@ -308,6 +308,23 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
     return;
   }
 
+  if (header.type == network::PacketType::WARRANTY_DATA) {
+    common::WarrantyInfo warranty{};
+    if (!network::deserializeWarrantyDataPayload(payload, warranty)) {
+      spdlog::warn("Received malformed WARRANTY_DATA payload");
+      return;
+    }
+
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
+    warrantyManager_->setWarranty(aircraft_id, warranty);
+    spdlog::info("Persisted warranty data for aircraft {} to mma_warranty_data.csv", aircraft_id);
+    return;
+  }
+
   if (header.type == network::PacketType::STATE_CHANGE_CONFIRMATION) {
     if (payload.size() != sizeof(network::StateChangeConfirmation)) {
       spdlog::warn("Invalid STATE_CHANGE_CONFIRMATION payload size: {}", payload.size());

@@ -403,6 +403,29 @@ bool Aircraft::sendDiagnosticData() {
   return true;
 }
 
+bool Aircraft::sendWarrantyData() {
+  if (!verified_ || !connection_) {
+    spdlog::warn("Cannot send warranty data before verification/connection");
+    return false;
+  }
+
+  const auto payload = network::serializeWarrantyDataPayload(m_warranty);
+  const auto packet = network::serializePacket(network::PacketType::WARRANTY_DATA, payload.data(),
+                                               payload.size());
+  connection_->send(packet);
+  spdlog::info("Sent warranty data to MMA (active: {}, expiry: {}, provider: {})",
+               m_warranty.isActive, m_warranty.expiryDate, m_warranty.provider);
+  return true;
+}
+
+bool Aircraft::canSendDiagnosticStageData() const {
+  return verified_ && connection_ && connection_->getState() == network::ConnectionState::VERIFIED;
+}
+
+void Aircraft::markDiagnosticRequestedByMMA() {
+  // Reserved for future sequencing behavior when DIAGNOSTIC was explicitly requested by MMA.
+}
+
 bool Aircraft::sendImageFromFile(const std::string& filepath) {
   std::ifstream file(filepath, std::ios::binary);
   if (!file) {

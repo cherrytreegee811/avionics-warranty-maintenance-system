@@ -1,6 +1,7 @@
 #pragma once
 
 #include <common/Crc32.h>
+#include <common/WarrantyData.h>
 
 #include <cstdint>
 #include <cstring>
@@ -23,7 +24,7 @@ namespace network {
     CLEAR_DIAGNOSTIC_CODE = 8,
     CLEAR_DIAGNOSTIC_CODE_CONFIRMATION = 9,
     SCHEMATIC_CHUNK_RETRY_REQUEST = 10,
-    WARRANTY_DATA = 8
+    WARRANTY_DATA = 11
   };
 
   enum class StateId : uint8_t { STANDBY = 0, DIAGNOSTIC = 1, MAINTENANCE = 2, FAULT = 3 };
@@ -129,6 +130,10 @@ namespace network {
       const std::vector<DiagnosticFaultCode>& faults);
   bool deserializeDiagnosticDataPayload(const std::vector<uint8_t>& payload,
                                         std::vector<DiagnosticFaultCode>& faults);
+
+  std::vector<uint8_t> serializeWarrantyDataPayload(const common::WarrantyInfo& warranty);
+  bool deserializeWarrantyDataPayload(const std::vector<uint8_t>& payload,
+                                      common::WarrantyInfo& warranty);
 
   // Image chunk serialization (handles multi-chunk images)
   // Returns vector of serialized chunk payloads (one per packet to send)

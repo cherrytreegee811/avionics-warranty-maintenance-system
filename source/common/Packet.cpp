@@ -152,6 +152,78 @@ namespace network {
     return offset == payload.size();
   }
 
+  std::vector<uint8_t> serializeWarrantyDataPayload(const common::WarrantyInfo& warranty) {
+    const auto expiry_size = static_cast<uint16_t>(
+        std::min<size_t>(warranty.expiryDate.size(), std::numeric_limits<uint16_t>::max()));
+    const auto provider_size = static_cast<uint16_t>(
+        std::min<size_t>(warranty.provider.size(), std::numeric_limits<uint16_t>::max()));
+
+    std::vector<uint8_t> payload;
+    payload.reserve(sizeof(uint8_t) + sizeof(uint16_t) + expiry_size + sizeof(uint16_t)
+                    + provider_size);
+
+    const uint8_t is_active = warranty.isActive ? 1U : 0U;
+    payload.push_back(is_active);
+
+    payload.resize(payload.size() + sizeof(expiry_size));
+    std::memcpy(payload.data() + 1, &expiry_size, sizeof(expiry_size));
+
+    if (expiry_size > 0) {
+      const auto start = payload.size();
+      payload.resize(start + expiry_size);
+      std::memcpy(payload.data() + start, warranty.expiryDate.data(), expiry_size);
+    }
+
+    const auto provider_size_offset = payload.size();
+    payload.resize(payload.size() + sizeof(provider_size));
+    std::memcpy(payload.data() + provider_size_offset, &provider_size, sizeof(provider_size));
+
+    if (provider_size > 0) {
+      const auto start = payload.size();
+      payload.resize(start + provider_size);
+      std::memcpy(payload.data() + start, warranty.provider.data(), provider_size);
+    }
+
+    return payload;
+  }
+
+  bool deserializeWarrantyDataPayload(const std::vector<uint8_t>& payload,
+                                      common::WarrantyInfo& warranty) {
+    if (payload.size() < sizeof(uint8_t) + sizeof(uint16_t) + sizeof(uint16_t)) {
+      return false;
+    }
+
+    size_t offset = 0;
+    warranty.isActive = payload[offset] != 0;
+    offset += sizeof(uint8_t);
+
+    uint16_t expiry_size = 0;
+    std::memcpy(&expiry_size, payload.data() + offset, sizeof(expiry_size));
+    offset += sizeof(expiry_size);
+
+    if (offset + expiry_size > payload.size()) {
+      return false;
+    }
+    warranty.expiryDate.assign(reinterpret_cast<const char*>(payload.data() + offset), expiry_size);
+    offset += expiry_size;
+
+    if (offset + sizeof(uint16_t) > payload.size()) {
+      return false;
+    }
+
+    uint16_t provider_size = 0;
+    std::memcpy(&provider_size, payload.data() + offset, sizeof(provider_size));
+    offset += sizeof(provider_size);
+
+    if (offset + provider_size > payload.size()) {
+      return false;
+    }
+    warranty.provider.assign(reinterpret_cast<const char*>(payload.data() + offset), provider_size);
+    offset += provider_size;
+
+    return offset == payload.size();
+  }
+
   std::vector<std::vector<uint8_t>> serializeImagePayload(uint32_t image_id,
                                                           const std::vector<uint8_t>& image_data,
                                                           ImageFormat format) {
