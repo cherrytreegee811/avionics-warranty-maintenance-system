@@ -6,8 +6,8 @@
 #include <aircraft/StateManager.h>
 #include <common/Packet.h>
 #include <common/WarrantyData.h>
-#include <spdlog/spdlog.h>
 
+#include <spdlog/spdlog.h>
 #include <algorithm>
 #include <asio.hpp>
 #include <chrono>
@@ -352,10 +352,18 @@ bool Aircraft::transitionToState(network::StateId targetState, TransitionSource 
 
   if (!stateManager_) {
     spdlog::warn("StateManager unavailable. State string updated to {} only", targetStateName);
+    if (targetState == network::StateId::MAINTENANCE && hasMajorFaults()) {
+      evaluateAutomaticTransitionFromCurrentState();
+    }
     return true;
   }
 
   stateManager_->SetState(makeStateForId(*this, *stateManager_, targetState));
+
+  // On MAINTENANCE entry, immediately escalate to FAULT if MAJOR faults are already present.
+  if (targetState == network::StateId::MAINTENANCE && hasMajorFaults()) {
+    evaluateAutomaticTransitionFromCurrentState();
+  }
 
   return true;
 }
@@ -527,6 +535,54 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
         // For now, just log and remove from buffer
         image_reassembly_buffers_.erase(it);
       }
+      return;
+    }
+
+    if (header.type == network::PacketType::CLEAR_DIAGNOSTIC_CODE) {
+      auto send_confirmation = [this](int32_t code, network::DiagnosticCodeClearStatus status) {
+        if (!connection_ || connection_->getState() != network::ConnectionState::VERIFIED) {
+          return;
+        }
+
+        const auto resultingState
+            = stateIdFromString(m_currentState).value_or(network::StateId::STANDBY);
+        const network::DiagnosticCodeClearConfirmation confirmation{code, status, resultingState};
+        const auto packet = network::serializePacket(
+            network::PacketType::CLEAR_DIAGNOSTIC_CODE_CONFIRMATION, confirmation);
+        connection_->send(packet);
+      };
+
+      if (payload.size() != sizeof(network::DiagnosticCodeClearRequest)) {
+        spdlog::warn("Invalid CLEAR_DIAGNOSTIC_CODE payload size: {}", payload.size());
+        send_confirmation(0, network::DiagnosticCodeClearStatus::MALFORMED_REQUEST);
+        return;
+      }
+
+      network::DiagnosticCodeClearRequest request{};
+      std::memcpy(&request, payload.data(), sizeof(request));
+
+      const auto currentState = stateIdFromString(m_currentState);
+      if (!currentState
+          || (*currentState != network::StateId::MAINTENANCE
+              && *currentState != network::StateId::FAULT)) {
+        spdlog::warn(
+            "Rejected CLEAR_DIAGNOSTIC_CODE for code {} while in state {} (requires "
+            "MAINTENANCE or FAULT)",
+            request.code, m_currentState);
+        send_confirmation(request.code,
+                          network::DiagnosticCodeClearStatus::REJECTED_NOT_IN_CLEARABLE_STATE);
+        return;
+      }
+
+      if (!resolveFaultCode(request.code)) {
+        spdlog::warn("Rejected CLEAR_DIAGNOSTIC_CODE for missing code {}", request.code);
+        send_confirmation(request.code, network::DiagnosticCodeClearStatus::CODE_NOT_FOUND);
+        return;
+      }
+
+      spdlog::info("Cleared diagnostic code {} via MMA command", request.code);
+      send_confirmation(request.code, network::DiagnosticCodeClearStatus::SUCCESS);
+      return;
     }
   }
 }
