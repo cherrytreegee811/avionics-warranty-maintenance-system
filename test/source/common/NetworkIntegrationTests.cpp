@@ -335,24 +335,27 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state
     client.syncStateManagerToCurrentState();
 
     client.connectToMMA("127.0.0.1", testPort);
+    const uint64_t aircraft_id = client.getAircraftId();
 
     REQUIRE(waitForCondition(
         [&]() {
-          return logContainsLine(testLogFile, "Client 12345 verified")
-                 && logContainsLine(testLogFile, "Aircraft 12345 landed");
+          return logContainsLine(testLogFile, "Client " + std::to_string(aircraft_id) + " verified")
+                 && logContainsLine(testLogFile,
+                                    "Aircraft " + std::to_string(aircraft_id) + " landed");
         },
         4000ms));
 
-    server.sendDiagnosticStateChange(12345);
+    server.sendDiagnosticStateChange(aircraft_id);
 
     CHECK(waitForCondition(
         [&]() {
-          return logContainsLine(testLogFile, "Aircraft 12345 landed")
-                 && logContainsLine(testLogFile,
-                                    "Sent DIAGNOSTIC state change command to aircraft 12345")
+          return logContainsLine(testLogFile, "Aircraft " + std::to_string(aircraft_id) + " landed")
+                 && logContainsLine(testLogFile, "Sent DIAGNOSTIC state change command to aircraft "
+                                                     + std::to_string(aircraft_id))
                  && logContainsLine(testLogFile,
                                     "Operational state transition: STANDBY -> DIAGNOSTIC")
-                 && logContainsLine(testLogFile, "Aircraft 12345 transitioned to DIAGNOSTIC state");
+                 && logContainsLine(testLogFile, "Aircraft " + std::to_string(aircraft_id)
+                                                     + " transitioned to DIAGNOSTIC state");
         },
         4000ms));
   }
@@ -380,18 +383,25 @@ TEST_CASE("REQ-NET-013/US-011: DIAGNOSTIC_DATA severity is logged by MMA") {
   {
     aircraft::Aircraft client;
     client.connectToMMA("127.0.0.1", testPort);
+    const uint64_t aircraft_id = client.getAircraftId();
 
     REQUIRE(waitForCondition(
-        [&]() { return logContainsLine(testLogFile, "Client 12345 verified"); }, 4000ms));
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Client " + std::to_string(aircraft_id) + " verified");
+        },
+        4000ms));
 
     CHECK(client.sendDiagnosticData());
 
     CHECK(waitForCondition(
         [&]() {
           return logContainsLine(testLogFile,
-                                 "Fault Code '101' \\(aircraft: 12345\\): \\[MINOR\\] - '.*'")
+                                 "Fault Code '101' \\(aircraft: " + std::to_string(aircraft_id)
+                                     + "\\): \\[MINOR\\] - '.*'")
                  && logContainsLine(testLogFile,
-                                    "Fault Code '102' \\(aircraft: 12345\\): \\[MAJOR\\] - '.*'");
+                                    "Fault Code '102' \\(aircraft: " + std::to_string(aircraft_id)
+                                        + "\\): \\[MAJOR\\] - '.*'");
         },
         4000ms));
   }
@@ -425,36 +435,37 @@ TEST_CASE(
     client.syncStateManagerToCurrentState();
 
     client.connectToMMA("127.0.0.1", testPort);
+    const uint64_t aircraft_id = client.getAircraftId();
 
     REQUIRE(waitForCondition(
         [&]() {
-          return logContainsLine(testLogFile, "Client 12345 verified")
-                 && logContainsLine(testLogFile, "Aircraft 12345 landed");
+          return logContainsLine(testLogFile, "Client " + std::to_string(aircraft_id) + " verified")
+                 && logContainsLine(testLogFile,
+                                    "Aircraft " + std::to_string(aircraft_id) + " landed");
         },
         4000ms));
 
-    server.sendDiagnosticStateChange(12345);
+    server.sendDiagnosticStateChange(aircraft_id);
     spdlog::default_logger()->flush();
 
     REQUIRE(waitForCondition(
         [&]() {
-          return logContainsLine(testLogFile,
-                                 "Sent DIAGNOSTIC state change command to aircraft 12345")
-                 && logContainsLine(testLogFile,
-                                    "Aircraft 12345 transitioned to MAINTENANCE state");
+          return logContainsLine(testLogFile, "Sent DIAGNOSTIC state change command to aircraft "
+                                                  + std::to_string(aircraft_id))
+                 && logContainsLine(testLogFile, "Aircraft " + std::to_string(aircraft_id)
+                                                     + " transitioned to MAINTENANCE state");
         },
         4000ms));
 
-    server.sendDiagnosticCodeClearRequest(12345, 101);
+    server.sendDiagnosticCodeClearRequest(aircraft_id, 101);
 
     CHECK(waitForCondition(
         [&]() {
-          return logContainsLine(testLogFile,
-                                 "Sent diagnostic code clear command to aircraft 12345 for "
-                                 "code 101")
-                 && logContainsLine(testLogFile,
-                                    "Diagnostic code clear succeeded for aircraft 12345 \\(code: "
-                                    "101, state: FAULT\\)");
+          return logContainsLine(testLogFile, "Sent diagnostic code clear command to aircraft "
+                                                  + std::to_string(aircraft_id) + " for code 101")
+                 && logContainsLine(testLogFile, "Diagnostic code clear succeeded for aircraft "
+                                                     + std::to_string(aircraft_id)
+                                                     + " \\(code: 101, state: FAULT\\)");
         },
         4000ms));
   }
@@ -486,43 +497,48 @@ TEST_CASE("US-012: MMA allows clear request in FAULT state") {
     client.syncStateManagerToCurrentState();
 
     client.connectToMMA("127.0.0.1", testPort);
+    const uint64_t aircraft_id = client.getAircraftId();
 
     REQUIRE(waitForCondition(
         [&]() {
-          return logContainsLine(testLogFile, "Client 12345 verified")
-                 && logContainsLine(testLogFile, "Aircraft 12345 landed");
+          return logContainsLine(testLogFile, "Client " + std::to_string(aircraft_id) + " verified")
+                 && logContainsLine(testLogFile,
+                                    "Aircraft " + std::to_string(aircraft_id) + " landed");
         },
         4000ms));
 
-    server.sendDiagnosticStateChange(12345);
+    server.sendDiagnosticStateChange(aircraft_id);
     spdlog::default_logger()->flush();
 
     REQUIRE(waitForCondition(
         [&]() {
-          return logContainsLine(testLogFile, "Aircraft 12345 transitioned to MAINTENANCE state");
+          return logContainsLine(testLogFile, "Aircraft " + std::to_string(aircraft_id)
+                                                  + " transitioned to MAINTENANCE state");
         },
         4000ms));
 
-    server.sendDiagnosticCodeClearRequest(12345, 101);
+    server.sendDiagnosticCodeClearRequest(aircraft_id, 101);
 
     REQUIRE(waitForCondition(
         [&]() {
           return logContainsLine(testLogFile,
-                                 "Diagnostic code clear succeeded for aircraft 12345 \\(code: "
+                                 "Diagnostic code clear succeeded for aircraft " + std::to_string(aircraft_id) + " \\(code: "
                                  "101, state: FAULT\\)");
         },
         4000ms));
 
-    server.sendDiagnosticCodeClearRequest(12345, 203);
+    std::this_thread::sleep_for(200ms);
+
+    server.sendDiagnosticCodeClearRequest(aircraft_id, 203);
 
     CHECK(waitForCondition(
         [&]() {
           return logContainsLine(
                      testLogFile,
-                     "Sent diagnostic code clear command to aircraft 12345 for code 203")
+                     "Sent diagnostic code clear command to aircraft " + std::to_string(aircraft_id) + " for code 203")
                  && logContainsLine(
                      testLogFile,
-                     "Diagnostic code clear succeeded for aircraft 12345 \\(code: 203, "
+                     "Diagnostic code clear succeeded for aircraft " + std::to_string(aircraft_id) + " \\(code: 203, "
                      "state: FAULT\\)");
         },
         4000ms));
@@ -644,9 +660,6 @@ TEST_CASE("Invalid verification response handling.") {
 // ============================================================================
 
 TEST_CASE("Integration: Aircraft sends multi-chunk image to MMA") {
-  const std::string saved_image_path = "res/recv/aircraft_12345_image_1.png";
-  std::remove(saved_image_path.c_str());
-
   // Setup MMA server
   const std::string testLogFile = "/tmp/image_transfer_test.log";
   std::remove(testLogFile.c_str());
@@ -668,6 +681,10 @@ TEST_CASE("Integration: Aircraft sends multi-chunk image to MMA") {
     // Setup Aircraft client
     aircraft::Aircraft client;
     client.initialize();
+    const uint64_t aircraft_id = client.getAircraftId();
+    const std::string saved_image_path
+        = "res/recv/aircraft_" + std::to_string(aircraft_id) + "_image_1.png";
+    std::remove(saved_image_path.c_str());
 
     std::thread client_thread([&]() { client.connectToMMA("127.0.0.1", 9001); });
 
@@ -715,13 +732,9 @@ TEST_CASE("Integration: Aircraft sends multi-chunk image to MMA") {
 
   spdlog::shutdown();
   std::remove(testLogFile.c_str());
-  std::remove(saved_image_path.c_str());
 }
 
 TEST_CASE("Integration: Image transfer with small payload") {
-  const std::string saved_image_path = "res/recv/aircraft_12345_image_1.jpg";
-  std::remove(saved_image_path.c_str());
-
   // Setup MMA server
   const std::string testLogFile = "/tmp/image_transfer_small_test.log";
   std::remove(testLogFile.c_str());
@@ -743,6 +756,10 @@ TEST_CASE("Integration: Image transfer with small payload") {
     // Setup Aircraft client
     aircraft::Aircraft client;
     client.initialize();
+    const uint64_t aircraft_id = client.getAircraftId();
+    const std::string saved_image_path
+        = "res/recv/aircraft_" + std::to_string(aircraft_id) + "_image_1.jpg";
+    std::remove(saved_image_path.c_str());
 
     std::thread client_thread([&]() { client.connectToMMA("127.0.0.1", 9002); });
 
@@ -778,7 +795,6 @@ TEST_CASE("Integration: Image transfer with small payload") {
 
   spdlog::shutdown();
   std::remove(testLogFile.c_str());
-  std::remove(saved_image_path.c_str());
 }
 
 TEST_CASE("Integration: MMA requests and receives missing image chunk retry") {

@@ -16,6 +16,7 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <random>
 #include <sstream>
 
 namespace {
@@ -100,6 +101,12 @@ Aircraft::Aircraft()
       network_work_guard_(
           std::make_unique<NetworkWorkGuard>(asio::make_work_guard(*network_io_context_))),
       network_thread_([this]() { network_io_context_->run(); }) {
+  // Generate random 5-digit aircraft ID (10000-99999)
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<uint64_t> dist(10000, 99999);
+  aircraft_id_ = dist(gen);
+
   // Initialize with sample data for demonstration
   // In production, this would come from server/ persistence
 

@@ -568,16 +568,9 @@ void MMA::runMenu() {
         std::cout << "Invalid ID.\n";
       }
     } else if (line == "2") {
-      std::cout << "Connected aircraft (" << connections_.size() << "):\n";
-      for (auto& conn : connections_) {
-        const char* state_label = "UNVERIFIED";
-        if (conn->getState() == network::ConnectionState::VERIFIED) {
-          state_label = "VERIFIED";
-        } else if (conn->getState() == network::ConnectionState::CLOSED) {
-          state_label = "CLOSED";
-        }
-
-        std::cout << std::format("  - {} [state: {}]\n", conn->getRemoteAddress(), state_label);
+      std::cout << "Connected aircraft (" << verified_connections_.size() << "):\n";
+      for (auto& [aircraft_id, conn] : verified_connections_) {
+        std::cout << std::format("  - Aircraft {} [state: VERIFIED]\n", aircraft_id);
       }
     } else if (line == "3") {
       std::cout << "Shutting down...\n";

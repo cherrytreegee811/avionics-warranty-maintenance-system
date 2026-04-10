@@ -61,6 +61,7 @@ namespace aircraft {
     void clearFaultCodes();
     void setWarranty(const WarrantyInfo& info);
     bool getRunningStatus() const { return verified_; }
+    uint64_t getAircraftId() const { return aircraft_id_; }
 
     int token = 0;
 
@@ -93,7 +94,7 @@ namespace aircraft {
     std::thread network_thread_;
     StateManager* stateManager_ = nullptr;
     bool verified_ = false;
-    uint64_t aircraft_id_ = 12345;
+    uint64_t aircraft_id_;
     std::atomic<bool> shutting_down_{false};
     bool automatic_transition_in_progress_ = false;
     std::map<uint32_t, network::ImageBuffer> image_reassembly_buffers_;  // image_id -> ImageBuffer
