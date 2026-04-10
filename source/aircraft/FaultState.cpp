@@ -1,5 +1,6 @@
 #include <aircraft/Aircraft.h>
 #include <aircraft/FaultState.h>
+
 #include <iostream>
 
 FaultState::FaultState(aircraft::Aircraft& aircraft, StateManager& stateManager)

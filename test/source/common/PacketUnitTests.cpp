@@ -105,6 +105,17 @@ TEST_CASE("REQ-NET-012: Diagnostic payload rejects malformed buffer") {
   CHECK(!deserializeDiagnosticDataPayload(malformed, parsed));
 }
 
+TEST_CASE("REQ-NET-013: Warranty payload roundtrip") {
+  common::WarrantyInfo original{true, "2030-01-31", "SkyShield"};
+  const auto payload = serializeWarrantyDataPayload(original);
+
+  common::WarrantyInfo parsed{};
+  CHECK(deserializeWarrantyDataPayload(payload, parsed));
+  CHECK(parsed.isActive == original.isActive);
+  CHECK(parsed.expiryDate == original.expiryDate);
+  CHECK(parsed.provider == original.provider);
+}
+
 // ============================================================================
 // REQ-NET-012: The packet shall contain packet integrity checks to ensure validity
 //              and authenticity of the information.

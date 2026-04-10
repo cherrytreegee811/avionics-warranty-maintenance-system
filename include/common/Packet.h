@@ -1,6 +1,7 @@
 #pragma once
 
 #include <common/Crc32.h>
+#include <common/WarrantyData.h>
 
 #include <cstdint>
 #include <cstring>
@@ -19,7 +20,8 @@ namespace network {
     LANDED_NOTIFICATION = 4,
     DIAGNOSTIC_DATA = 5,
     SCHEMATIC_CHUNK = 6,
-    STATE_CHANGE_CONFIRMATION = 7
+    STATE_CHANGE_CONFIRMATION = 7,
+    WARRANTY_DATA = 8
   };
 
   enum class StateId : uint8_t { STANDBY = 0, DIAGNOSTIC = 1, MAINTENANCE = 2, FAULT = 3 };
@@ -64,6 +66,12 @@ namespace network {
     DiagnosticFaultSeverity severity;
     uint16_t description_size;
   };
+
+  struct WarrantyDataHeader {
+    uint8_t is_active;
+    uint16_t expiry_date_size;
+    uint16_t provider_size;
+  };
 #pragma pack(pop)
 
   struct DiagnosticFaultCode {
@@ -83,6 +91,10 @@ namespace network {
       const std::vector<DiagnosticFaultCode>& faults);
   bool deserializeDiagnosticDataPayload(const std::vector<uint8_t>& payload,
                                         std::vector<DiagnosticFaultCode>& faults);
+
+  std::vector<uint8_t> serializeWarrantyDataPayload(const common::WarrantyInfo& warranty);
+  bool deserializeWarrantyDataPayload(const std::vector<uint8_t>& payload,
+                                      common::WarrantyInfo& warranty);
 
   // Deserialization: returns true if valid (magic + CRC), extracts header and payload
   bool deserializePacket(const std::vector<uint8_t>& data, PacketHeader& header,

@@ -1,4 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
+#include <aircraft/Aircraft.h>
+#include <aircraft/StateManager.h>
 #include <doctest/doctest.h>
 #include <helpers/MockAircraft.h>
 #include <helpers/TestHelpers.h>
@@ -45,4 +47,49 @@ TEST_CASE("MMA server logs landed notification from client") {
 
   spdlog::shutdown();
   std::remove(mmaLogFile.c_str());
+}
+
+TEST_CASE("MMA persists warranty from aircraft during DIAGNOSTIC after verification") {
+  const std::string mmaLogFile = "test_mma_server_warranty.log";
+  const std::string warrantyFile = "mma_warranty_data.csv";
+  std::remove(mmaLogFile.c_str());
+  std::remove(warrantyFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(mmaLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("mma_warranty_test", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  MMA server;
+  const uint16_t testPort = 8041;
+  server.startServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  {
+    aircraft::Aircraft client;
+    StateManager stateManager;
+    client.setStateManager(&stateManager);
+    client.syncStateManagerToCurrentState();
+    client.connectToMMA("127.0.0.1", testPort);
+
+    const bool verified = test_helpers::waitFor(
+        [&]() { return test_helpers::logContains(mmaLogFile, "Client 12345 verified"); }, 3000);
+    REQUIRE(verified);
+
+    server.sendDiagnosticStateChange(12345);
+
+    const bool updated = test_helpers::waitFor(
+        [&]() {
+          return test_helpers::logContains(warrantyFile,
+                                           "^12345,1,2027-12-31,Aviation Warranty Corp$");
+        },
+        3000);
+    CHECK(updated);
+  }
+
+  server.stopServer();
+  spdlog::shutdown();
+  std::remove(mmaLogFile.c_str());
+  std::remove(warrantyFile.c_str());
 }

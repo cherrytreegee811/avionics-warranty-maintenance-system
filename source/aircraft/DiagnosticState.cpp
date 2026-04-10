@@ -1,5 +1,6 @@
 #include <aircraft/Aircraft.h>
 #include <aircraft/DiagnosticState.h>
+
 #include <iostream>
 
 DiagnosticState::DiagnosticState(aircraft::Aircraft& aircraft, StateManager& stateManager)
@@ -9,7 +10,7 @@ void DiagnosticState::UpdateState() {}
 
 void DiagnosticState::InitState() {
   m_aircraft.setCurrentState("DIAGNOSTIC");
-  if (m_aircraft.sendDiagnosticData()) {
+  if (m_aircraft.sendWarrantyData() && m_aircraft.sendDiagnosticData()) {
     m_aircraft.transitionToState(network::StateId::MAINTENANCE);
   }
 }

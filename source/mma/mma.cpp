@@ -2,6 +2,7 @@
 #include <mma/WarrantyManager.h>
 #include <mma/mma.h>
 #include <spdlog/spdlog.h>
+
 #include <asio.hpp>
 #include <chrono>
 #include <iostream>
@@ -48,6 +49,9 @@ void MMA::stopServer() {
 
   verified_connections_.clear();
   connection_to_id_.clear();
+  landed_aircraft_.clear();
+  diagnostic_confirmed_aircraft_.clear();
+  session_warranty_available_.clear();
   connections_.clear();
 
   io_context_->stop();
@@ -111,6 +115,9 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
           spdlog::info("Client {} verified", resp.client_id);
           verified_connections_[resp.client_id] = conn;
           connection_to_id_[conn.get()] = resp.client_id;
+          landed_aircraft_[resp.client_id] = false;
+          diagnostic_confirmed_aircraft_[resp.client_id] = false;
+          session_warranty_available_[resp.client_id] = false;
         } else {
           spdlog::error("Verification failed, closing connection");
           conn->close();
@@ -133,6 +140,10 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
       aircraft_id = it->second;
     }
 
+    if (aircraft_id != 0) {
+      landed_aircraft_[aircraft_id] = true;
+    }
+
     spdlog::info("Aircraft {} landed", aircraft_id);
     return;
   }
@@ -149,6 +160,40 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
       aircraft_id = it->second;
     }
     printDiagnosticFaults(aircraft_id, faults);
+    return;
+  }
+
+  if (header.type == network::PacketType::WARRANTY_DATA) {
+    common::WarrantyInfo warranty;
+    if (!network::deserializeWarrantyDataPayload(payload, warranty)) {
+      spdlog::warn("Received malformed WARRANTY_DATA payload");
+      return;
+    }
+
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
+    if (aircraft_id == 0) {
+      spdlog::warn("Received WARRANTY_DATA from unknown aircraft connection");
+      return;
+    }
+
+    const bool landed = landed_aircraft_.contains(aircraft_id) && landed_aircraft_[aircraft_id];
+    const bool diagnostic_confirmed = diagnostic_confirmed_aircraft_.contains(aircraft_id)
+                                      && diagnostic_confirmed_aircraft_[aircraft_id];
+    if (!landed || !diagnostic_confirmed) {
+      spdlog::warn(
+          "Ignoring WARRANTY_DATA for aircraft {} because sequence prerequisites are unmet "
+          "(landed: {}, diagnostic_confirmed: {})",
+          aircraft_id, landed, diagnostic_confirmed);
+      return;
+    }
+
+    warrantyManager_->setWarranty(aircraft_id, warranty);
+    session_warranty_available_[aircraft_id] = true;
+    spdlog::info("Updated warranty data for aircraft {}", aircraft_id);
     return;
   }
 
@@ -171,6 +216,10 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
 
     switch (confirmation.applied_state) {
       case network::StateId::DIAGNOSTIC:
+        if (aircraft_id != 0) {
+          diagnostic_confirmed_aircraft_[aircraft_id] = true;
+          session_warranty_available_[aircraft_id] = false;
+        }
         spdlog::info("Aircraft {} transitioned to DIAGNOSTIC state", aircraft_id);
         break;
       case network::StateId::MAINTENANCE:
@@ -270,6 +319,16 @@ void MMA::printDiagnosticFaults(uint64_t aircraftId,
 }
 
 void MMA::displayWarranty(uint64_t aircraftId) {
+  const bool session_warranty_available
+      = session_warranty_available_.contains(aircraftId) && session_warranty_available_[aircraftId];
+  if (!session_warranty_available) {
+    spdlog::warn(
+        "Warranty data for aircraft {} is not yet available in this session. Set aircraft to "
+        "DIAGNOSTIC and wait for transfer.",
+        aircraftId);
+    return;
+  }
+
   auto opt = warrantyManager_->getWarranty(aircraftId);
   if (!opt) {
     spdlog::warn("No warranty record found for aircraft {}", aircraftId);

@@ -38,6 +38,9 @@ private:
   std::vector<network::TcpConnection::Ptr> connections_;
   std::unordered_map<uint64_t, network::TcpConnection::Ptr> verified_connections_;
   std::unordered_map<network::TcpConnection*, uint64_t> connection_to_id_;
+  std::unordered_map<uint64_t, bool> landed_aircraft_;
+  std::unordered_map<uint64_t, bool> diagnostic_confirmed_aircraft_;
+  std::unordered_map<uint64_t, bool> session_warranty_available_;
   uint32_t expected_challenge_ = 0;
   bool running_ = false;
   std::thread io_thread_;
