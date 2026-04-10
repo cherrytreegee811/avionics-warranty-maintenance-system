@@ -152,6 +152,59 @@ namespace network {
     return offset == payload.size();
   }
 
+  std::vector<uint8_t> serializeWarrantyDataPayload(const common::WarrantyInfo& warranty) {
+    const auto expiry_size = static_cast<uint16_t>(
+        std::min<size_t>(warranty.expiryDate.size(), std::numeric_limits<uint16_t>::max()));
+    const auto provider_size = static_cast<uint16_t>(
+        std::min<size_t>(warranty.provider.size(), std::numeric_limits<uint16_t>::max()));
+
+    WarrantyDataHeader header{
+        static_cast<uint8_t>(warranty.isActive ? 1 : 0),
+        expiry_size,
+        provider_size,
+    };
+
+    std::vector<uint8_t> payload(sizeof(header) + expiry_size + provider_size);
+    std::memcpy(payload.data(), &header, sizeof(header));
+
+    size_t offset = sizeof(header);
+    if (expiry_size > 0) {
+      std::memcpy(payload.data() + offset, warranty.expiryDate.data(), expiry_size);
+      offset += expiry_size;
+    }
+    if (provider_size > 0) {
+      std::memcpy(payload.data() + offset, warranty.provider.data(), provider_size);
+    }
+
+    return payload;
+  }
+
+  bool deserializeWarrantyDataPayload(const std::vector<uint8_t>& payload,
+                                      common::WarrantyInfo& warranty) {
+    if (payload.size() < sizeof(WarrantyDataHeader)) {
+      return false;
+    }
+
+    WarrantyDataHeader header{};
+    std::memcpy(&header, payload.data(), sizeof(header));
+
+    const size_t required_size = sizeof(header) + static_cast<size_t>(header.expiry_date_size)
+                                 + static_cast<size_t>(header.provider_size);
+    if (payload.size() != required_size) {
+      return false;
+    }
+
+    size_t offset = sizeof(header);
+    warranty.isActive = (header.is_active == 1);
+    warranty.expiryDate.assign(reinterpret_cast<const char*>(payload.data() + offset),
+                               header.expiry_date_size);
+    offset += header.expiry_date_size;
+    warranty.provider.assign(reinterpret_cast<const char*>(payload.data() + offset),
+                             header.provider_size);
+    return true;
+  }
+
+}  // namespace network
   std::vector<std::vector<uint8_t>> serializeImagePayload(uint32_t image_id,
                                                           const std::vector<uint8_t>& image_data,
                                                           ImageFormat format) {
