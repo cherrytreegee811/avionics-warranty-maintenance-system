@@ -152,87 +152,55 @@ namespace network {
     return offset == payload.size();
   }
 
-  std::vector<std::vector<uint8_t>> serializeImagePayload(uint32_t image_id,
-                                                          const std::vector<uint8_t>& image_data,
-                                                          ImageFormat format) {
-    std::vector<std::vector<uint8_t>> result;
+  std::vector<uint8_t> serializeWarrantyDataPayload(const common::WarrantyInfo& warranty) {
+    const auto expiry_size = static_cast<uint16_t>(
+        std::min<size_t>(warranty.expiryDate.size(), std::numeric_limits<uint16_t>::max()));
+    const auto provider_size = static_cast<uint16_t>(
+        std::min<size_t>(warranty.provider.size(), std::numeric_limits<uint16_t>::max()));
 
-    if (image_data.empty()) {
-      spdlog::warn("Cannot serialize empty image");
-      return result;
+    WarrantyDataHeader header{
+        static_cast<uint8_t>(warranty.isActive ? 1 : 0),
+        expiry_size,
+        provider_size,
+    };
+
+    std::vector<uint8_t> payload(sizeof(header) + expiry_size + provider_size);
+    std::memcpy(payload.data(), &header, sizeof(header));
+
+    size_t offset = sizeof(header);
+    if (expiry_size > 0) {
+      std::memcpy(payload.data() + offset, warranty.expiryDate.data(), expiry_size);
+      offset += expiry_size;
+    }
+    if (provider_size > 0) {
+      std::memcpy(payload.data() + offset, warranty.provider.data(), provider_size);
     }
 
-    // Calculate chunk count and validate
-    const size_t kMaxDataPerChunk = kMaxImageChunkPayloadSize;
-    const size_t total_chunks = (image_data.size() + kMaxDataPerChunk - 1) / kMaxDataPerChunk;
-
-    if (total_chunks > std::numeric_limits<uint16_t>::max()) {
-      spdlog::error("Image too large: requires {} chunks, max is {}", total_chunks,
-                    std::numeric_limits<uint16_t>::max());
-      return result;
-    }
-
-    const auto total_chunks_u16 = static_cast<uint16_t>(total_chunks);
-
-    // Serialize each chunk
-    size_t bytes_serialized = 0;
-    for (uint16_t chunk_index = 0; chunk_index < total_chunks_u16; ++chunk_index) {
-      const size_t chunk_start = bytes_serialized;
-      const size_t chunk_end = std::min(bytes_serialized + kMaxDataPerChunk, image_data.size());
-      const size_t chunk_size = chunk_end - chunk_start;
-
-      ImageChunkHeader header{
-          image_id, chunk_index, total_chunks_u16, static_cast<uint32_t>(chunk_size), format,
-      };
-
-      std::vector<uint8_t> chunk_payload(sizeof(header) + chunk_size);
-      std::memcpy(chunk_payload.data(), &header, sizeof(header));
-      if (chunk_size > 0) {
-        std::memcpy(chunk_payload.data() + sizeof(header), image_data.data() + chunk_start,
-                    chunk_size);
-      }
-
-      result.push_back(std::move(chunk_payload));
-      bytes_serialized = chunk_end;
-    }
-
-    spdlog::info("Serialized image {} into {} chunks ({} bytes total)", image_id, total_chunks_u16,
-                 image_data.size());
-    return result;
+    return payload;
   }
 
-  bool deserializeImageChunk(const std::vector<uint8_t>& payload, ImageChunkHeader& header_out,
-                             std::vector<uint8_t>& chunk_data_out) {
-    chunk_data_out.clear();
-
-    if (payload.size() < sizeof(ImageChunkHeader)) {
-      spdlog::warn("Image chunk payload too short: {} bytes", payload.size());
+  bool deserializeWarrantyDataPayload(const std::vector<uint8_t>& payload,
+                                      common::WarrantyInfo& warranty) {
+    if (payload.size() < sizeof(WarrantyDataHeader)) {
       return false;
     }
 
-    std::memcpy(&header_out, payload.data(), sizeof(ImageChunkHeader));
+    WarrantyDataHeader header{};
+    std::memcpy(&header, payload.data(), sizeof(header));
 
-    // Validate header
-    if (header_out.chunk_index >= header_out.total_chunks) {
-      spdlog::warn("Invalid chunk index: {} >= {}", header_out.chunk_index,
-                   header_out.total_chunks);
+    const size_t required_size = sizeof(header) + static_cast<size_t>(header.expiry_date_size)
+                                 + static_cast<size_t>(header.provider_size);
+    if (payload.size() != required_size) {
       return false;
     }
 
-    const size_t expected_chunk_size = sizeof(ImageChunkHeader) + header_out.chunk_data_size;
-    if (payload.size() != expected_chunk_size) {
-      spdlog::warn("Chunk payload size mismatch: expected {}, got {}", expected_chunk_size,
-                   payload.size());
-      return false;
-    }
-
-    // Extract chunk data
-    chunk_data_out.resize(header_out.chunk_data_size);
-    if (header_out.chunk_data_size > 0) {
-      std::memcpy(chunk_data_out.data(), payload.data() + sizeof(ImageChunkHeader),
-                  header_out.chunk_data_size);
-    }
-
+    size_t offset = sizeof(header);
+    warranty.isActive = (header.is_active == 1);
+    warranty.expiryDate.assign(reinterpret_cast<const char*>(payload.data() + offset),
+                               header.expiry_date_size);
+    offset += header.expiry_date_size;
+    warranty.provider.assign(reinterpret_cast<const char*>(payload.data() + offset),
+                             header.provider_size);
     return true;
   }
 

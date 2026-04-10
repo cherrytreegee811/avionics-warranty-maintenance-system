@@ -369,8 +369,13 @@ bool Aircraft::transitionToState(network::StateId targetState, TransitionSource 
 }
 
 bool Aircraft::sendDiagnosticData() {
-  if (!verified_ || !connection_) {
-    spdlog::warn("Cannot send diagnostic data before verification/connection");
+  if (!connection_) {
+    spdlog::warn("Cannot send diagnostic data before connection");
+    return false;
+  }
+
+  if (!verified_) {
+    spdlog::warn("Cannot send diagnostic data before verification");
     return false;
   }
 
@@ -396,63 +401,30 @@ bool Aircraft::sendDiagnosticData() {
   return true;
 }
 
-bool Aircraft::sendImageFromFile(const std::string& filepath) {
-  std::ifstream file(filepath, std::ios::binary);
-  if (!file) {
-    spdlog::error("Failed to open image file: {}", filepath);
-    return false;
-  }
-  file.seekg(0, std::ios::end);
-  const std::streampos file_size_pos = file.tellg();
-  const size_t file_size = static_cast<size_t>(file_size_pos);
-  file.seekg(0, std::ios::beg);
-
-  std::vector<uint8_t> image_data(file_size);
-  file.read(reinterpret_cast<char*>(image_data.data()), static_cast<std::streamsize>(file_size));
-
-  if (!file || file.gcount() != static_cast<std::streamsize>(file_size)) {
-    spdlog::error("Failed to read image file: {}: expected {} bytes, got {}", filepath, file_size,
-                  file.gcount());
+bool Aircraft::sendWarrantyData() {
+  if (!canSendDiagnosticStageData()) {
+    spdlog::warn("Cannot send warranty data before landed + MMA DIAGNOSTIC command");
     return false;
   }
 
-  return sendImage(image_data, network::ImageFormat::PNG);
-}
-
-bool Aircraft::sendImage(const std::vector<uint8_t>& image_data, network::ImageFormat format) {
-  if (!verified_ || !connection_) {
-    spdlog::warn("Cannot send image before verification/connection");
+  if (!connection_) {
+    spdlog::warn("Cannot send warranty data before connection");
     return false;
   }
 
-  if (image_data.empty()) {
-    spdlog::warn("Cannot send empty image");
-    return false;
-  }
-
-  // Generate unique image ID
-  const uint32_t image_id = next_image_id_++;
-
-  // Serialize image into chunks
-  const auto chunk_payloads = network::serializeImagePayload(image_id, image_data, format);
-
-  if (chunk_payloads.empty()) {
-    spdlog::error("Failed to serialize image {}", image_id);
-    return false;
-  }
-
-  // Send each chunk as a separate SCHEMATIC_CHUNK packet
-  for (size_t i = 0; i < chunk_payloads.size(); ++i) {
-    const auto& chunk_payload = chunk_payloads[i];
-    const auto packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
-                                                 chunk_payload.data(), chunk_payload.size());
-    connection_->send(packet);
-  }
-
-  spdlog::info("Sent image {} in {} chunks ({} bytes total)", image_id, chunk_payloads.size(),
-               image_data.size());
+  const auto payload = network::serializeWarrantyDataPayload(m_warranty);
+  const auto packet = network::serializePacket(network::PacketType::WARRANTY_DATA, payload.data(),
+                                               payload.size());
+  connection_->send(packet);
+  spdlog::info("Sent warranty data to MMA");
   return true;
 }
+
+bool Aircraft::canSendDiagnosticStageData() const {
+  return verified_ && landed_notification_sent_ && diagnostic_requested_by_mma_;
+}
+
+void Aircraft::markDiagnosticRequestedByMMA() { diagnostic_requested_by_mma_ = true; }
 
 void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
   if (shutting_down_.load()) {
@@ -496,6 +468,9 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
 
       network::StateChangeRequest req{};
       std::memcpy(&req, payload.data(), sizeof(req));
+      if (req.target_state == network::StateId::DIAGNOSTIC) {
+        markDiagnosticRequestedByMMA();
+      }
       if (!transitionToState(req.target_state, TransitionSource::MMA_COMMAND)) {
         spdlog::warn("STATE_CHANGE rejected: invalid target state {}",
                      network::stateIdToString(req.target_state));
@@ -595,6 +570,7 @@ void Aircraft::sendLandedNotification() {
   }
   auto packet = network::serializePacket(network::PacketType::LANDED_NOTIFICATION, nullptr, 0);
   connection_->send(packet);
+  landed_notification_sent_ = true;
 
   // REQ-CLT-054
   spdlog::info("Landed notification sent to MMA");

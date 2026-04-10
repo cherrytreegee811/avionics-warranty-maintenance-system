@@ -71,8 +71,9 @@ namespace aircraft {
     bool transitionToState(network::StateId targetState,
                            TransitionSource source = TransitionSource::AUTOMATIC);
     bool sendDiagnosticData();
-    bool sendImageFromFile(const std::string& filepath);
-    bool sendImage(const std::vector<uint8_t>& image_data, network::ImageFormat format);
+    bool sendWarrantyData();
+    bool canSendDiagnosticStageData() const;
+    void markDiagnosticRequestedByMMA();
 
   private:
     bool hasAnyFaults() const;
@@ -95,8 +96,8 @@ namespace aircraft {
     uint64_t aircraft_id_ = 12345;
     std::atomic<bool> shutting_down_{false};
     bool automatic_transition_in_progress_ = false;
-    std::map<uint32_t, network::ImageBuffer> image_reassembly_buffers_;  // image_id -> ImageBuffer
-    uint32_t next_image_id_ = 1;
+    bool landed_notification_sent_ = false;
+    bool diagnostic_requested_by_mma_ = false;
   };
 
 }  // namespace aircraft

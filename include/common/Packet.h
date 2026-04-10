@@ -1,6 +1,7 @@
 #pragma once
 
 #include <common/Crc32.h>
+#include <common/WarrantyData.h>
 
 #include <cstdint>
 #include <cstring>
@@ -20,8 +21,7 @@ namespace network {
     DIAGNOSTIC_DATA = 5,
     SCHEMATIC_CHUNK = 6,
     STATE_CHANGE_CONFIRMATION = 7,
-    CLEAR_DIAGNOSTIC_CODE = 8,
-    CLEAR_DIAGNOSTIC_CODE_CONFIRMATION = 9
+    WARRANTY_DATA = 8
   };
 
   enum class StateId : uint8_t { STANDBY = 0, DIAGNOSTIC = 1, MAINTENANCE = 2, FAULT = 3 };
@@ -89,12 +89,10 @@ namespace network {
     uint16_t description_size;
   };
 
-  struct ImageChunkHeader {
-    uint32_t image_id;         // Unique identifier for image sequence
-    uint16_t chunk_index;      // 0-based chunk number
-    uint16_t total_chunks;     // Total chunks for this image
-    uint32_t chunk_data_size;  // Bytes of image data in this chunk
-    ImageFormat format;        // Image format (RAW, PNG, JPEG, etc.)
+  struct WarrantyDataHeader {
+    uint8_t is_active;
+    uint16_t expiry_date_size;
+    uint16_t provider_size;
   };
 #pragma pack(pop)
 
@@ -121,15 +119,9 @@ namespace network {
   bool deserializeDiagnosticDataPayload(const std::vector<uint8_t>& payload,
                                         std::vector<DiagnosticFaultCode>& faults);
 
-  // Image chunk serialization (handles multi-chunk images)
-  // Returns vector of serialized chunk payloads (one per packet to send)
-  std::vector<std::vector<uint8_t>> serializeImagePayload(uint32_t image_id,
-                                                          const std::vector<uint8_t>& image_data,
-                                                          ImageFormat format);
-
-  // Extracts chunk metadata from a SCHEMATIC_CHUNK packet payload
-  bool deserializeImageChunk(const std::vector<uint8_t>& payload, ImageChunkHeader& header_out,
-                             std::vector<uint8_t>& chunk_data_out);
+  std::vector<uint8_t> serializeWarrantyDataPayload(const common::WarrantyInfo& warranty);
+  bool deserializeWarrantyDataPayload(const std::vector<uint8_t>& payload,
+                                      common::WarrantyInfo& warranty);
 
   // Deserialization: returns true if valid (magic + CRC), extracts header and payload
   bool deserializePacket(const std::vector<uint8_t>& data, PacketHeader& header,
