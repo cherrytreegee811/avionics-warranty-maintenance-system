@@ -369,8 +369,13 @@ bool Aircraft::transitionToState(network::StateId targetState, TransitionSource 
 }
 
 bool Aircraft::sendDiagnosticData() {
-  if (!verified_ || !connection_) {
-    spdlog::warn("Cannot send diagnostic data before verification/connection");
+  if (!connection_) {
+    spdlog::warn("Cannot send diagnostic data before connection");
+    return false;
+  }
+
+  if (!verified_) {
+    spdlog::warn("Cannot send diagnostic data before verification");
     return false;
   }
 
@@ -396,6 +401,30 @@ bool Aircraft::sendDiagnosticData() {
   return true;
 }
 
+bool Aircraft::sendWarrantyData() {
+  if (!canSendDiagnosticStageData()) {
+    spdlog::warn("Cannot send warranty data before landed + MMA DIAGNOSTIC command");
+    return false;
+  }
+
+  if (!connection_) {
+    spdlog::warn("Cannot send warranty data before connection");
+    return false;
+  }
+
+  const auto payload = network::serializeWarrantyDataPayload(m_warranty);
+  const auto packet = network::serializePacket(network::PacketType::WARRANTY_DATA, payload.data(),
+                                               payload.size());
+  connection_->send(packet);
+  spdlog::info("Sent warranty data to MMA");
+  return true;
+}
+
+bool Aircraft::canSendDiagnosticStageData() const {
+  return verified_ && landed_notification_sent_ && diagnostic_requested_by_mma_;
+}
+
+void Aircraft::markDiagnosticRequestedByMMA() { diagnostic_requested_by_mma_ = true; }
 bool Aircraft::sendImageFromFile(const std::string& filepath) {
   std::ifstream file(filepath, std::ios::binary);
   if (!file) {
@@ -496,6 +525,9 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
 
       network::StateChangeRequest req{};
       std::memcpy(&req, payload.data(), sizeof(req));
+      if (req.target_state == network::StateId::DIAGNOSTIC) {
+        markDiagnosticRequestedByMMA();
+      }
       if (!transitionToState(req.target_state, TransitionSource::MMA_COMMAND)) {
         spdlog::warn("STATE_CHANGE rejected: invalid target state {}",
                      network::stateIdToString(req.target_state));
@@ -595,6 +627,7 @@ void Aircraft::sendLandedNotification() {
   }
   auto packet = network::serializePacket(network::PacketType::LANDED_NOTIFICATION, nullptr, 0);
   connection_->send(packet);
+  landed_notification_sent_ = true;
 
   // REQ-CLT-054
   spdlog::info("Landed notification sent to MMA");

@@ -67,7 +67,9 @@ target_include_directories(MMAUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(MMAUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 add_executable(MMAIntegrationTests source/mma/MMAIntegrationTests.cpp)
-target_link_libraries(MMAIntegrationTests PRIVATE ${DOCTEST_LIB_TARGET} Common MMA TestHelpers)
+target_link_libraries(
+  MMAIntegrationTests PRIVATE ${DOCTEST_LIB_TARGET} Common MMA Aircraft TestHelpers
+)
 target_include_directories(MMAIntegrationTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(MMAIntegrationTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 

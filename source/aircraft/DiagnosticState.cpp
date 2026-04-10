@@ -10,6 +10,9 @@ void DiagnosticState::UpdateState() {}
 
 void DiagnosticState::InitState() {
   m_aircraft.setCurrentState("DIAGNOSTIC");
+  if (m_aircraft.sendWarrantyData() && m_aircraft.sendDiagnosticData()) {
+    m_aircraft.transitionToState(network::StateId::MAINTENANCE);
+  }
   const bool diagnostic_sent = m_aircraft.sendDiagnosticData();
   m_aircraft.sendImageFromFile("res/Boeing737-800_diagram.png");
 
