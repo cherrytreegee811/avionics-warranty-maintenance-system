@@ -70,6 +70,39 @@ TEST_CASE("REQ-NET-013: StateChangeRequest serialization/deserialization") {
   CHECK(parsed.target_state == StateId::DIAGNOSTIC);
 }
 
+TEST_CASE("REQ-NET-013: DiagnosticCodeClearRequest serialization/deserialization") {
+  DiagnosticCodeClearRequest original{101};
+  auto packet = serializePacket(PacketType::CLEAR_DIAGNOSTIC_CODE, original);
+
+  PacketHeader header;
+  std::vector<uint8_t> payload;
+  CHECK(deserializePacket(packet, header, payload));
+  CHECK(header.type == PacketType::CLEAR_DIAGNOSTIC_CODE);
+  CHECK(header.payload_size == sizeof(DiagnosticCodeClearRequest));
+
+  DiagnosticCodeClearRequest parsed{};
+  std::memcpy(&parsed, payload.data(), sizeof(parsed));
+  CHECK(parsed.code == original.code);
+}
+
+TEST_CASE("REQ-NET-013: DiagnosticCodeClearConfirmation serialization/deserialization") {
+  DiagnosticCodeClearConfirmation original{203, DiagnosticCodeClearStatus::SUCCESS,
+                                           StateId::MAINTENANCE};
+  auto packet = serializePacket(PacketType::CLEAR_DIAGNOSTIC_CODE_CONFIRMATION, original);
+
+  PacketHeader header;
+  std::vector<uint8_t> payload;
+  CHECK(deserializePacket(packet, header, payload));
+  CHECK(header.type == PacketType::CLEAR_DIAGNOSTIC_CODE_CONFIRMATION);
+  CHECK(header.payload_size == sizeof(DiagnosticCodeClearConfirmation));
+
+  DiagnosticCodeClearConfirmation parsed{};
+  std::memcpy(&parsed, payload.data(), sizeof(parsed));
+  CHECK(parsed.code == original.code);
+  CHECK(parsed.status == DiagnosticCodeClearStatus::SUCCESS);
+  CHECK(parsed.resulting_state == StateId::MAINTENANCE);
+}
+
 TEST_CASE("REQ-SYS-030/REQ-NET-031: Diagnostic payload roundtrip") {
   std::vector<DiagnosticFaultCode> original{
       {101, 1710000000000LL, DiagnosticFaultSeverity::MINOR, "Engine temperature sensor fault"},

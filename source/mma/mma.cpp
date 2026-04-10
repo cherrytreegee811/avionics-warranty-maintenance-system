@@ -48,6 +48,7 @@ void MMA::stopServer() {
 
   verified_connections_.clear();
   connection_to_id_.clear();
+  aircraft_states_.clear();
   connections_.clear();
 
   io_context_->stop();
@@ -166,6 +167,8 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
       aircraft_id = it->second;
     }
 
+    aircraft_states_[aircraft_id] = confirmation.applied_state;
+
     spdlog::info("State change confirmation received from aircraft {}: state change to {}",
                  aircraft_id, network::stateIdToString(confirmation.applied_state));
 
@@ -184,6 +187,35 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
     }
     return;
   }
+
+  if (header.type == network::PacketType::CLEAR_DIAGNOSTIC_CODE_CONFIRMATION) {
+    if (payload.size() != sizeof(network::DiagnosticCodeClearConfirmation)) {
+      spdlog::warn("Invalid CLEAR_DIAGNOSTIC_CODE_CONFIRMATION payload size: {}", payload.size());
+      return;
+    }
+
+    network::DiagnosticCodeClearConfirmation confirmation{};
+    std::memcpy(&confirmation, payload.data(), sizeof(confirmation));
+
+    uint64_t aircraft_id = 0;
+    if (const auto it = connection_to_id_.find(conn.get()); it != connection_to_id_.end()) {
+      aircraft_id = it->second;
+    }
+
+    aircraft_states_[aircraft_id] = confirmation.resulting_state;
+
+    if (confirmation.status == network::DiagnosticCodeClearStatus::SUCCESS) {
+      spdlog::info("Diagnostic code clear succeeded for aircraft {} (code: {}, state: {})",
+                   aircraft_id, confirmation.code,
+                   network::stateIdToString(confirmation.resulting_state));
+    } else {
+      spdlog::warn("Diagnostic code clear failed for aircraft {} (code: {}, status: {}, state: {})",
+                   aircraft_id, confirmation.code,
+                   network::diagnosticCodeClearStatusToString(confirmation.status),
+                   network::stateIdToString(confirmation.resulting_state));
+    }
+    return;
+  }
 }
 
 void MMA::runMenu() {
@@ -192,6 +224,7 @@ void MMA::runMenu() {
   std::cout << "2. List connected aircraft\n";
   std::cout << "3. Shutdown server\n";
   std::cout << "4. Set aircraft to DIAGNOSTIC\n";
+  std::cout << "5. Clear one diagnostic code (MAINTENANCE or FAULT)\n";
   std::cout << "============================================\n";
   std::cout << "Enter choice: ";
 
@@ -217,7 +250,7 @@ void MMA::runMenu() {
           state_label = "CLOSED";
         }
 
-        std::cout << "  - " << conn->getRemoteAddress() << " [state: " << state_label << "]\n";
+        std::cout << std::format("  - {} [state: {}]\n", conn->getRemoteAddress(), state_label);
       }
     } else if (line == "3") {
       std::cout << "Shutting down...\n";
@@ -233,12 +266,27 @@ void MMA::runMenu() {
       } catch (...) {
         std::cout << "Invalid ID.\n";
       }
+    } else if (line == "5") {
+      std::cout << "Enter aircraft ID: ";
+      std::string idStr;
+      std::getline(std::cin, idStr);
+      std::cout << "Enter diagnostic code to clear: ";
+      std::string codeStr;
+      std::getline(std::cin, codeStr);
+      try {
+        const uint64_t id = std::stoull(idStr);
+        const int32_t code = std::stoi(codeStr);
+        sendDiagnosticCodeClearRequest(id, code);
+      } catch (...) {
+        std::cout << "Invalid input.\n";
+      }
     } else {
-      std::cout << "Invalid choice. Please enter 1, 2, 3, or 4.\n";
+      std::cout << "Invalid choice. Please enter 1, 2, 3, 4, or 5.\n";
     }
     // Show menu again
-    std::cout << "\n1. View warranty status\n2. List connected aircraft\n3. Shutdown\n4. Set "
-                 "aircraft to DIAGNOSTIC\nChoice: ";
+    std::cout
+        << "\n1. View warranty status\n2. List connected aircraft\n3. Shutdown\n4. Set "
+           "aircraft to DIAGNOSTIC\n5. Clear one diagnostic code (MAINTENANCE or FAULT)\nChoice: ";
   }
 }
 
@@ -254,6 +302,38 @@ void MMA::sendDiagnosticStateChange(uint64_t aircraftId) {
   const auto packet = network::serializePacket(network::PacketType::STATE_CHANGE, req);
   it->second->send(packet);
   spdlog::info("Sent DIAGNOSTIC state change command to aircraft {}", aircraftId);
+}
+
+void MMA::sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code) {
+  const auto connection_it = verified_connections_.find(aircraftId);
+  if (connection_it == verified_connections_.end()) {
+    spdlog::warn("Cannot send diagnostic code clear command: aircraft {} is not verified",
+                 aircraftId);
+    return;
+  }
+
+  const auto state_it = aircraft_states_.find(aircraftId);
+  if (state_it == aircraft_states_.end()) {
+    spdlog::warn(
+        "Cannot send diagnostic code clear command to aircraft {}: state is unknown. "
+        "Wait for state confirmation from the aircraft.",
+        aircraftId);
+    return;
+  }
+
+  if (state_it->second != network::StateId::MAINTENANCE
+      && state_it->second != network::StateId::FAULT) {
+    spdlog::warn(
+        "Cannot send diagnostic code clear command to aircraft {}: aircraft is in {} (requires "
+        "MAINTENANCE or FAULT)",
+        aircraftId, network::stateIdToString(state_it->second));
+    return;
+  }
+
+  network::DiagnosticCodeClearRequest request{code};
+  const auto packet = network::serializePacket(network::PacketType::CLEAR_DIAGNOSTIC_CODE, request);
+  connection_it->second->send(packet);
+  spdlog::info("Sent diagnostic code clear command to aircraft {} for code {}", aircraftId, code);
 }
 
 void MMA::printDiagnosticFaults(uint64_t aircraftId,

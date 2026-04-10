@@ -315,6 +315,136 @@ TEST_CASE("REQ-NET-013/US-011: DIAGNOSTIC_DATA severity is logged by MMA") {
   std::remove(testLogFile.c_str());
 }
 
+TEST_CASE(
+    "US-012: MMA can clear one diagnostic code when aircraft is in MAINTENANCE with explicit "
+    "confirmation") {
+  const std::string testLogFile = "test_mma_clear_diagnostic_code_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("test_mma_clear_code_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  MMA server;
+  const uint16_t testPort = 8008;
+  server.startServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  {
+    aircraft::Aircraft client;
+    StateManager stateManager;
+    client.setStateManager(&stateManager);
+    client.syncStateManagerToCurrentState();
+
+    client.connectToMMA("127.0.0.1", testPort);
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile, "Client 12345 verified")
+                 && logContainsLine(testLogFile, "Aircraft 12345 landed");
+        },
+        4000ms));
+
+    server.sendDiagnosticStateChange(12345);
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Sent DIAGNOSTIC state change command to aircraft 12345")
+                 && logContainsLine(testLogFile,
+                                    "Aircraft 12345 transitioned to MAINTENANCE state");
+        },
+        4000ms));
+
+    server.sendDiagnosticCodeClearRequest(12345, 101);
+
+    CHECK(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Sent diagnostic code clear command to aircraft 12345 for "
+                                 "code 101")
+                 && logContainsLine(testLogFile,
+                                    "Diagnostic code clear succeeded for aircraft 12345 \\(code: "
+                                    "101, state: FAULT\\)");
+        },
+        4000ms));
+  }
+
+  server.stopServer();
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
+TEST_CASE("US-012: MMA allows clear request in FAULT state") {
+  const std::string testLogFile = "test_mma_clear_diagnostic_code_blocked_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("test_mma_clear_code_blocked_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  MMA server;
+  const uint16_t testPort = 8009;
+  server.startServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  {
+    aircraft::Aircraft client;
+    StateManager stateManager;
+    client.setStateManager(&stateManager);
+    client.syncStateManagerToCurrentState();
+
+    client.connectToMMA("127.0.0.1", testPort);
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile, "Client 12345 verified")
+                 && logContainsLine(testLogFile, "Aircraft 12345 landed");
+        },
+        4000ms));
+
+    server.sendDiagnosticStateChange(12345);
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile, "Aircraft 12345 transitioned to MAINTENANCE state");
+        },
+        4000ms));
+
+    server.sendDiagnosticCodeClearRequest(12345, 101);
+
+    REQUIRE(waitForCondition(
+        [&]() {
+          return logContainsLine(testLogFile,
+                                 "Diagnostic code clear succeeded for aircraft 12345 \\(code: "
+                                 "101, state: FAULT\\)");
+        },
+        4000ms));
+
+    server.sendDiagnosticCodeClearRequest(12345, 203);
+
+    CHECK(waitForCondition(
+        [&]() {
+          return logContainsLine(
+                     testLogFile,
+                     "Sent diagnostic code clear command to aircraft 12345 for code 203")
+                 && logContainsLine(
+                     testLogFile,
+                     "Diagnostic code clear succeeded for aircraft 12345 \\(code: 203, "
+                     "state: FAULT\\)");
+        },
+        4000ms));
+  }
+
+  server.stopServer();
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
 /* TEST_CASE("Verification timeout handling.") {} */
 
 /* TEST_CASE("Invalid verification response handling.") */
