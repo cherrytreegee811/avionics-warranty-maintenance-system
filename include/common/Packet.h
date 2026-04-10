@@ -175,8 +175,11 @@ namespace network {
         return "PNG";
       case ImageFormat::JPEG:
         return "JPEG";
+      default:
+        return "UNKNOWN";
     }
   }
+
   inline constexpr std::string_view diagnosticCodeClearStatusToString(
       DiagnosticCodeClearStatus status) {
     switch (status) {
@@ -242,4 +245,3 @@ namespace network {
     }
   };
 }  // namespace network
-

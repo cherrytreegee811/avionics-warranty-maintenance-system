@@ -83,8 +83,15 @@ void MMA::initialize() {}
 
 void MMA::startServer(uint16_t port) {
   if (running_) return;
+  io_context_->restart();
   asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
-  acceptor_ = std::make_unique<asio::ip::tcp::acceptor>(*io_context_, endpoint);
+
+  acceptor_ = std::make_unique<asio::ip::tcp::acceptor>(*io_context_);
+  acceptor_->open(endpoint.protocol());
+  acceptor_->set_option(asio::socket_base::reuse_address(true));
+  acceptor_->bind(endpoint);
+  acceptor_->listen();
+
   spdlog::info("MMA server listening on port {}", port);
   running_ = true;
   doAccept();
@@ -115,6 +122,20 @@ void MMA::stopServer() {
   io_context_->stop();
   if (io_thread_.joinable()) io_thread_.join();
   spdlog::info("MMA server stopped");
+}
+
+uint16_t MMA::getListeningPort() const {
+  if (!acceptor_) {
+    return 0;
+  }
+
+  std::error_code ec;
+  const auto endpoint = acceptor_->local_endpoint(ec);
+  if (ec) {
+    return 0;
+  }
+
+  return endpoint.port();
 }
 
 void MMA::doAccept() {

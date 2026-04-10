@@ -26,6 +26,7 @@ public:
   void sendDiagnosticStateChange(uint64_t aircraftId);
   void sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code);
   bool getRunningStatus() const { return running_; }
+  uint16_t getListeningPort() const;
 
 private:
   void doAccept();

@@ -170,8 +170,9 @@ TEST_CASE("US-014: Integration - Successful verification flow") {
   // client must be referenced directly from namespace.
   aircraft::Aircraft client;
 
-  auto port = 8000;  // server port. Maps to uint16_t
-  server.startServer(port);
+  server.startServer(0);
+  const auto port = server.getListeningPort();
+  REQUIRE(port != 0);
 
   // Now we simulate a connection from the client.
   std::string host = "127.0.0.1";

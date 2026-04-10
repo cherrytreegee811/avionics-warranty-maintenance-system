@@ -6,8 +6,8 @@
 #include <aircraft/StateManager.h>
 #include <common/Packet.h>
 #include <common/WarrantyData.h>
-
 #include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <asio.hpp>
 #include <chrono>
