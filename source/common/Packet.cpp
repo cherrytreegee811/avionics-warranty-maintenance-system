@@ -204,4 +204,100 @@ namespace network {
     return true;
   }
 
+  std::vector<std::vector<uint8_t>> serializeImagePayload(uint32_t image_id,
+                                                          const std::vector<uint8_t>& image_data,
+                                                          ImageFormat format) {
+    std::vector<std::vector<uint8_t>> result;
+
+    if (image_data.empty()) {
+      spdlog::warn("Cannot serialize empty image");
+      return result;
+    }
+
+    // Calculate chunk count and validate
+    const size_t kMaxDataPerChunk = kMaxImageChunkPayloadSize;
+    const size_t total_chunks = (image_data.size() + kMaxDataPerChunk - 1) / kMaxDataPerChunk;
+
+    if (total_chunks > std::numeric_limits<uint16_t>::max()) {
+      spdlog::error("Image too large: requires {} chunks, max is {}", total_chunks,
+                    std::numeric_limits<uint16_t>::max());
+      return result;
+    }
+
+    const auto total_chunks_u16 = static_cast<uint16_t>(total_chunks);
+    const uint32_t image_crc32 = Crc32::calculate(image_data.data(), image_data.size());
+
+    // Serialize each chunk
+    size_t bytes_serialized = 0;
+    for (uint16_t chunk_index = 0; chunk_index < total_chunks_u16; ++chunk_index) {
+      const size_t chunk_start = bytes_serialized;
+      const size_t chunk_end = std::min(bytes_serialized + kMaxDataPerChunk, image_data.size());
+      const size_t chunk_size = chunk_end - chunk_start;
+      const uint32_t chunk_crc32 = Crc32::calculate(image_data.data() + chunk_start, chunk_size);
+
+      ImageChunkHeader header{
+          image_id, chunk_index, total_chunks_u16, static_cast<uint32_t>(chunk_size),
+          format,   chunk_crc32, image_crc32,
+      };
+
+      std::vector<uint8_t> chunk_payload(sizeof(header) + chunk_size);
+      std::memcpy(chunk_payload.data(), &header, sizeof(header));
+      if (chunk_size > 0) {
+        std::memcpy(chunk_payload.data() + sizeof(header), image_data.data() + chunk_start,
+                    chunk_size);
+      }
+
+      result.push_back(std::move(chunk_payload));
+      bytes_serialized = chunk_end;
+    }
+
+    spdlog::info("Serialized image {} into {} chunks ({} bytes total)", image_id, total_chunks_u16,
+                 image_data.size());
+    return result;
+  }
+
+  bool deserializeImageChunk(const std::vector<uint8_t>& payload, ImageChunkHeader& header_out,
+                             std::vector<uint8_t>& chunk_data_out) {
+    chunk_data_out.clear();
+
+    if (payload.size() < sizeof(ImageChunkHeader)) {
+      spdlog::warn("Image chunk payload too short: {} bytes", payload.size());
+      return false;
+    }
+
+    std::memcpy(&header_out, payload.data(), sizeof(ImageChunkHeader));
+
+    // Validate header
+    if (header_out.chunk_index >= header_out.total_chunks) {
+      spdlog::warn("Invalid chunk index: {} >= {}", header_out.chunk_index,
+                   header_out.total_chunks);
+      return false;
+    }
+
+    const size_t expected_chunk_size = sizeof(ImageChunkHeader) + header_out.chunk_data_size;
+    if (payload.size() != expected_chunk_size) {
+      spdlog::warn("Chunk payload size mismatch: expected {}, got {}", expected_chunk_size,
+                   payload.size());
+      return false;
+    }
+
+    // Extract chunk data
+    chunk_data_out.resize(header_out.chunk_data_size);
+    if (header_out.chunk_data_size > 0) {
+      std::memcpy(chunk_data_out.data(), payload.data() + sizeof(ImageChunkHeader),
+                  header_out.chunk_data_size);
+    }
+
+    const uint32_t computed_chunk_crc
+        = Crc32::calculate(chunk_data_out.data(), chunk_data_out.size());
+    if (computed_chunk_crc != header_out.chunk_crc32) {
+      spdlog::warn("Chunk CRC mismatch for image {} chunk {}: expected 0x{:08X}, computed 0x{:08X}",
+                   header_out.image_id, header_out.chunk_index, header_out.chunk_crc32,
+                   computed_chunk_crc);
+      return false;
+    }
+
+    return true;
+  }
+
 }  // namespace network
