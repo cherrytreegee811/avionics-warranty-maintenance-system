@@ -6,6 +6,7 @@
 #include <asio.hpp>
 #include <atomic>
 #include <cstdint>
+#include <map>
 #include <memory>
 #include <random>
 #include <thread>
@@ -23,7 +24,9 @@ public:
   void stopServer();
   void runMenu();
   void sendDiagnosticStateChange(uint64_t aircraftId);
+  void sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code);
   bool getRunningStatus() const { return running_; }
+  uint16_t getListeningPort() const;
 
 private:
   void doAccept();
@@ -41,9 +44,12 @@ private:
   std::unordered_map<uint64_t, bool> landed_aircraft_;
   std::unordered_map<uint64_t, bool> diagnostic_confirmed_aircraft_;
   std::unordered_map<uint64_t, bool> session_warranty_available_;
+  std::unordered_map<uint64_t, network::StateId> aircraft_states_;
   uint32_t expected_challenge_ = 0;
   bool running_ = false;
   std::thread io_thread_;
   std::unique_ptr<WarrantyManager> warrantyManager_;
   std::atomic<bool> menuRunning_{true};
+  // Per aircraft, per image: aircraft_id -> (image_id -> ImageBuffer)
+  std::unordered_map<uint64_t, std::map<uint32_t, network::ImageBuffer>> image_reassembly_buffers_;
 };
