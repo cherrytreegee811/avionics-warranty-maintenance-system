@@ -277,20 +277,32 @@ TEST_CASE("US-014: Integration - Command rejection when connection is UNVERIFIED
   socket.read_some(asio::buffer(dummy), ec);
   // We don't care what's in 'dummy', we just want it out of the way.
 
+  socket.non_blocking(true, ec);
+  REQUIRE(!ec);
+
   // 2. SEND THE ILLEGAL COMMAND
   auto packet = network::serializePacket(network::PacketType::LANDED_NOTIFICATION, nullptr, 0);
   asio::write(socket, asio::buffer(packet));
 
   // 3. WAIT AND CHECK FOR CLOSURE
-  // Instead of one read, we wait specifically for the EOF.
+  // Poll in non-blocking mode so the test cannot hang indefinitely.
   bool closed = false;
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < 50; ++i) {
     char buf[1];
     socket.read_some(asio::buffer(buf), ec);
     if (ec == asio::error::eof) {
       closed = true;
       break;
     }
+    if (ec == asio::error::would_block || ec == asio::error::try_again) {
+      std::this_thread::sleep_for(100ms);
+      continue;
+    }
+
+    if (ec) {
+      break;
+    }
+
     std::this_thread::sleep_for(100ms);
   }
 
@@ -593,15 +605,27 @@ TEST_CASE("Invalid verification response handling.") {
   asio::write(socket, asio::buffer(invalid_packet), ec);
   REQUIRE(!ec);
 
+  socket.non_blocking(true, ec);
+  REQUIRE(!ec);
+
   // Server should close the socket after failed verification.
   bool closed = false;
-  for (int i = 0; i < 10; ++i) {
+  for (int i = 0; i < 50; ++i) {
     char probe[1];
     socket.read_some(asio::buffer(probe), ec);
     if (ec == asio::error::eof || ec == asio::error::connection_reset) {
       closed = true;
       break;
     }
+    if (ec == asio::error::would_block || ec == asio::error::try_again) {
+      std::this_thread::sleep_for(100ms);
+      continue;
+    }
+
+    if (ec) {
+      break;
+    }
+
     std::this_thread::sleep_for(100ms);
   }
 

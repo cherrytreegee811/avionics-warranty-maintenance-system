@@ -9,6 +9,7 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
+#include <future>
 #include <random>
 #include <sstream>
 #include <thread>
@@ -155,23 +156,34 @@ void MMA::stopServer() {
     acceptor_->close(ignored);
   }
 
-  for (auto& conn : connections_) {
-    if (conn) {
-      conn->close();
-    }
-  }
-
-  verified_connections_.clear();
-  connection_to_id_.clear();
-  aircraft_states_.clear();
-  connections_.clear();
-  image_reassembly_buffers_.clear();
-  image_reassembly_retry_state_.clear();
-
   if (chunk_timeout_timer_) {
     chunk_timeout_timer_->cancel();
-    chunk_timeout_timer_.reset();
   }
+
+  auto cleanup_done = std::make_shared<std::promise<void>>();
+  auto cleanup_future = cleanup_done->get_future();
+  asio::post(*io_context_, [this, cleanup_done]() mutable {
+    for (auto& conn : connections_) {
+      if (conn) {
+        conn->close();
+      }
+    }
+
+    verified_connections_.clear();
+    connection_to_id_.clear();
+    aircraft_states_.clear();
+    connections_.clear();
+    image_reassembly_buffers_.clear();
+    image_reassembly_retry_state_.clear();
+
+    if (chunk_timeout_timer_) {
+      chunk_timeout_timer_.reset();
+    }
+
+    cleanup_done->set_value();
+  });
+
+  cleanup_future.wait();
 
   io_context_->stop();
   if (io_thread_.joinable()) io_thread_.join();
