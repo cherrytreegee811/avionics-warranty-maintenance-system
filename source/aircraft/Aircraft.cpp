@@ -7,10 +7,13 @@
 #include <common/Packet.h>
 #include <common/WarrantyData.h>
 #include <spdlog/spdlog.h>
+
 #include <algorithm>
 #include <asio.hpp>
 #include <chrono>
+#include <fstream>
 #include <iomanip>
+#include <iostream>
 #include <memory>
 #include <optional>
 #include <sstream>
@@ -393,6 +396,64 @@ bool Aircraft::sendDiagnosticData() {
   return true;
 }
 
+bool Aircraft::sendImageFromFile(const std::string& filepath) {
+  std::ifstream file(filepath, std::ios::binary);
+  if (!file) {
+    spdlog::error("Failed to open image file: {}", filepath);
+    return false;
+  }
+  file.seekg(0, std::ios::end);
+  const std::streampos file_size_pos = file.tellg();
+  const size_t file_size = static_cast<size_t>(file_size_pos);
+  file.seekg(0, std::ios::beg);
+
+  std::vector<uint8_t> image_data(file_size);
+  file.read(reinterpret_cast<char*>(image_data.data()), static_cast<std::streamsize>(file_size));
+
+  if (!file || file.gcount() != static_cast<std::streamsize>(file_size)) {
+    spdlog::error("Failed to read image file: {}: expected {} bytes, got {}", filepath, file_size,
+                  file.gcount());
+    return false;
+  }
+
+  return sendImage(image_data, network::ImageFormat::PNG);
+}
+
+bool Aircraft::sendImage(const std::vector<uint8_t>& image_data, network::ImageFormat format) {
+  if (!verified_ || !connection_) {
+    spdlog::warn("Cannot send image before verification/connection");
+    return false;
+  }
+
+  if (image_data.empty()) {
+    spdlog::warn("Cannot send empty image");
+    return false;
+  }
+
+  // Generate unique image ID
+  const uint32_t image_id = next_image_id_++;
+
+  // Serialize image into chunks
+  const auto chunk_payloads = network::serializeImagePayload(image_id, image_data, format);
+
+  if (chunk_payloads.empty()) {
+    spdlog::error("Failed to serialize image {}", image_id);
+    return false;
+  }
+
+  // Send each chunk as a separate SCHEMATIC_CHUNK packet
+  for (size_t i = 0; i < chunk_payloads.size(); ++i) {
+    const auto& chunk_payload = chunk_payloads[i];
+    const auto packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
+                                                 chunk_payload.data(), chunk_payload.size());
+    connection_->send(packet);
+  }
+
+  spdlog::info("Sent image {} in {} chunks ({} bytes total)", image_id, chunk_payloads.size(),
+               image_data.size());
+  return true;
+}
+
 void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
   if (shutting_down_.load()) {
     return;
@@ -439,6 +500,40 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
         spdlog::warn("STATE_CHANGE rejected: invalid target state {}",
                      network::stateIdToString(req.target_state));
         return;
+      }
+    } else if (header.type == network::PacketType::SCHEMATIC_CHUNK) {
+      // Handle image chunk reception
+      network::ImageChunkHeader chunk_header;
+      std::vector<uint8_t> chunk_data;
+      if (!network::deserializeImageChunk(payload, chunk_header, chunk_data)) {
+        spdlog::warn("Invalid image chunk format");
+        return;
+      }
+
+      spdlog::info("Received image chunk {}/{} (image_id: {}, data: {} bytes)",
+                   chunk_header.chunk_index + 1, chunk_header.total_chunks, chunk_header.image_id,
+                   chunk_data.size());
+
+      // Get or create reassembly buffer for this image_id
+      auto it = image_reassembly_buffers_.find(chunk_header.image_id);
+      if (it == image_reassembly_buffers_.end()) {
+        // Create new reassembly buffer
+        image_reassembly_buffers_.emplace(
+            chunk_header.image_id, network::ImageBuffer(chunk_header.image_id, chunk_header.format,
+                                                        chunk_header.total_chunks));
+        it = image_reassembly_buffers_.find(chunk_header.image_id);
+      }
+
+      // Add chunk to buffer
+      if (it->second.addChunk(chunk_header.chunk_index, chunk_data)) {
+        // Image is now complete
+        const auto complete_image = it->second.reassemble();
+        spdlog::info("Image {} received and reassembled ({} bytes total, format: {})",
+                     chunk_header.image_id, complete_image.size(),
+                     network::imageFormatToString(chunk_header.format));
+        // TODO: Process or store the complete image here
+        // For now, just log and remove from buffer
+        image_reassembly_buffers_.erase(it);
       }
       return;
     }
