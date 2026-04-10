@@ -155,3 +155,216 @@ TEST_CASE("REQ-CLT-005: LANDED packet serialization/deserialization") {
   CHECK(header.payload_size == 0);
   CHECK(payload.empty());
 }
+
+// ============================================================================
+// Image packet tests - Single chunk, multi-chunk, reassembly
+// ============================================================================
+
+TEST_CASE("Image packet: Single chunk serialization/deserialization") {
+  // Create a small test image (1KB)
+  std::vector<uint8_t> image_data(1024);
+  for (size_t i = 0; i < image_data.size(); ++i) {
+    image_data[i] = static_cast<uint8_t>(i % 256);
+  }
+
+  // Serialize
+  const auto chunks = serializeImagePayload(123, image_data, ImageFormat::PNG);
+  CHECK(chunks.size() == 1);  // Single chunk
+
+  // Deserialize
+  ImageChunkHeader header;
+  std::vector<uint8_t> chunk_data;
+  CHECK(deserializeImageChunk(chunks[0], header, chunk_data));
+
+  CHECK(header.image_id == 123);
+  CHECK(header.chunk_index == 0);
+  CHECK(header.total_chunks == 1);
+  CHECK(header.format == ImageFormat::PNG);
+  CHECK(chunk_data == image_data);
+}
+
+TEST_CASE("Image packet: Multi-chunk image serialization") {
+  // Create a large test image (2.5 MB - spans 3+ chunks)
+  const size_t image_size = 2621440;  // 2.5 MB
+  std::vector<uint8_t> large_image(image_size);
+  for (size_t i = 0; i < large_image.size(); ++i) {
+    large_image[i] = static_cast<uint8_t>(i % 256);
+  }
+
+  // Serialize
+  const auto chunks = serializeImagePayload(456, large_image, ImageFormat::JPEG);
+  CHECK(chunks.size() >= 3);  // Multiple chunks
+
+  // Deserialize each chunk and verify structure
+  for (size_t i = 0; i < chunks.size(); ++i) {
+    ImageChunkHeader header;
+    std::vector<uint8_t> chunk_data;
+    CHECK(deserializeImageChunk(chunks[i], header, chunk_data));
+
+    CHECK(header.image_id == 456);
+    CHECK(header.chunk_index == static_cast<uint16_t>(i));
+    CHECK(header.total_chunks == static_cast<uint16_t>(chunks.size()));
+    CHECK(header.format == ImageFormat::JPEG);
+    CHECK(header.chunk_data_size == chunk_data.size());
+  }
+}
+
+TEST_CASE("Image packet: ImageBuffer add single chunk") {
+  ImageBuffer buffer(789, ImageFormat::RAW, 1);
+  std::vector<uint8_t> data{0xAA, 0xBB, 0xCC};
+
+  CHECK(!buffer.isComplete());
+  const bool complete = buffer.addChunk(0, data);
+  CHECK(complete);  // Single chunk image complete after adding one chunk
+  CHECK(buffer.isComplete());
+
+  const auto reassembled = buffer.reassemble();
+  CHECK(reassembled == data);
+}
+
+TEST_CASE("Image packet: ImageBuffer multi-chunk reassembly") {
+  const size_t total_chunks = 5;
+  ImageBuffer buffer(111, ImageFormat::PNG, total_chunks);
+
+  // Create test data chunks
+  std::vector<std::vector<uint8_t>> chunks(total_chunks);
+  for (size_t i = 0; i < total_chunks; ++i) {
+    chunks[i].resize(1000 + i * 100);
+    for (size_t j = 0; j < chunks[i].size(); ++j) {
+      chunks[i][j] = static_cast<uint8_t>((i * 256 + j) % 256);
+    }
+  }
+
+  // Add chunks out of order (to test robustness)
+  CHECK(!buffer.addChunk(2, chunks[2]));
+  CHECK(!buffer.addChunk(0, chunks[0]));
+  CHECK(!buffer.addChunk(4, chunks[4]));
+  CHECK(!buffer.addChunk(1, chunks[1]));
+  const bool complete = buffer.addChunk(3, chunks[3]);
+  CHECK(complete);  // All chunks added, should be complete
+
+  // Verify reassembly
+  const auto reassembled = buffer.reassemble();
+  size_t offset = 0;
+  for (size_t i = 0; i < total_chunks; ++i) {
+    for (size_t j = 0; j < chunks[i].size(); ++j) {
+      CHECK(reassembled[offset + j] == chunks[i][j]);
+    }
+    offset += chunks[i].size();
+  }
+}
+
+TEST_CASE("Image packet: ImageBuffer duplicate chunk handling") {
+  ImageBuffer buffer(222, ImageFormat::PNG, 3);
+  std::vector<uint8_t> chunk_data{0x01, 0x02, 0x03};
+
+  // Add chunk once
+  CHECK(!buffer.addChunk(0, chunk_data));
+  CHECK(buffer.received[0]);
+
+  // Try to add same chunk again (should just update isComplete check)
+  const auto chunk_data2 = std::vector<uint8_t>{0xFF, 0xFF, 0xFF};  // Different data
+  CHECK(!buffer.addChunk(0, chunk_data2));  // Duplicate chunk index, returns !isComplete()
+
+  // Original data should still be there (we don't overwrite)
+  CHECK(buffer.chunks[0] == chunk_data);
+
+  // Now add remaining chunks
+  buffer.addChunk(1, chunk_data);
+  const bool complete = buffer.addChunk(2, chunk_data);
+  CHECK(complete);
+}
+
+TEST_CASE("Image packet: ImageBuffer rejects invalid chunk index") {
+  ImageBuffer buffer(333, ImageFormat::JPEG, 3);
+  std::vector<uint8_t> data{0xAA, 0xBB};
+
+  CHECK(!buffer.addChunk(0, data));   // Valid index 0
+  CHECK(!buffer.addChunk(3, data));   // Invalid: index >= total_chunks, returns false
+  CHECK(!buffer.addChunk(10, data));  // Invalid: far out of range
+}
+
+TEST_CASE("Image packet: Multi-chunk full round trip") {
+  // Create test image
+  const size_t test_size = 5 * 1024 * 1024;  // 5 MB
+  std::vector<uint8_t> original_image(test_size);
+  for (size_t i = 0; i < original_image.size(); ++i) {
+    original_image[i] = static_cast<uint8_t>(i % 256);
+  }
+
+  // Serialize
+  const auto chunks = serializeImagePayload(999, original_image, ImageFormat::JPEG);
+  CHECK(!chunks.empty());
+
+  // Reassemble using ImageBuffer
+  ImageBuffer buffer(999, ImageFormat::JPEG, chunks.size());
+  for (size_t i = 0; i < chunks.size(); ++i) {
+    ImageChunkHeader header;
+    std::vector<uint8_t> chunk_data;
+    CHECK(deserializeImageChunk(chunks[i], header, chunk_data));
+
+    const bool complete = buffer.addChunk(i, chunk_data);
+    if (i < chunks.size() - 1) {
+      CHECK(!complete);
+    } else {
+      CHECK(complete);
+    }
+  }
+
+  // Verify reassembled data matches original
+  const auto reassembled = buffer.reassemble();
+  CHECK(reassembled == original_image);
+}
+
+TEST_CASE("Image packet: Boundary - exactly 1MB chunk size") {
+  // Create image that's exactly one chunk
+  const std::vector<uint8_t> image(kMaxImageChunkPayloadSize, 0xAA);
+
+  const auto chunks = serializeImagePayload(444, image, ImageFormat::RAW);
+  CHECK(chunks.size() == 1);
+
+  ImageChunkHeader header;
+  std::vector<uint8_t> chunk_data;
+  CHECK(deserializeImageChunk(chunks[0], header, chunk_data));
+  CHECK(chunk_data.size() == kMaxImageChunkPayloadSize);
+}
+
+TEST_CASE("Image packet: Boundary - one byte over 1MB") {
+  // Create image just over one chunk
+  const size_t oversized = kMaxImageChunkPayloadSize + 1;
+  const std::vector<uint8_t> image(oversized, 0xBB);
+
+  const auto chunks = serializeImagePayload(555, image, ImageFormat::PNG);
+  CHECK(chunks.size() == 2);
+
+  // Verify first chunk is full, second has one byte
+  ImageChunkHeader header1;
+  std::vector<uint8_t> chunk_data1;
+  CHECK(deserializeImageChunk(chunks[0], header1, chunk_data1));
+  CHECK(chunk_data1.size() == kMaxImageChunkPayloadSize);
+
+  ImageChunkHeader header2;
+  std::vector<uint8_t> chunk_data2;
+  CHECK(deserializeImageChunk(chunks[1], header2, chunk_data2));
+  CHECK(chunk_data2.size() == 1);
+}
+
+TEST_CASE("Image packet: Empty image serialization fails gracefully") {
+  const std::vector<uint8_t> empty_image;
+  const auto chunks = serializeImagePayload(666, empty_image, ImageFormat::PNG);
+  CHECK(chunks.empty());
+}
+
+TEST_CASE("Image packet: Malformed chunk deserialization fails") {
+  // Payload too short for header
+  std::vector<uint8_t> malformed(10);
+  ImageChunkHeader header;
+  std::vector<uint8_t> chunk_data;
+  CHECK(!deserializeImageChunk(malformed, header, chunk_data));
+
+  // Payload with wrong size
+  ImageChunkHeader hdr{100, 0, 1, 500, ImageFormat::PNG};
+  std::vector<uint8_t> invalid_payload(sizeof(hdr) + 100);  // Says 500 bytes but has 100
+  std::memcpy(invalid_payload.data(), &hdr, sizeof(hdr));
+  CHECK(!deserializeImageChunk(invalid_payload, header, chunk_data));
+}
