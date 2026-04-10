@@ -11,11 +11,9 @@ void DiagnosticState::UpdateState() {}
 void DiagnosticState::InitState() {
   m_aircraft.setCurrentState("DIAGNOSTIC");
   const bool diagnostic_sent = m_aircraft.sendDiagnosticData();
-  const bool image_sent = m_aircraft.sendImageFromFile(
-      "/home/technerd/Documents/Development/avionics-warranty-maintenance-system/res/"
-      "Boeing737-800_diagram.png");
+  m_aircraft.sendImageFromFile("res/Boeing737-800_diagram.png");
 
-  if (diagnostic_sent && image_sent) {
+  if (diagnostic_sent) {
     // After diagnostics are reported, move into maintenance so the server can
     // clear codes or escalate to FAULT if required by the current fault set.
     m_aircraft.transitionToState(network::StateId::MAINTENANCE,

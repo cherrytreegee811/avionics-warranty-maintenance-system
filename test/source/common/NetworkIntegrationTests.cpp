@@ -348,6 +348,7 @@ TEST_CASE(
         4000ms));
 
     server.sendDiagnosticStateChange(12345);
+    spdlog::default_logger()->flush();
 
     REQUIRE(waitForCondition(
         [&]() {
@@ -408,6 +409,7 @@ TEST_CASE("US-012: MMA allows clear request in FAULT state") {
         4000ms));
 
     server.sendDiagnosticStateChange(12345);
+    spdlog::default_logger()->flush();
 
     REQUIRE(waitForCondition(
         [&]() {

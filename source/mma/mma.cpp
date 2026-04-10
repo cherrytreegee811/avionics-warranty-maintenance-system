@@ -253,6 +253,7 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
 
     spdlog::info("State change confirmation received from aircraft {}: state change to {}",
                  aircraft_id, network::stateIdToString(confirmation.applied_state));
+    spdlog::default_logger()->flush();
 
     switch (confirmation.applied_state) {
       case network::StateId::DIAGNOSTIC:
@@ -438,6 +439,7 @@ void MMA::sendDiagnosticStateChange(uint64_t aircraftId) {
   const auto packet = network::serializePacket(network::PacketType::STATE_CHANGE, req);
   it->second->send(packet);
   spdlog::info("Sent DIAGNOSTIC state change command to aircraft {}", aircraftId);
+  spdlog::default_logger()->flush();
 }
 
 void MMA::sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code) {
