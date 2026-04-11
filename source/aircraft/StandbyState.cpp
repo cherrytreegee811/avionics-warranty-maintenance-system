@@ -1,3 +1,8 @@
+/**
+ * @file StandbyState.cpp
+ * @brief Implements standby mode state behavior.
+ */
+
 #include <aircraft/Aircraft.h>
 #include <aircraft/DiagnosticState.h>
 #include <aircraft/StandbyState.h>

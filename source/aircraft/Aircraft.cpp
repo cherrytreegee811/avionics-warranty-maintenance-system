@@ -1,3 +1,8 @@
+/**
+ * @file Aircraft.cpp
+ * @brief Implements the aircraft domain model and MMA client workflows.
+ */
+
 #include <aircraft/Aircraft.h>
 #include <aircraft/DiagnosticState.h>
 #include <aircraft/FaultState.h>

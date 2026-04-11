@@ -1,3 +1,8 @@
+/**
+ * @file mma.cpp
+ * @brief Implements the MMA server and command handling flows.
+ */
+
 #include <common/Packet.h>
 #include <mma/WarrantyManager.h>
 #include <mma/mma.h>

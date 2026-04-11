@@ -1,4 +1,8 @@
 #pragma once
+/**
+ * @file Packet.h
+ * @brief Defines network packet schema, payload records, and serialization helpers.
+ */
 
 #include <common/Crc32.h>
 #include <common/WarrantyData.h>
@@ -10,9 +14,10 @@
 
 namespace network {
 
-  // Magic number for packet validation (REQ-SYS-010)
+  /** @brief Magic constant used to validate packet framing. */
   constexpr uint32_t PACKET_MAGIC = 0xABCD1234;
 
+  /** @brief Supported message types for client-server protocol packets. */
   enum class PacketType : uint8_t {
     VERIFICATION_REQUEST = 1,
     VERIFICATION_RESPONSE = 2,
@@ -27,18 +32,22 @@ namespace network {
     WARRANTY_DATA = 11
   };
 
+  /** @brief Operational aircraft state identifiers used in state messages. */
   enum class StateId : uint8_t { STANDBY = 0, DIAGNOSTIC = 1, MAINTENANCE = 2, FAULT = 3 };
 
+  /** @brief Severity levels for diagnostic fault records. */
   enum class DiagnosticFaultSeverity : uint8_t {
     MINOR = 0,
     MAJOR = 1,
   };
 
+  /** @brief Image encoding used for chunked schematic transfer. */
   enum class ImageFormat : uint8_t {
     RAW = 0,   // Uncompressed pixel data
     PNG = 1,   // PNG compressed image
     JPEG = 2,  // JPEG compressed image
   };
+  /** @brief Result of a diagnostic code clear request. */
   enum class DiagnosticCodeClearStatus : uint8_t {
     SUCCESS = 0,
     REJECTED_NOT_IN_CLEARABLE_STATE = 1,
@@ -47,6 +56,7 @@ namespace network {
   };
 
 #pragma pack(push, 1)
+  /** @brief Fixed packet framing header prepended to all payloads. */
   struct PacketHeader {
     uint32_t magic;
     PacketType type;
@@ -55,41 +65,47 @@ namespace network {
     uint32_t checksum;  // CRC32 of header + payload (excluding this field)
   };
 
-  // Verification request (server -> client)
+  /** @brief Challenge packet sent by MMA to aircraft. */
   struct VerificationRequest {
     uint32_t challenge;
     uint64_t timestamp;
   };
 
-  // Verification response (client -> server)
+  /** @brief Challenge response sent by aircraft to MMA. */
   struct VerificationResponse {
     uint32_t challenge_response;
     uint64_t client_id;
   };
 
+  /** @brief Request payload for a target state transition. */
   struct StateChangeRequest {
     StateId target_state;
   };
 
+  /** @brief Confirmation payload for applied state transitions. */
   struct StateChangeConfirmation {
     StateId applied_state;
   };
 
+  /** @brief Request payload for clearing a specific diagnostic code. */
   struct DiagnosticCodeClearRequest {
     int32_t code;
   };
 
+  /** @brief Confirmation payload for a diagnostic code clear request. */
   struct DiagnosticCodeClearConfirmation {
     int32_t code;
     DiagnosticCodeClearStatus status;
     StateId resulting_state;
   };
 
+  /** @brief Request payload for re-sending a missing image chunk. */
   struct SchematicChunkRetryRequest {
     uint32_t image_id;
     uint16_t chunk_index;
   };
 
+  /** @brief Header used for one fault record inside diagnostic payloads. */
   struct DiagnosticFaultCodeHeader {
     int32_t code;
     int64_t timestamp_epoch_ms;
@@ -97,6 +113,7 @@ namespace network {
     uint16_t description_size;
   };
 
+  /** @brief Header prepended to each image chunk payload. */
   struct ImageChunkHeader {
     uint32_t image_id;         // Unique identifier for image sequence
     uint16_t chunk_index;      // 0-based chunk number
@@ -108,6 +125,7 @@ namespace network {
   };
 #pragma pack(pop)
 
+  /** @brief In-memory diagnostic fault record with string description. */
   struct DiagnosticFaultCode {
     int32_t code;
     int64_t timestamp_epoch_ms;
@@ -115,45 +133,61 @@ namespace network {
     std::string description;
   };
 
-  // Image transfer constants
+  /** @brief Maximum per-packet image payload size after chunk header bytes. */
   constexpr size_t kMaxImageChunkPayloadSize
       = 1024 * 1024 - sizeof(ImageChunkHeader);  // ~1 MB minus header
+  /** @brief Upper bound for rolling image identifier counter. */
   constexpr uint32_t kMaxImageId = 0xFFFFFFFFU;
 
-  // Serialization helpers
+  /**
+   * @brief Serializes a packet from raw payload bytes.
+   * @param type Packet type discriminator.
+   * @param payload Pointer to payload bytes.
+   * @param payload_size Number of payload bytes.
+   * @return Serialized packet bytes including header.
+   */
   std::vector<uint8_t> serializePacket(PacketType type, const void* payload, size_t payload_size);
+  /**
+   * @brief Convenience wrapper that serializes a POD payload object.
+   */
   template <typename T> std::vector<uint8_t> serializePacket(PacketType type, const T& payload) {
     return serializePacket(type, &payload, sizeof(T));
   }
 
+  /** @brief Serializes fault records into a diagnostic payload buffer. */
   std::vector<uint8_t> serializeDiagnosticDataPayload(
       const std::vector<DiagnosticFaultCode>& faults);
+  /** @brief Parses a diagnostic payload buffer into fault records. */
   bool deserializeDiagnosticDataPayload(const std::vector<uint8_t>& payload,
                                         std::vector<DiagnosticFaultCode>& faults);
 
+  /** @brief Serializes warranty data into payload bytes. */
   std::vector<uint8_t> serializeWarrantyDataPayload(const common::WarrantyInfo& warranty);
+  /** @brief Parses payload bytes into a warranty structure. */
   bool deserializeWarrantyDataPayload(const std::vector<uint8_t>& payload,
                                       common::WarrantyInfo& warranty);
 
-  // Image chunk serialization (handles multi-chunk images)
-  // Returns vector of serialized chunk payloads (one per packet to send)
+  /**
+   * @brief Splits an image into serialized chunk payloads.
+   * @return One serialized payload per chunk.
+   */
   std::vector<std::vector<uint8_t>> serializeImagePayload(uint32_t image_id,
                                                           const std::vector<uint8_t>& image_data,
                                                           ImageFormat format);
 
-  // Extracts chunk metadata from a SCHEMATIC_CHUNK packet payload
+  /** @brief Extracts image chunk header and data from a chunk payload. */
   bool deserializeImageChunk(const std::vector<uint8_t>& payload, ImageChunkHeader& header_out,
                              std::vector<uint8_t>& chunk_data_out);
 
-  // Deserialization: returns true if valid (magic + CRC), extracts header and payload
+  /** @brief Validates and deserializes packet bytes into header and payload. */
   bool deserializePacket(const std::vector<uint8_t>& data, PacketHeader& header,
                          std::vector<uint8_t>& payload);
 
-  // For testing
+  /** @brief Computes packet checksum for test verification and diagnostics. */
   uint32_t computePacketChecksum(const PacketHeader& header, const void* payload,
                                  size_t payload_size);
 
-  // For logging: converts StateId to string
+  /** @brief Converts a state identifier to a human-readable string. */
   inline constexpr std::string_view stateIdToString(StateId state) {
     switch (state) {
       case StateId::STANDBY:
@@ -169,6 +203,7 @@ namespace network {
     }
   }
 
+  /** @brief Converts diagnostic fault severity to a human-readable string. */
   inline constexpr std::string_view diagnosticFaultSeverityToString(
       DiagnosticFaultSeverity severity) {
     switch (severity) {
@@ -181,6 +216,7 @@ namespace network {
     }
   }
 
+  /** @brief Converts image format enum to a human-readable string. */
   inline constexpr std::string_view imageFormatToString(ImageFormat format) {
     switch (format) {
       case ImageFormat::RAW:
@@ -194,6 +230,7 @@ namespace network {
     }
   }
 
+  /** @brief Converts diagnostic code clear status to a human-readable string. */
   inline constexpr std::string_view diagnosticCodeClearStatusToString(
       DiagnosticCodeClearStatus status) {
     switch (status) {
@@ -210,7 +247,9 @@ namespace network {
     }
   }
 
-  // Image reassembly buffer: holds partial/complete images keyed by image_id
+  /**
+   * @brief Stores chunked image reassembly state for one image identifier.
+   */
   struct ImageBuffer {
     uint32_t image_id;
     ImageFormat format;
@@ -222,6 +261,7 @@ namespace network {
         chunks;                  // chunks[i] = data for chunk i, empty if not received
     std::vector<bool> received;  // received[i] = true if chunk i has been received
 
+    /** @brief Creates an empty reassembly buffer for a specific image transfer. */
     ImageBuffer(uint32_t id, ImageFormat fmt, uint16_t total)
         : image_id(id),
           format(fmt),
@@ -233,6 +273,7 @@ namespace network {
       received.resize(total, false);
     }
 
+    /** @brief Sets expected full-image CRC, validating consistency on repeated calls. */
     bool setExpectedImageCrc(uint32_t crc32) {
       if (!expected_image_crc32_set) {
         expected_image_crc32 = crc32;
@@ -242,7 +283,7 @@ namespace network {
       return expected_image_crc32 == crc32;
     }
 
-    // Add a chunk to the buffer. Returns true if image is now complete.
+    /** @brief Adds a chunk and returns true once all chunks are present. */
     bool addChunk(uint16_t chunk_index, const std::vector<uint8_t>& data) {
       if (chunk_index >= total_chunks) {
         return false;  // Invalid chunk index
@@ -257,6 +298,7 @@ namespace network {
       return isComplete();
     }
 
+    /** @brief Returns true when every chunk index has been received. */
     bool isComplete() const {
       for (bool r : received) {
         if (!r) return false;
@@ -264,7 +306,7 @@ namespace network {
       return true;
     }
 
-    // Reassemble all chunks into a single vector
+    /** @brief Concatenates chunk buffers into one complete image byte vector. */
     std::vector<uint8_t> reassemble() const {
       std::vector<uint8_t> result;
       result.reserve(total_size_bytes);
@@ -274,6 +316,7 @@ namespace network {
       return result;
     }
 
+    /** @brief Validates CRC of reassembled image data against expected checksum. */
     bool validateReassembledCrc(const std::vector<uint8_t>& reassembled) const {
       if (!expected_image_crc32_set) {
         return false;

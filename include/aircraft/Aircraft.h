@@ -1,4 +1,9 @@
 #pragma once
+/**
+ * @file Aircraft.h
+ * @brief Declares the aircraft domain model and client-side MMA communication API.
+ */
+
 #include <common/Packet.h>
 #include <common/TcpConnection.h>
 #include <common/WarrantyData.h>
@@ -17,6 +22,9 @@ class StateManager;
 
 namespace aircraft {
 
+  /**
+   * @brief Describes the origin of a state transition request.
+   */
   enum class TransitionSource {
     MMA_COMMAND,
     AUTOMATIC,
@@ -24,6 +32,9 @@ namespace aircraft {
     CONNECTION_FALLBACK,
   };
 
+  /**
+   * @brief Represents one active aircraft fault entry.
+   */
   struct FaultCode {
     int code;
     network::DiagnosticFaultSeverity severity;
@@ -31,53 +42,90 @@ namespace aircraft {
     std::chrono::system_clock::time_point timestamp;
   };
 
+  /**
+   * @brief Alias for shared warranty metadata.
+   */
   using WarrantyInfo = common::WarrantyInfo;
 
+  /**
+   * @brief Captures the latest maintenance record for the aircraft.
+   */
   struct MaintenanceInfo {
     std::chrono::system_clock::time_point lastMaintenance;
     std::string technician;
     std::string notes;
   };
 
+  /**
+   * @brief Main aircraft aggregate used by the client simulator.
+   */
   class Aircraft {
   public:
+    /** @brief Constructs an aircraft instance with default state. */
     Aircraft();
+    /** @brief Shuts down network resources and worker threads. */
     ~Aircraft();
+    /** @brief Initializes startup state and internal managers. */
     void initialize();
 
-    // State getters/setters
+    /** @brief Gets the current state name. */
     std::string getCurrentState() const;
+    /** @brief Sets the current state name. */
     void setCurrentState(const std::string& state);
 
-    // Data getters
+    /** @brief Gets the last maintenance record. */
     MaintenanceInfo getLastMaintenance() const;
+    /** @brief Gets all active fault codes. */
     std::vector<FaultCode> getFaultCodes() const;
+    /** @brief Gets current warranty information. */
     WarrantyInfo getWarranty() const;
 
-    // Data setters
+    /** @brief Updates the last maintenance record. */
     void setLastMaintenance(const MaintenanceInfo& info);
+    /** @brief Adds a fault code to the active fault list. */
     void addFaultCode(const FaultCode& code);
+    /** @brief Attempts to resolve and remove a fault code by numeric code. */
     bool resolveFaultCode(int code);
+    /** @brief Clears all tracked fault codes. */
     void clearFaultCodes();
+    /** @brief Updates warranty information. */
     void setWarranty(const WarrantyInfo& info);
+    /** @brief Reports whether verification with MMA has completed. */
     bool getRunningStatus() const { return verified_; }
+    /** @brief Gets this aircraft unique identifier. */
     uint64_t getAircraftId() const { return aircraft_id_; }
 
+    /** @brief Session token used by external flows. */
     int token = 0;
 
+    /** @brief Connects to the MMA server endpoint. */
     void connectToMMA(const std::string& host, uint16_t port = 8000);
+    /** @brief Sends a landed notification packet to MMA. */
     void sendLandedNotification();
+    /** @brief Handles a raw network packet delivered from the connection. */
     void onNetworkMessage(const std::vector<uint8_t>& data);
+    /** @brief Binds the state manager used by state objects. */
     void setStateManager(StateManager* stateManager);
+    /** @brief Synchronizes the state manager to the current persisted state. */
     void syncStateManagerToCurrentState();
+    /**
+     * @brief Requests transition to a target state.
+     * @return True when transition was accepted and applied.
+     */
     bool transitionToState(network::StateId targetState,
                            TransitionSource source = TransitionSource::AUTOMATIC);
+    /** @brief Sends diagnostic fault payload to MMA. */
     bool sendDiagnosticData();
+    /** @brief Sends warranty payload to MMA. */
     bool sendWarrantyData();
+    /** @brief Returns whether diagnostic-stage payload can be transmitted. */
     bool canSendDiagnosticStageData() const;
+    /** @brief Marks that MMA explicitly requested diagnostic data. */
     void markDiagnosticRequestedByMMA();
 
+    /** @brief Loads and sends an image file as chunked packets. */
     bool sendImageFromFile(const std::string& filepath);
+    /** @brief Sends image bytes using chunked transport. */
     bool sendImage(const std::vector<uint8_t>& image_data, network::ImageFormat format);
 
   private:

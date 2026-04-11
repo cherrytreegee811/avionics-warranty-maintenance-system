@@ -1,4 +1,8 @@
 #pragma once
+/**
+ * @file TcpConnection.h
+ * @brief Declares asynchronous TCP connection wrapper for packetized transport.
+ */
 
 #include <common/Packet.h>
 #include <spdlog/spdlog.h>
@@ -13,19 +17,28 @@
 
 namespace network {
 
+  /** @brief Lifecycle state of a network connection session. */
   enum class ConnectionState { UNVERIFIED, VERIFIED, CLOSED };
 
+  /**
+   * @brief Async TCP connection with framed packet buffering and queued writes.
+   */
   class TcpConnection : public std::enable_shared_from_this<TcpConnection> {
   public:
+    /** @brief Shared pointer alias for a connection instance. */
     using Ptr = std::shared_ptr<TcpConnection>;
+    /** @brief Callback type for completed packet-sized messages. */
     using MessageHandler = std::function<void(const std::vector<uint8_t>&)>;
 
+    /** @brief Factory function for heap-allocated shared connection instances. */
     static Ptr create(asio::ip::tcp::socket socket) {
       return Ptr(new TcpConnection(std::move(socket)));
     }
 
+    /** @brief Starts async receive loop on the underlying socket. */
     void start() { readData(); }
 
+    /** @brief Queues bytes for async send on the connection executor. */
     void send(const std::vector<uint8_t>& data) {
       auto self = shared_from_this();
       asio::post(socket_.get_executor(), [self, data]() {
@@ -37,10 +50,14 @@ namespace network {
       });
     }
 
+    /** @brief Registers callback invoked for each complete incoming packet. */
     void setMessageHandler(MessageHandler handler) { handler_ = handler; }
+    /** @brief Updates connection verification state. */
     void setState(ConnectionState state) { state_.store(state); }
+    /** @brief Returns current connection verification state. */
     ConnectionState getState() const { return state_.load(); }
 
+    /** @brief Closes socket and transitions state to closed. */
     void close() {
       asio::post(socket_.get_executor(), [self = shared_from_this()]() {
         if (self->state_.load() == ConnectionState::CLOSED) {
@@ -54,6 +71,7 @@ namespace network {
       });
     }
 
+    /** @brief Returns remote peer IP address string when available. */
     std::string getRemoteAddress() const {
       std::error_code ec;
       auto endpoint = socket_.remote_endpoint(ec);

@@ -1,3 +1,8 @@
+/**
+ * @file FaultState.cpp
+ * @brief Implements fault mode state behavior.
+ */
+
 #include <aircraft/Aircraft.h>
 #include <aircraft/FaultState.h>
 

@@ -1,3 +1,8 @@
+/**
+ * @file aircraft_main.cpp
+ * @brief Entry point for the aircraft application executable.
+ */
+
 #include <aircraft/Aircraft.h>
 #include <aircraft/CliInterface.h>
 #include <aircraft/StateManager.h>

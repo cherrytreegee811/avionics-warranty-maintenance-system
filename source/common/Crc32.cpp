@@ -1,3 +1,8 @@
+/**
+ * @file Crc32.cpp
+ * @brief Implements CRC-32 checksum calculations.
+ */
+
 #include <common/Crc32.h>
 
 namespace network {

@@ -1,4 +1,8 @@
 #pragma once
+/**
+ * @file mma.h
+ * @brief Declares the MMA server coordinator and operator command interface.
+ */
 
 #include <common/Packet.h>
 #include <common/TcpConnection.h>
@@ -16,17 +20,30 @@
 
 class WarrantyManager;
 
+/**
+ * @brief Main MMA server facade for handling aircraft clients and commands.
+ */
 class MMA {
 public:
+  /** @brief Constructs MMA server instance. */
   MMA();
+  /** @brief Stops background resources and active client sessions. */
   ~MMA();
+  /** @brief Initializes MMA internal components. */
   void initialize();
+  /** @brief Starts the TCP listener on the requested port. */
   void startServer(uint16_t port = 8000);
+  /** @brief Stops listener, worker thread, and active connections. */
   void stopServer();
+  /** @brief Runs interactive console menu operations. */
   void runMenu();
+  /** @brief Sends a state change request to put an aircraft into diagnostic mode. */
   void sendDiagnosticStateChange(uint64_t aircraftId);
+  /** @brief Sends a request to clear a specific aircraft diagnostic code. */
   void sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code);
+  /** @brief Returns true while the MMA server is running. */
   bool getRunningStatus() const { return running_; }
+  /** @brief Gets the currently configured listener port. */
   uint16_t getListeningPort() const;
 
 private:

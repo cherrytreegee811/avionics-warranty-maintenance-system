@@ -1,3 +1,8 @@
+/**
+ * @file Packet.cpp
+ * @brief Implements packet serialization and deserialization helpers.
+ */
+
 #include <common/Packet.h>
 #include <spdlog/spdlog.h>
 
