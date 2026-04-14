@@ -30,7 +30,11 @@ namespace network {
     /** @brief Callback type for completed packet-sized messages. */
     using MessageHandler = std::function<void(const std::vector<uint8_t>&)>;
 
-    /** @brief Factory function for heap-allocated shared connection instances. */
+    /**
+     * @brief Factory function for heap-allocated shared connection instances.
+    * @param socket Type: asio::ip::tcp::socket. Connected socket to wrap.
+    * @return Type: @ref network::TcpConnection::Ptr. Shared connection instance.
+     */
     static Ptr create(asio::ip::tcp::socket socket) {
       return Ptr(new TcpConnection(std::move(socket)));
     }
@@ -38,7 +42,10 @@ namespace network {
     /** @brief Starts async receive loop on the underlying socket. */
     void start() { readData(); }
 
-    /** @brief Queues bytes for async send on the connection executor. */
+    /**
+     * @brief Queues bytes for async send on the connection executor.
+    * @param data Type: const std::vector<uint8_t>&. Serialized packet bytes to send.
+     */
     void send(const std::vector<uint8_t>& data) {
       auto self = shared_from_this();
       asio::post(socket_.get_executor(), [self, data]() {
@@ -50,11 +57,20 @@ namespace network {
       });
     }
 
-    /** @brief Registers callback invoked for each complete incoming packet. */
+    /**
+     * @brief Registers callback invoked for each complete incoming packet.
+    * @param handler Type: @ref MessageHandler. Callback for complete packet payloads.
+     */
     void setMessageHandler(MessageHandler handler) { handler_ = handler; }
-    /** @brief Updates connection verification state. */
+    /**
+     * @brief Updates connection verification state.
+    * @param state Type: @ref network::ConnectionState. New connection lifecycle state.
+     */
     void setState(ConnectionState state) { state_.store(state); }
-    /** @brief Returns current connection verification state. */
+    /**
+     * @brief Returns current connection verification state.
+    * @return Type: @ref network::ConnectionState. Current connection lifecycle state.
+     */
     ConnectionState getState() const { return state_.load(); }
 
     /** @brief Closes socket and transitions state to closed. */
@@ -71,7 +87,10 @@ namespace network {
       });
     }
 
-    /** @brief Returns remote peer IP address string when available. */
+    /**
+     * @brief Returns remote peer IP address string when available.
+    * @return Type: std::string. Remote address string or "unknown" when unavailable.
+     */
     std::string getRemoteAddress() const {
       std::error_code ec;
       auto endpoint = socket_.remote_endpoint(ec);

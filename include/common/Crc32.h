@@ -16,13 +16,25 @@ namespace network {
   public:
     /** @brief Constructs a calculator in reset state. */
     Crc32();
-    /** @brief Adds a byte range to the checksum state. */
+    /**
+     * @brief Adds a byte range to the checksum state.
+    * @param data Type: const void*. Pointer to bytes to incorporate.
+    * @param len Type: size_t. Number of bytes at data.
+     */
     void update(const void* data, size_t len);
-    /** @brief Finalizes and returns current checksum value. */
+    /**
+     * @brief Finalizes and returns current checksum value.
+    * @return Type: uint32_t. Final CRC-32 checksum.
+     */
     uint32_t finalize();
     /** @brief Resets checksum state to initial value. */
     void reset();
-    /** @brief Computes CRC-32 for a contiguous buffer in one call. */
+    /**
+     * @brief Computes CRC-32 for a contiguous buffer in one call.
+    * @param data Type: const void*. Pointer to bytes to checksum.
+    * @param len Type: size_t. Number of bytes at data.
+    * @return Type: uint32_t. CRC-32 checksum for the provided bytes.
+     */
     static uint32_t calculate(const void* data, size_t len);
 
   private:

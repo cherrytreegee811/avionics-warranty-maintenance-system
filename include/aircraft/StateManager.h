@@ -17,9 +17,15 @@ private:
 public:
   /** @brief Constructs an empty state manager. */
   StateManager();
-  /** @brief Immediately replaces the active state object. */
+  /**
+   * @brief Immediately replaces the active state object.
+  * @param newState Type: std::unique_ptr<@ref BaseState>. Newly active state instance.
+   */
   void SetState(std::unique_ptr<BaseState> newState);
-  /** @brief Enqueues a state change request for later processing. */
+  /**
+   * @brief Enqueues a state change request for later processing.
+  * @param newState Type: std::unique_ptr<@ref BaseState>. Pending state instance to activate later.
+   */
   void RequestStateChange(std::unique_ptr<BaseState> newState);
   /** @brief Processes pending transitions and updates active state. */
   void Update();

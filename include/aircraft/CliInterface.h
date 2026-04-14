@@ -16,7 +16,10 @@ namespace aircraft {
    */
   class CliInterface {
   public:
-    /** @brief Creates the interface bound to a specific aircraft model. */
+    /**
+     * @brief Creates the interface bound to a specific aircraft model.
+    * @param aircraft Type: @ref aircraft::Aircraft&. Aircraft model to display and control.
+     */
     explicit CliInterface(Aircraft& aircraft);
 
     /** @brief Displays the top-level menu and command loop options. */
@@ -37,7 +40,16 @@ namespace aircraft {
 
     void clearScreen();
     void waitForEnter();
+    /**
+     * @brief Formats a timestamp for console output.
+    * @param tp Type: const std::chrono::system_clock::time_point&. Timestamp to format.
+    * @return Type: std::string. Human-readable timestamp string.
+     */
     std::string formatTimePoint(const std::chrono::system_clock::time_point& tp) const;
+    /**
+     * @brief Prints a section header.
+    * @param title Type: const std::string&. Header text to print.
+     */
     void printHeader(const std::string& title);
     void printSeparator();
   };

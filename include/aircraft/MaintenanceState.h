@@ -12,7 +12,11 @@ namespace aircraft {
 
 class MaintenanceState : public BaseState {
 public:
-  /** @brief Constructs maintenance state behavior. */
+  /**
+   * @brief Constructs maintenance state behavior.
+  * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
+  * @param stateManager Type: @ref StateManager&. Transition manager used by this state.
+   */
   MaintenanceState(aircraft::Aircraft& aircraft, StateManager& stateManager);
 
   /** @brief Runs periodic maintenance-state update behavior. */
