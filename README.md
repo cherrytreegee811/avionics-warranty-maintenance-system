@@ -43,79 +43,90 @@ The system fulfills requirements for state machine management, diagnostic data t
 - **Code Coverage**: codecov
 - **Formatting**: clang-format, cmake-format
 
-## Building the Project
+## Getting Started
 
 ### Prerequisites
 
 - CMake 3.22 or higher
 - Ninja
-- C++23 compatible compiler (GCC 11+, Clang 14+, MSVC 19.29+)
-- Doctest (automatically downloaded via CPM.cmake if not present)
+- A C++23-capable compiler (GCC 11+, Clang 14+, MSVC 19.29+, or Strawberry GCC on Windows)
+- Python 3 with `pip` if you want to use the provided build scripts
 - Optional: Doxygen for documentation generation
 
-### Build Everything at Once
+### Build
+
+The quickest path is to use the provided platform script from the repository root:
 
 ```bash
-# Clone the repository
-git clone https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system.git
-cd avionics-warranty-maintenance-system
+# Linux/macOS
+./build.sh
+```
 
-# Configure and build
-cmake -S all -B build
+```bat
+:: Windows
+build.bat
+```
+
+Those scripts create a local Python virtual environment, install the formatting tools, format the source tree, configure CMake, and build the project into `build/`.
+
+If you prefer to build manually, run:
+
+```bash
+cmake -S . -B build
 cmake --build build
-
-# Run the test suite
-./build/test/AircraftTests
-
-# Run the client application
-./build/client/Airplane
-
-# Run the server application (in another terminal)
-./build/server/MMA
 ```
-### Build Client and Server Separately
 
-#### Build the Client (Airplane)
+### Run the applications
+
+The build produces two executables in `build/`:
+
+- `MMAApp` / `MMAApp.exe`
+- `AircraftApp` / `AircraftApp.exe`
+
+Start the MMA server first, then launch the aircraft client in a second terminal:
+
 ```bash
-cmake -S client -B build/client
-cmake --build build/client
-./build/client/Airplane
+# Terminal 1
+./build/MMAApp
 ```
 
-#### Build the Server (MMA)
-```
-cmake -S server -B build/server
-cmake --build build/server
-./build/server/MMA
+```bash
+# Terminal 2
+./build/AircraftApp
 ```
 
-### Build and Run Tests
-```
-cmake -S test -B build/test
-cmake --build build/test
-CTEST_OUTPUT_ON_FAILURE=1 cmake --build build/test --target tes
+On Windows PowerShell, use:
+
+```powershell
+# Terminal 1
+.\build\MMAApp.exe
 ```
 
-#### To enable code coverage
-```
-cmake -S test -B build/test -DENABLE_TEST_COVERAGE=1
-cmake --build build/test --target coverage
-```
-
-### Build Documentation
-```
-cmake -S documentation -B build/doc
-cmake --build build/doc --target GenerateDocs
-# View documentation
-open build/doc/doxygen/html/index.html
+```powershell
+# Terminal 2
+.\build\AircraftApp.exe
 ```
 
-### Code Formatting
-```
-cmake -S test -B build/test
-cmake --build build/test --target format   # View changes
-cmake --build build/test --target fix-format # Apply changes
+The MMA server listens on `127.0.0.1:8000`, and the aircraft client connects to that address automatically.
+
+### Run tests
+
+After building, run the test suite from the `build/` directory:
+
+```bash
+cd build
+ctest --output-on-failure
 ```
 
-### MISRA Compliance
-- **TODO**
+On Windows PowerShell:
+
+```powershell
+Set-Location build
+ctest --output-on-failure
+```
+
+### Logs and output
+
+- Runtime logs are written to `logs/`
+- The applications print status information to the console while they run
+- Test output is available through `ctest --output-on-failure`
