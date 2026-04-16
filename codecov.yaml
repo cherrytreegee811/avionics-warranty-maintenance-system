@@ -1,5 +1,7 @@
 ignore:
-  - "test"
+  - "test/**"
+  - "**/_deps/**"
+  - "build/**/_deps/**"
 
 comment:
   require_changes: true

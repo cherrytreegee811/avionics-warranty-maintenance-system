@@ -1,3 +1,8 @@
+/**
+ * @file mma_main.cpp
+ * @brief Entry point for the MMA application executable.
+ */
+
 #include <mma/mma.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/sinks/stdout_color_sinks.h>

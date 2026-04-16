@@ -1,3 +1,8 @@
+/**
+ * @file DiagnosticState.cpp
+ * @brief Implements diagnostic mode state behavior.
+ */
+
 #include <aircraft/Aircraft.h>
 #include <aircraft/DiagnosticState.h>
 

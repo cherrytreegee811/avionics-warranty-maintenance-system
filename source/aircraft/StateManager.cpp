@@ -1,3 +1,8 @@
+/**
+ * @file StateManager.cpp
+ * @brief Implements queued state transition management.
+ */
+
 #include <aircraft/BaseState.h>
 #include <aircraft/StateManager.h>
 

@@ -1,3 +1,8 @@
+/**
+ * @file WarrantyManager.cpp
+ * @brief Implements warranty persistence and lookup services.
+ */
+
 #include <mma/WarrantyManager.h>
 #include <spdlog/spdlog.h>
 

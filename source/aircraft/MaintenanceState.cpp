@@ -1,3 +1,8 @@
+/**
+ * @file MaintenanceState.cpp
+ * @brief Implements maintenance mode state behavior.
+ */
+
 #include <aircraft/Aircraft.h>
 #include <aircraft/MaintenanceState.h>
 

@@ -1,3 +1,8 @@
+/**
+ * @file CliInterface.cpp
+ * @brief Implements the aircraft command-line interface rendering and menus.
+ */
+
 #include <aircraft/CliInterface.h>
 
 #include <chrono>
