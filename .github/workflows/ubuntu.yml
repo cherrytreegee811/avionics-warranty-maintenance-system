@@ -58,6 +58,7 @@ jobs:
             --object-directory build \
             --exclude "build/_deps" \
             --exclude "build/CMakeFiles" \
+            --exclude "cpm_modules"\
             --exclude "test" \
             --xml-pretty \
             --output build/coverage.xml \
