@@ -59,6 +59,8 @@ jobs:
             --exclude-directories "^build/CMakeFiles/[0-9.]+/CompilerIdCXX(/.*)?$" \
             --exclude-directories "^build/CMakeFiles/[0-9.]+/CompilerIdC(/.*)?$" \
             --exclude-directories "^build/_deps(/.*)?$" \
+            --include "^source/" \
+            --include "^include/" \
             --filter "^(source|include)/" \
             --exclude ".*/(aircraft_main|mma_main)\\.cpp$" \
             --xml-pretty \
