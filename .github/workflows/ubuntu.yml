@@ -56,7 +56,8 @@ jobs:
           gcovr \
             --root . \
             --object-directory build \
-            --exclude-directories "^build/CMakeFiles(/.*)?$" \
+            --exclude-directories "^build/CMakeFiles/[0-9.]+/CompilerIdCXX(/.*)?$" \
+            --exclude-directories "^build/CMakeFiles/[0-9.]+/CompilerIdC(/.*)?$" \
             --exclude-directories "^build/_deps(/.*)?$" \
             --filter "^(source|include)/" \
             --exclude ".*/(aircraft_main|mma_main)\\.cpp$" \
