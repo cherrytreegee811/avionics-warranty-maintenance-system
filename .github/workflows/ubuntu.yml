@@ -22,13 +22,25 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: install coverage tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcovr
+
       - uses: actions/cache@v5
         with:
           path: "**/cpm_modules"
           key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
 
       - name: configure
-        run: cmake -S. -Bbuild -DENABLE_TEST_COVERAGE=1 -DCMAKE_BUILD_TYPE=Debug
+        run: |
+          cmake -S. -Bbuild \
+            -DENABLE_TEST_COVERAGE=1 \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS="--coverage -O0 -g" \
+            -DCMAKE_CXX_FLAGS="--coverage -O0 -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+            -DCMAKE_SHARED_LINKER_FLAGS="--coverage"
 
       - name: build
         run: cmake --build build -j4
@@ -38,7 +50,60 @@ jobs:
           cd build
           ctest --build-config Debug
 
-      - name: Upload coverage reports to Codecov
+      - name: coverage diagnostics
+        run: |
+          set -euo pipefail
+          gcovr --version || true
+          gcov --version || true
+
+          echo "gcno count:" $(find build -name '*.gcno' | wc -l)
+          echo "gcda count:" $(find build -name '*.gcda' | wc -l)
+
+          echo "sample coverage artifacts (first 50):"
+          find build \( -name '*.gcno' -o -name '*.gcda' \) | sort | head -n 50
+
+          echo "--coverage in compile_commands.json (first 20 matches):"
+          grep -n -- "--coverage" build/compile_commands.json | head -n 20 || true
+
+          echo "compile_commands entries for selected sources (first 20 matches):"
+          grep -nE "source/(common/Packet\\.cpp|common/Crc32\\.cpp|aircraft/Aircraft\\.cpp|mma/mma\\.cpp)" \
+            build/compile_commands.json | head -n 20 || true
+
+      - name: collect code coverage
+        run: |
+          gcovr \
+            --root . \
+            --object-directory build \
+            --exclude-directories "(^|.*/)build/CMakeFiles/[0-9.]+/CompilerIdCXX(/.*)?$" \
+            --exclude-directories "(^|.*/)build/CMakeFiles/[0-9.]+/CompilerIdC(/.*)?$" \
+            --exclude-directories "(^|.*/)build/_deps(/.*)?$" \
+            --exclude-directories "(^|.*/)cpm_modules(/.*)?$" \
+            --exclude-directories "(^|.*/)test(/.*)?$" \
+            --exclude ".*/usr/include/.*" \
+            --filter "^source/" \
+            --filter "^include/" \
+            --filter "^$GITHUB_WORKSPACE/source/" \
+            --filter "^$GITHUB_WORKSPACE/include/" \
+            --exclude ".*/(aircraft_main|mma_main)\\.cpp$" \
+            --xml-pretty \
+            --output build/coverage.xml \
+            --html-details build/coverage.html \
+            --print-summary
+
+      - name: save coverage artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: ubuntu-coverage
+          path: |
+            build/coverage.xml
+            build/coverage.html
+
+      - name: upload coverage to codecov
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/coverage.xml
+          flags: ubuntu
+          name: ubuntu-coverage
+          fail_ci_if_error: false
+          verbose: true
