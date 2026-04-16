@@ -139,43 +139,6 @@ TEST_CASE("REQ-SRV-006: STATE_CHANGE transition updates aircraft state through S
   CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
 }
 
-// ============================================================================
-// REQ-CLT-062: The airplane shall be prevented from transitioning to disallowed states from a given
-// state.
-// ============================================================================
-
-TEST_CASE("REQ-CLT-062: Aircraft rejects invalid transitions") {
-  Aircraft aircraft;
-  StateManager stateManager;
-  aircraft.setStateManager(&stateManager);
-  aircraft.syncStateManagerToCurrentState();
-
-  CHECK_FALSE(aircraft.transitionToState(network::StateId::MAINTENANCE));
-  CHECK(aircraft.getCurrentState() == "STANDBY");
-
-  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
-  CHECK_FALSE(aircraft.transitionToState(network::StateId::STANDBY));
-  CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
-}
-
-TEST_CASE("REQ-CLT-062: Aircraft allows valid transition") {
-  Aircraft aircraft;
-  StateManager stateManager;
-  aircraft.setStateManager(&stateManager);
-  aircraft.syncStateManagerToCurrentState();
-
-  // Keep MAINTENANCE stable for this transition test.
-  aircraft.clearFaultCodes();
-  aircraft.addFaultCode({700, network::DiagnosticFaultSeverity::MINOR, "Minor maintenance advisory",
-                         std::chrono::system_clock::now()});
-
-  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
-  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
-  CHECK(aircraft.transitionToState(network::StateId::FAULT));
-  CHECK(aircraft.transitionToState(network::StateId::STANDBY));
-  CHECK(aircraft.getCurrentState() == "STANDBY");
-}
-
 // ===========================================================================
 // REQ-CLT-056: The airplane should log when it has been switched states
 // ============================================================================
@@ -377,4 +340,212 @@ TEST_CASE("REQ-CLT-054: Aircraft logs error when landed notification cannot be s
                                   "Cannot send landed notification: not connected/verified"));
 
   std::remove(testLogFile.c_str());
+}
+
+// ============================================================================
+// REQ-CLT-062: Allowed State Transitions
+// ============================================================================
+
+TEST_CASE("REQ-CLT-062: Aircraft allows valid transition") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  // Keep MAINTENANCE stable for this transition test.
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({700, network::DiagnosticFaultSeverity::MINOR, "Minor maintenance advisory",
+                         std::chrono::system_clock::now()});
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.transitionToState(network::StateId::FAULT));
+  CHECK(aircraft.transitionToState(network::StateId::STANDBY));
+  CHECK(aircraft.getCurrentState() == "STANDBY");
+}
+
+TEST_CASE("REQ-CLT-062: MAINTENANCE -> STANDBY is allowed (via cleared faults)") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({800, network::DiagnosticFaultSeverity::MINOR, "Test minor fault",
+                         std::chrono::system_clock::now()});
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.getCurrentState() == "MAINTENANCE");
+
+  // Clear faults triggers automatic transition to STANDBY
+  aircraft.clearFaultCodes();
+  CHECK(aircraft.getCurrentState() == "STANDBY");
+}
+
+TEST_CASE("REQ-CLT-062: FAULT -> DIAGNOSTIC is allowed") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({801, network::DiagnosticFaultSeverity::MINOR, "Test minor fault",
+                         std::chrono::system_clock::now()});
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+
+  // Add MAJOR fault to trigger transition to FAULT
+  aircraft.addFaultCode({802, network::DiagnosticFaultSeverity::MAJOR, "Test major fault",
+                         std::chrono::system_clock::now()});
+  CHECK(aircraft.getCurrentState() == "FAULT");
+
+  // Remove the MAJOR fault; should transition to DIAGNOSTIC
+  CHECK(aircraft.resolveFaultCode(802));
+  CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
+}
+
+// ============================================================================
+// REQ-CLT-062: All Disallowed State Transitions
+// ============================================================================
+
+TEST_CASE("REQ-CLT-062: Aircraft rejects invalid transitions") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.getCurrentState() == "STANDBY");
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::STANDBY));
+  CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
+}
+
+TEST_CASE("REQ-CLT-062: STANDBY -> STANDBY is disallowed") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  CHECK(aircraft.getCurrentState() == "STANDBY");
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::STANDBY));
+  CHECK(aircraft.getCurrentState() == "STANDBY");
+}
+
+TEST_CASE("REQ-CLT-062: STANDBY -> FAULT is disallowed") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  CHECK(aircraft.getCurrentState() == "STANDBY");
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::FAULT));
+  CHECK(aircraft.getCurrentState() == "STANDBY");
+}
+
+TEST_CASE("REQ-CLT-062: DIAGNOSTIC -> DIAGNOSTIC is disallowed") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
+
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
+}
+
+TEST_CASE("REQ-CLT-062: DIAGNOSTIC -> FAULT is disallowed") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
+
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::FAULT));
+  CHECK(aircraft.getCurrentState() == "DIAGNOSTIC");
+}
+
+TEST_CASE("REQ-CLT-062: MAINTENANCE -> DIAGNOSTIC is disallowed") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({803, network::DiagnosticFaultSeverity::MINOR, "Test minor fault",
+                         std::chrono::system_clock::now()});
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.getCurrentState() == "MAINTENANCE");
+
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.getCurrentState() == "MAINTENANCE");
+}
+
+TEST_CASE("REQ-CLT-062: MAINTENANCE -> MAINTENANCE is disallowed") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({804, network::DiagnosticFaultSeverity::MINOR, "Test minor fault",
+                         std::chrono::system_clock::now()});
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.getCurrentState() == "MAINTENANCE");
+
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.getCurrentState() == "MAINTENANCE");
+}
+
+TEST_CASE("REQ-CLT-062: FAULT -> MAINTENANCE is disallowed") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({805, network::DiagnosticFaultSeverity::MINOR, "Test minor fault",
+                         std::chrono::system_clock::now()});
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+
+  aircraft.addFaultCode({806, network::DiagnosticFaultSeverity::MAJOR, "Test major fault",
+                         std::chrono::system_clock::now()});
+  CHECK(aircraft.getCurrentState() == "FAULT");
+
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::MAINTENANCE));
+  CHECK(aircraft.getCurrentState() == "FAULT");
+}
+
+TEST_CASE("REQ-CLT-062: FAULT -> FAULT is disallowed") {
+  Aircraft aircraft;
+  StateManager stateManager;
+  aircraft.setStateManager(&stateManager);
+  aircraft.syncStateManagerToCurrentState();
+
+  aircraft.clearFaultCodes();
+  aircraft.addFaultCode({807, network::DiagnosticFaultSeverity::MINOR, "Test minor fault",
+                         std::chrono::system_clock::now()});
+
+  CHECK(aircraft.transitionToState(network::StateId::DIAGNOSTIC));
+  CHECK(aircraft.transitionToState(network::StateId::MAINTENANCE));
+
+  aircraft.addFaultCode({808, network::DiagnosticFaultSeverity::MAJOR, "Test major fault",
+                         std::chrono::system_clock::now()});
+  CHECK(aircraft.getCurrentState() == "FAULT");
+
+  CHECK_FALSE(aircraft.transitionToState(network::StateId::FAULT));
+  CHECK(aircraft.getCurrentState() == "FAULT");
 }
