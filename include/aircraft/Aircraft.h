@@ -70,62 +70,62 @@ namespace aircraft {
 
     /**
      * @brief Gets the current state name.
-    * @return Type: std::string. Current state label.
+     * @return Type: std::string. Current state label.
      */
     std::string getCurrentState() const;
     /**
      * @brief Sets the current state name.
-    * @param state Type: const std::string&. New state label.
+     * @param state Type: const std::string&. New state label.
      */
     void setCurrentState(const std::string& state);
 
     /**
      * @brief Gets the last maintenance record.
-    * @return Type: @ref aircraft::MaintenanceInfo. Latest maintenance details snapshot.
+     * @return Type: @ref aircraft::MaintenanceInfo. Latest maintenance details snapshot.
      */
     MaintenanceInfo getLastMaintenance() const;
     /**
      * @brief Gets all active fault codes.
-    * @return Type: std::vector<@ref aircraft::FaultCode>. Copy of active fault records.
+     * @return Type: std::vector<@ref aircraft::FaultCode>. Copy of active fault records.
      */
     std::vector<FaultCode> getFaultCodes() const;
     /**
      * @brief Gets current warranty information.
-    * @return Type: @ref aircraft::WarrantyInfo. Current warranty metadata.
+     * @return Type: @ref aircraft::WarrantyInfo. Current warranty metadata.
      */
     WarrantyInfo getWarranty() const;
 
     /**
      * @brief Updates the last maintenance record.
-    * @param info Type: const @ref aircraft::MaintenanceInfo&. New maintenance details.
+     * @param info Type: const @ref aircraft::MaintenanceInfo&. New maintenance details.
      */
     void setLastMaintenance(const MaintenanceInfo& info);
     /**
      * @brief Adds a fault code to the active fault list.
-    * @param code Type: const @ref aircraft::FaultCode&. Fault entry to append.
+     * @param code Type: const @ref aircraft::FaultCode&. Fault entry to append.
      */
     void addFaultCode(const FaultCode& code);
     /**
      * @brief Attempts to resolve and remove a fault code by numeric code.
-    * @param code Type: int. Numeric fault code to remove.
-    * @return Type: bool. True if a matching fault code was removed.
+     * @param code Type: int. Numeric fault code to remove.
+     * @return Type: bool. True if a matching fault code was removed.
      */
     bool resolveFaultCode(int code);
     /** @brief Clears all tracked fault codes. */
     void clearFaultCodes();
     /**
      * @brief Updates warranty information.
-    * @param info Type: const @ref aircraft::WarrantyInfo&. New warranty metadata.
+     * @param info Type: const @ref aircraft::WarrantyInfo&. New warranty metadata.
      */
     void setWarranty(const WarrantyInfo& info);
     /**
      * @brief Reports whether verification with MMA has completed.
-    * @return Type: bool. True when connection verification is complete.
+     * @return Type: bool. True when connection verification is complete.
      */
     bool getRunningStatus() const { return verified_; }
     /**
      * @brief Gets this aircraft unique identifier.
-    * @return Type: uint64_t. Aircraft identifier value.
+     * @return Type: uint64_t. Aircraft identifier value.
      */
     uint64_t getAircraftId() const { return aircraft_id_; }
 
@@ -134,45 +134,45 @@ namespace aircraft {
 
     /**
      * @brief Connects to the MMA server endpoint.
-    * @param host Type: const std::string&. Hostname or address of MMA server.
-    * @param port Type: uint16_t. Listener port for MMA server.
+     * @param host Type: const std::string&. Hostname or address of MMA server.
+     * @param port Type: uint16_t. Listener port for MMA server.
      */
     void connectToMMA(const std::string& host, uint16_t port = 8000);
     /** @brief Sends a landed notification packet to MMA. */
     void sendLandedNotification();
     /**
      * @brief Handles a raw network packet delivered from the connection.
-    * @param data Type: const std::vector<uint8_t>&. Serialized packet bytes.
+     * @param data Type: const std::vector<uint8_t>&. Serialized packet bytes.
      */
     void onNetworkMessage(const std::vector<uint8_t>& data);
     /**
      * @brief Binds the state manager used by state objects.
-    * @param stateManager Type: @ref StateManager*. State manager instance owned externally.
+     * @param stateManager Type: @ref StateManager*. State manager instance owned externally.
      */
     void setStateManager(StateManager* stateManager);
     /** @brief Synchronizes the state manager to the current persisted state. */
     void syncStateManagerToCurrentState();
     /**
      * @brief Requests transition to a target state.
-    * @param targetState Type: @ref network::StateId. Requested destination state.
-    * @param source Type: @ref aircraft::TransitionSource. Origin of the transition request.
-    * @return Type: bool. True when transition was accepted and applied.
+     * @param targetState Type: @ref network::StateId. Requested destination state.
+     * @param source Type: @ref aircraft::TransitionSource. Origin of the transition request.
+     * @return Type: bool. True when transition was accepted and applied.
      */
     bool transitionToState(network::StateId targetState,
                            TransitionSource source = TransitionSource::AUTOMATIC);
     /**
      * @brief Sends diagnostic fault payload to MMA.
-    * @return Type: bool. True if payload was serialized and queued for send.
+     * @return Type: bool. True if payload was serialized and queued for send.
      */
     bool sendDiagnosticData();
     /**
      * @brief Sends warranty payload to MMA.
-    * @return Type: bool. True if payload was serialized and queued for send.
+     * @return Type: bool. True if payload was serialized and queued for send.
      */
     bool sendWarrantyData();
     /**
      * @brief Returns whether diagnostic-stage payload can be transmitted.
-    * @return Type: bool. True when current state permits diagnostic-stage transfer.
+     * @return Type: bool. True when current state permits diagnostic-stage transfer.
      */
     bool canSendDiagnosticStageData() const;
     /** @brief Marks that MMA explicitly requested diagnostic data. */
@@ -180,15 +180,15 @@ namespace aircraft {
 
     /**
      * @brief Loads and sends an image file as chunked packets.
-    * @param filepath Type: const std::string&. Path to image file.
-    * @return Type: bool. True when file was read and all chunks were queued.
+     * @param filepath Type: const std::string&. Path to image file.
+     * @return Type: bool. True when file was read and all chunks were queued.
      */
     bool sendImageFromFile(const std::string& filepath);
     /**
      * @brief Sends image bytes using chunked transport.
-    * @param image_data Type: const std::vector<uint8_t>&. Raw encoded image bytes.
-    * @param format Type: @ref network::ImageFormat. Encoding format of image_data.
-    * @return Type: bool. True when chunks were generated and queued.
+     * @param image_data Type: const std::vector<uint8_t>&. Raw encoded image bytes.
+     * @param format Type: @ref network::ImageFormat. Encoding format of image_data.
+     * @return Type: bool. True when chunks were generated and queued.
      */
     bool sendImage(const std::vector<uint8_t>& image_data, network::ImageFormat format);
 

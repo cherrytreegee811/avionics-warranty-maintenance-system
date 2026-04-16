@@ -33,7 +33,7 @@ public:
   void initialize();
   /**
    * @brief Starts the TCP listener on the requested port.
-  * @param port Type: uint16_t. TCP listener port.
+   * @param port Type: uint16_t. TCP listener port.
    */
   void startServer(uint16_t port = 8000);
   /** @brief Stops listener, worker thread, and active connections. */
@@ -42,23 +42,23 @@ public:
   void runMenu();
   /**
    * @brief Sends a state change request to put an aircraft into diagnostic mode.
-  * @param aircraftId Type: uint64_t. Target aircraft identifier.
+   * @param aircraftId Type: uint64_t. Target aircraft identifier.
    */
   void sendDiagnosticStateChange(uint64_t aircraftId);
   /**
    * @brief Sends a request to clear a specific aircraft diagnostic code.
-  * @param aircraftId Type: uint64_t. Target aircraft identifier.
-  * @param code Type: int32_t. Diagnostic code to clear.
+   * @param aircraftId Type: uint64_t. Target aircraft identifier.
+   * @param code Type: int32_t. Diagnostic code to clear.
    */
   void sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code);
   /**
    * @brief Returns true while the MMA server is running.
-  * @return Type: bool. True when the server loop is active.
+   * @return Type: bool. True when the server loop is active.
    */
   bool getRunningStatus() const { return running_; }
   /**
    * @brief Gets the currently configured listener port.
-  * @return Type: uint16_t. Bound or configured TCP listener port.
+   * @return Type: uint16_t. Bound or configured TCP listener port.
    */
   uint16_t getListeningPort() const;
 

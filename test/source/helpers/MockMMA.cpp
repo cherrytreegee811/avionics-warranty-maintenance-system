@@ -105,9 +105,7 @@ namespace test_helpers {
 
   bool MockMMA::hasReceivedDiagnosticData() const { return received_diagnostic_data_.load(); }
 
-  size_t MockMMA::receivedDiagnosticFaultCount() const {
-    return diagnostic_fault_count_.load();
-  }
+  size_t MockMMA::receivedDiagnosticFaultCount() const { return diagnostic_fault_count_.load(); }
 
   bool MockMMA::hasReceivedWarrantyData() const { return received_warranty_data_.load(); }
 

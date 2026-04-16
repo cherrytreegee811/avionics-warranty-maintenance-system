@@ -1,8 +1,7 @@
 #pragma once
 
-#include <common/TcpConnection.h>
-
 #include <common/Packet.h>
+#include <common/TcpConnection.h>
 
 #include <asio.hpp>
 #include <atomic>

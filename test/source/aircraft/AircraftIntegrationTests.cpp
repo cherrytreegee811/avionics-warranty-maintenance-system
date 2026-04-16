@@ -68,7 +68,9 @@ TEST_CASE("REQ-CLT-054: Client logs after sending LANDED notification") {
 // US-012: Integration state transitions: simulated inputs, timed events, fault injections
 // ============================================================================
 
-TEST_CASE("US-012: Simulate network transition to DIAGNOSTIC and verify diagnostic/warranty data is sent") {
+TEST_CASE(
+    "US-012: Simulate network transition to DIAGNOSTIC and verify diagnostic/warranty data is "
+    "sent") {
   const uint16_t testPort = 8022;
   test_helpers::MockMMA mockServer(testPort);
   std::this_thread::sleep_for(100ms);
@@ -88,8 +90,8 @@ TEST_CASE("US-012: Simulate network transition to DIAGNOSTIC and verify diagnost
 
   REQUIRE(mockServer.sendStateChange(network::StateId::DIAGNOSTIC));
 
-  const bool reached_maintenance = test_helpers::waitFor(
-      [&]() { return client.getCurrentState() == "MAINTENANCE"; }, 4000);
+  const bool reached_maintenance
+      = test_helpers::waitFor([&]() { return client.getCurrentState() == "MAINTENANCE"; }, 4000);
   CHECK(reached_maintenance);
   CHECK(mockServer.hasConfirmationForState(network::StateId::DIAGNOSTIC));
   CHECK(mockServer.hasConfirmationForState(network::StateId::MAINTENANCE));
@@ -179,8 +181,7 @@ TEST_CASE("US-012: Fault injection in MAINTENANCE escalates to aircraft to FAULT
   REQUIRE(test_helpers::waitFor([&]() { return client.getCurrentState() == "MAINTENANCE"; }, 4000));
 
   client.addFaultCode({9501, network::DiagnosticFaultSeverity::MAJOR,
-                       "Integration test major fault injection",
-                       std::chrono::system_clock::now()});
+                       "Integration test major fault injection", std::chrono::system_clock::now()});
 
   const bool transitioned_to_fault
       = test_helpers::waitFor([&]() { return client.getCurrentState() == "FAULT"; }, 3000);

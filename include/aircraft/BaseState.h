@@ -17,8 +17,8 @@ class BaseState {
 public:
   /**
    * @brief Constructs a state with references to owning aircraft and manager.
-  * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
-  * @param stateManager Type: @ref StateManager&. Transition manager used by this state.
+   * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
+   * @param stateManager Type: @ref StateManager&. Transition manager used by this state.
    */
   BaseState(aircraft::Aircraft& aircraft, StateManager& stateManager)
       : m_aircraft(aircraft), m_stateManager(stateManager) {};

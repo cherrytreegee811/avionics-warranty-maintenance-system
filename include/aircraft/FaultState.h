@@ -14,8 +14,8 @@ class FaultState : public BaseState {
 public:
   /**
    * @brief Constructs fault state behavior.
-  * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
-  * @param stateManager Type: @ref StateManager&. Transition manager used by this state.
+   * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
+   * @param stateManager Type: @ref StateManager&. Transition manager used by this state.
    */
   FaultState(aircraft::Aircraft& aircraft, StateManager& stateManager);
 
