@@ -57,13 +57,14 @@ jobs:
             --root . \
             --object-directory build \
             --exclude "build/_deps" \
+            --exclude "build/CMakeFiles" \
             --exclude "test" \
             --xml-pretty \
             --output build/coverage.xml \
             --html-details build/coverage.html
 
       - name: save coverage artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: ubuntu-coverage
           path: |
