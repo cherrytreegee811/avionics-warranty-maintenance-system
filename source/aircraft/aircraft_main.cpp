@@ -10,7 +10,7 @@
 #include <format>
 #include <memory>
 
-std::string getCurrentDate() {
+static std::string getCurrentDate() {
   auto now = std::chrono::system_clock::now();
   auto year_month_day = std::chrono::floor<std::chrono::days>(now);
   return std::format("{:%Y%m%d}", year_month_day);
