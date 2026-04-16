@@ -56,13 +56,13 @@ jobs:
           gcovr \
             --root . \
             --object-directory build \
-            --exclude "build/_deps" \
-            --exclude "build/CMakeFiles" \
-            --exclude "cpm_modules"\
-            --exclude "test" \
+            --filter "^${GITHUB_WORKSPACE}/source/" \
+            --filter "^${GITHUB_WORKSPACE}/include/" \
+            --exclude ".*/(aircraft_main|mma_main)\\.cpp$" \
             --xml-pretty \
             --output build/coverage.xml \
-            --html-details build/coverage.html
+            --html-details build/coverage.html \
+            --print-summary
 
       - name: save coverage artifacts
         uses: actions/upload-artifact@v7
