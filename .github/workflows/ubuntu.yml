@@ -80,7 +80,11 @@ jobs:
             --exclude-directories "(^|.*/)build/_deps(/.*)?$" \
             --exclude-directories "(^|.*/)cpm_modules(/.*)?$" \
             --exclude-directories "(^|.*/)test(/.*)?$" \
-            --filter "(^|.*/)(source|include)/" \
+            --exclude ".*/usr/include/.*" \
+            --filter "^source/" \
+            --filter "^include/" \
+            --filter "^$GITHUB_WORKSPACE/source/" \
+            --filter "^$GITHUB_WORKSPACE/include/" \
             --exclude ".*/(aircraft_main|mma_main)\\.cpp$" \
             --xml-pretty \
             --output build/coverage.xml \
