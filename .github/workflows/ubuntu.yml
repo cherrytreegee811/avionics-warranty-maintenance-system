@@ -51,15 +51,34 @@ jobs:
           cd build
           ctest --build-config Debug
 
+      - name: coverage diagnostics
+        run: |
+          set -euo pipefail
+          gcovr --version || true
+          gcov --version || true
+
+          echo "gcno count:" $(find build -name '*.gcno' | wc -l)
+          echo "gcda count:" $(find build -name '*.gcda' | wc -l)
+
+          echo "sample coverage artifacts (first 50):"
+          find build \( -name '*.gcno' -o -name '*.gcda' \) | sort | head -n 50
+
+          echo "--coverage in compile_commands.json (first 20 matches):"
+          grep -n -- "--coverage" build/compile_commands.json | head -n 20 || true
+
+          echo "compile_commands entries for selected sources (first 20 matches):"
+          grep -nE "source/(common/Packet\\.cpp|common/Crc32\\.cpp|aircraft/Aircraft\\.cpp|mma/mma\\.cpp)" \
+            build/compile_commands.json | head -n 20 || true
+
       - name: collect code coverage
         run: |
           gcovr \
             --root . \
             --object-directory build \
-            --exclude-directories "^build/CMakeFiles/[0-9.]+/CompilerIdCXX(/.*)?$" \
-            --exclude-directories "^build/CMakeFiles/[0-9.]+/CompilerIdC(/.*)?$" \
-            --exclude-directories "^build/_deps(/.*)?$" \
-            --filter "^(source|include)/" \
+            --exclude-directories "(^|.*/)build/CMakeFiles/[0-9.]+/CompilerIdCXX(/.*)?$" \
+            --exclude-directories "(^|.*/)build/CMakeFiles/[0-9.]+/CompilerIdC(/.*)?$" \
+            --exclude-directories "(^|.*/)build/_deps(/.*)?$" \
+            --filter "(^|.*/)(source|include)/" \
             --exclude ".*/(aircraft_main|mma_main)\\.cpp$" \
             --xml-pretty \
             --output build/coverage.xml \
