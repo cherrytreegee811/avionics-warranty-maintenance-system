@@ -1,5 +1,6 @@
 #define DOCTEST_CONFIG_IMPLEMENT_WITH_MAIN
 #include <aircraft/Aircraft.h>
+#include <aircraft/StateManager.h>
 #include <doctest/doctest.h>
 #include <helpers/MockMMA.h>
 #include <helpers/TestHelpers.h>
@@ -7,6 +8,7 @@
 #include <spdlog/spdlog.h>
 
 #include <chrono>
+#include <cstdio>
 #include <thread>
 
 using namespace std::chrono_literals;
@@ -60,4 +62,129 @@ TEST_CASE("REQ-CLT-054: Client logs after sending LANDED notification") {
 
   spdlog::shutdown();
   std::remove(clientLogFile.c_str());
+}
+
+// ============================================================================
+// US-012: Integration state transitions: simulated inputs, timed events, fault injections
+// ============================================================================
+
+TEST_CASE("US-012: Simulate network transition to DIAGNOSTIC and verify diagnostic/warranty data is sent") {
+  const uint16_t testPort = 8022;
+  test_helpers::MockMMA mockServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  aircraft::Aircraft client;
+  StateManager stateManager;
+  client.setStateManager(&stateManager);
+  client.syncStateManagerToCurrentState();
+  client.clearFaultCodes();
+  client.addFaultCode({9401, network::DiagnosticFaultSeverity::MINOR,
+                       "Integration baseline minor fault", std::chrono::system_clock::now()});
+  client.connectToMMA("127.0.0.1", testPort);
+
+  const bool connected_and_verified
+      = test_helpers::waitFor([&]() { return mockServer.isVerified(); }, 3000);
+  REQUIRE(connected_and_verified);
+
+  REQUIRE(mockServer.sendStateChange(network::StateId::DIAGNOSTIC));
+
+  const bool reached_maintenance = test_helpers::waitFor(
+      [&]() { return client.getCurrentState() == "MAINTENANCE"; }, 4000);
+  CHECK(reached_maintenance);
+  CHECK(mockServer.hasConfirmationForState(network::StateId::DIAGNOSTIC));
+  CHECK(mockServer.hasConfirmationForState(network::StateId::MAINTENANCE));
+  CHECK(mockServer.hasReceivedDiagnosticData());
+  CHECK(mockServer.receivedDiagnosticFaultCount() > 0);
+  CHECK(mockServer.hasReceivedWarrantyData());
+}
+
+TEST_CASE("US-012: Simulated invalid transition input is rejected") {
+  const uint16_t testPort = 8023;
+  test_helpers::MockMMA mockServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  aircraft::Aircraft client;
+  StateManager stateManager;
+  client.setStateManager(&stateManager);
+  client.syncStateManagerToCurrentState();
+  client.clearFaultCodes();
+  client.addFaultCode({9402, network::DiagnosticFaultSeverity::MINOR,
+                       "Integration baseline minor fault", std::chrono::system_clock::now()});
+  client.connectToMMA("127.0.0.1", testPort);
+
+  const bool connected_and_verified
+      = test_helpers::waitFor([&]() { return mockServer.isVerified(); }, 3000);
+  REQUIRE(connected_and_verified);
+
+  const size_t confirmations_before = mockServer.stateChangeConfirmationCount();
+  REQUIRE(mockServer.sendStateChange(network::StateId::FAULT));
+
+  std::this_thread::sleep_for(400ms);
+  CHECK(client.getCurrentState() == "STANDBY");
+  CHECK(mockServer.stateChangeConfirmationCount() == confirmations_before);
+}
+
+TEST_CASE("REQ-CLT-082: Timed connection fallback transitions to DIAGNOSTIC") {
+  const std::string logFile = "test_aircraft_connect_fallback_log.txt";
+  std::remove(logFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFile, true);
+  auto logger = std::make_shared<spdlog::logger>("aircraft_connect_fallback_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  aircraft::Aircraft client;
+  StateManager stateManager;
+  client.setStateManager(&stateManager);
+  client.syncStateManagerToCurrentState();
+
+  const auto start = std::chrono::steady_clock::now();
+  client.connectToMMA("10.255.255.1", 65000);
+
+  const bool transitioned
+      = test_helpers::waitFor([&]() { return client.getCurrentState() == "DIAGNOSTIC"; }, 8000);
+  REQUIRE(transitioned);
+
+  const auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(
+                              std::chrono::steady_clock::now() - start)
+                              .count();
+  CHECK(elapsed_ms >= 3000);
+  CHECK(test_helpers::logContains(logFile,
+                                  "Connection timeout, changing to DIAGNOSTIC|Connect failed: .*"));
+
+  spdlog::shutdown();
+  std::remove(logFile.c_str());
+}
+
+TEST_CASE("US-012: Fault injection in MAINTENANCE escalates to aircraft to FAULT state") {
+  const uint16_t testPort = 8024;
+  test_helpers::MockMMA mockServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  aircraft::Aircraft client;
+  StateManager stateManager;
+  client.setStateManager(&stateManager);
+  client.syncStateManagerToCurrentState();
+  client.clearFaultCodes();
+  client.addFaultCode({9403, network::DiagnosticFaultSeverity::MINOR,
+                       "Integration baseline minor fault", std::chrono::system_clock::now()});
+  client.connectToMMA("127.0.0.1", testPort);
+
+  const bool connected_and_verified
+      = test_helpers::waitFor([&]() { return mockServer.isVerified(); }, 3000);
+  REQUIRE(connected_and_verified);
+
+  REQUIRE(mockServer.sendStateChange(network::StateId::DIAGNOSTIC));
+  REQUIRE(test_helpers::waitFor([&]() { return client.getCurrentState() == "MAINTENANCE"; }, 4000));
+
+  client.addFaultCode({9501, network::DiagnosticFaultSeverity::MAJOR,
+                       "Integration test major fault injection",
+                       std::chrono::system_clock::now()});
+
+  const bool transitioned_to_fault
+      = test_helpers::waitFor([&]() { return client.getCurrentState() == "FAULT"; }, 3000);
+  CHECK(transitioned_to_fault);
+  CHECK(test_helpers::waitFor(
+      [&]() { return mockServer.hasConfirmationForState(network::StateId::FAULT); }, 2000));
 }
