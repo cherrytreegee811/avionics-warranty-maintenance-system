@@ -56,12 +56,10 @@ jobs:
           gcovr \
             --root . \
             --object-directory build \
-            --exclude-directories ".*/build/CMakeFiles(/.*)?$" \
-            --exclude-directories ".*/build/_deps(/.*)?$" \
-            --filter "^${GITHUB_WORKSPACE}/source/" \
-            --filter "^${GITHUB_WORKSPACE}/include/" \
+            --exclude-directories "^build/CMakeFiles(/.*)?$" \
+            --exclude-directories "^build/_deps(/.*)?$" \
+            --filter "^(source|include)/" \
             --exclude ".*/(aircraft_main|mma_main)\\.cpp$" \
-            --gcov-ignore-errors=no_working_dir_found \
             --xml-pretty \
             --output build/coverage.xml \
             --html-details build/coverage.html \
