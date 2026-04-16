@@ -23,13 +23,25 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
+      - name: install coverage tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gcovr
+
       - uses: actions/cache@v5
         with:
           path: "**/cpm_modules"
           key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
 
       - name: configure
-        run: cmake -S. -Bbuild -DENABLE_TEST_COVERAGE=1 -DCMAKE_BUILD_TYPE=Debug
+        run: |
+          cmake -S. -Bbuild \
+            -DENABLE_TEST_COVERAGE=1 \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_C_FLAGS="--coverage -O0 -g" \
+            -DCMAKE_CXX_FLAGS="--coverage -O0 -g" \
+            -DCMAKE_EXE_LINKER_FLAGS="--coverage" \
+            -DCMAKE_SHARED_LINKER_FLAGS="--coverage"
 
       - name: build
         run: cmake --build build -j4
@@ -40,4 +52,30 @@ jobs:
           ctest --build-config Debug
 
       - name: collect code coverage
-        run: bash <(curl -s https://codecov.io/bash) || echo "Codecov did not collect coverage reports"
+        run: |
+          gcovr \
+            --root . \
+            --object-directory build \
+            --exclude "build/_deps" \
+            --exclude "test" \
+            --xml-pretty \
+            --output build/coverage.xml \
+            --html-details build/coverage.html
+
+      - name: save coverage artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ubuntu-coverage
+          path: |
+            build/coverage.xml
+            build/coverage.html
+
+      - name: upload coverage to codecov
+        uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          files: build/coverage.xml
+          flags: ubuntu
+          name: ubuntu-coverage
+          fail_ci_if_error: false
+          verbose: true
