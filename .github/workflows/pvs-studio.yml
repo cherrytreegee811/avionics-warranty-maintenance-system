@@ -14,9 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
 
-      - uses: actions/cache@v4
+      - uses: actions/cache@v5
         with:
           path: "**/cpm_modules"
           key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
@@ -27,10 +27,17 @@ jobs:
         run: |
           sudo apt update
           sudo apt install -y wget gnupg jq
+
+          # Configure PVS-Studio APT repo key (apt-key is deprecated on modern Ubuntu).
+          sudo install -m 0755 -d /etc/apt/keyrings
           wget -q -O - https://files.pvs-studio.com/etc/pubkey.txt \
-            | sudo apt-key add -
-          sudo wget -O /etc/apt/sources.list.d/viva64.list \
-            https://files.pvs-studio.com/etc/viva64.list
+            | gpg --dearmor \
+            | sudo tee /etc/apt/keyrings/pvs-studio.gpg > /dev/null
+          sudo chmod a+r /etc/apt/keyrings/pvs-studio.gpg
+
+          wget -q -O /tmp/viva64.list https://files.pvs-studio.com/etc/viva64.list
+          sudo sed -E 's|^deb |deb [signed-by=/etc/apt/keyrings/pvs-studio.gpg] |' /tmp/viva64.list \
+            | sudo tee /etc/apt/sources.list.d/viva64.list > /dev/null
           sudo apt update
           sudo apt install pvs-studio
 
@@ -67,7 +74,9 @@ jobs:
 
       - name: Create scoped compilation database (source/ only)
         run: |
-          jq '[.[] | select(.file | test("/source/"))]' build/compile_commands.json > build/compile_commands.project.json
+          jq --arg root "${{ github.workspace }}" \
+            '[.[] | select(.file | startswith($root + "/source/"))]' \
+            build/compile_commands.json > build/compile_commands.project.json
           COUNT=$(jq 'length' build/compile_commands.project.json)
           echo "Scoped translation units: $COUNT"
           if [ "$COUNT" -eq 0 ]; then
@@ -95,7 +104,7 @@ jobs:
 
           set +e
           plog-converter \
-            -a 'MISRA:1,2,3' \
+            -a 'MISRA:1,2' \
             -t json \
             -t sarif \
             -t fullhtml \

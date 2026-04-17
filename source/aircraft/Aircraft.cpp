@@ -26,74 +26,120 @@
 
 namespace {
 
-  std::unique_ptr<BaseState> makeStateForId(aircraft::Aircraft& aircraft,
-                                            StateManager& stateManager, network::StateId stateId) {
+  static std::unique_ptr<aircraft::BaseState> makeStateForId(aircraft::Aircraft& aircraft,
+                                                             aircraft::StateManager& stateManager,
+                                                             network::StateId stateId) {
+    std::unique_ptr<aircraft::BaseState> result;
+
     switch (stateId) {
       case network::StateId::STANDBY:
-        return std::make_unique<StandbyState>(aircraft, stateManager);
+        result = std::make_unique<aircraft::StandbyState>(aircraft, stateManager);
+        break;
       case network::StateId::DIAGNOSTIC:
-        return std::make_unique<DiagnosticState>(aircraft, stateManager);
+        result = std::make_unique<aircraft::DiagnosticState>(aircraft, stateManager);
+        break;
       case network::StateId::MAINTENANCE:
-        return std::make_unique<MaintenanceState>(aircraft, stateManager);
+        result = std::make_unique<aircraft::MaintenanceState>(aircraft, stateManager);
+        break;
       case network::StateId::FAULT:
-        return std::make_unique<FaultState>(aircraft, stateManager);
+        result = std::make_unique<aircraft::FaultState>(aircraft, stateManager);
+        break;
       default:
-        return nullptr;
+        // Unknown state id.
+        break;
     }
+
+    return result;
   }
 
-  bool isAllowedTransition(network::StateId currentState, network::StateId targetState) {
+  static bool isAllowedTransition(network::StateId currentState, network::StateId targetState) {
+    bool allowed = false;
+
     switch (currentState) {
       case network::StateId::STANDBY:
-        return targetState == network::StateId::DIAGNOSTIC;
+        allowed = (targetState == network::StateId::DIAGNOSTIC);
+        break;
       case network::StateId::DIAGNOSTIC:
-        return targetState == network::StateId::MAINTENANCE;
+        allowed = (targetState == network::StateId::MAINTENANCE);
+        break;
       case network::StateId::MAINTENANCE:
-        return targetState == network::StateId::STANDBY || targetState == network::StateId::FAULT;
+        allowed = (targetState == network::StateId::STANDBY) || (targetState == network::StateId::FAULT);
+        break;
       case network::StateId::FAULT:
-        return targetState == network::StateId::STANDBY
-               || targetState == network::StateId::DIAGNOSTIC;
+        allowed = (targetState == network::StateId::STANDBY) || (targetState == network::StateId::DIAGNOSTIC);
+        break;
       default:
-        return false;
+        // Unknown state id.
+        break;
     }
+
+    return allowed;
   }
 
-  std::optional<network::StateId> stateIdFromString(const std::string& stateName) {
-    if (stateName == "STANDBY") return network::StateId::STANDBY;
-    if (stateName == "DIAGNOSTIC") return network::StateId::DIAGNOSTIC;
-    if (stateName == "MAINTENANCE") return network::StateId::MAINTENANCE;
-    if (stateName == "FAULT") return network::StateId::FAULT;
-    return std::nullopt;
+  static std::optional<network::StateId> stateIdFromString(const std::string& stateName) {
+    std::optional<network::StateId> result;
+
+    if (stateName == "STANDBY") {
+      result = network::StateId::STANDBY;
+    } else if (stateName == "DIAGNOSTIC") {
+      result = network::StateId::DIAGNOSTIC;
+    } else if (stateName == "MAINTENANCE") {
+      result = network::StateId::MAINTENANCE;
+    } else if (stateName == "FAULT") {
+      result = network::StateId::FAULT;
+    } else {
+      result = std::nullopt;
+    }
+
+    return result;
   }
 
-  std::string_view stateNameFromId(network::StateId stateId) {
+  static std::string_view stateNameFromId(network::StateId stateId) {
+    std::string_view result = "UNKNOWN";
+
     switch (stateId) {
       case network::StateId::STANDBY:
-        return "STANDBY";
+        result = "STANDBY";
+        break;
       case network::StateId::DIAGNOSTIC:
-        return "DIAGNOSTIC";
+        result = "DIAGNOSTIC";
+        break;
       case network::StateId::MAINTENANCE:
-        return "MAINTENANCE";
+        result = "MAINTENANCE";
+        break;
       case network::StateId::FAULT:
-        return "FAULT";
+        result = "FAULT";
+        break;
       default:
-        return "UNKNOWN";
+        // Unknown state id.
+        break;
     }
+
+    return result;
   }
 
-  std::string_view transitionSourceToString(aircraft::TransitionSource source) {
+  static std::string_view transitionSourceToString(aircraft::TransitionSource source) {
+    std::string_view result = "UNKNOWN";
+
     switch (source) {
       case aircraft::TransitionSource::MMA_COMMAND:
-        return "MMA_COMMAND";
+        result = "MMA_COMMAND";
+        break;
       case aircraft::TransitionSource::AUTOMATIC:
-        return "AUTOMATIC";
+        result = "AUTOMATIC";
+        break;
       case aircraft::TransitionSource::MANUAL:
-        return "MANUAL";
+        result = "MANUAL";
+        break;
       case aircraft::TransitionSource::CONNECTION_FALLBACK:
-        return "CONNECTION_FALLBACK";
+        result = "CONNECTION_FALLBACK";
+        break;
       default:
-        return "UNKNOWN";
+        // Unknown transition source.
+        break;
     }
+
+    return result;
   }
 
 }  // namespace
@@ -105,7 +151,7 @@ Aircraft::Aircraft()
       network_io_context_(std::make_unique<asio::io_context>()),
       network_work_guard_(
           std::make_unique<NetworkWorkGuard>(asio::make_work_guard(*network_io_context_))),
-      network_thread_([this]() { network_io_context_->run(); }) {
+    network_thread_([this]() { (void)network_io_context_->run(); }) {
   // Generate random 5-digit aircraft ID (10000-99999)
   std::random_device rd;
   std::mt19937 gen(rd());
@@ -170,11 +216,9 @@ void Aircraft::initialize() {
 std::string Aircraft::getCurrentState() const { return m_currentState; }
 
 void Aircraft::setCurrentState(const std::string& state) {
-  if (m_currentState == state) {
-    return;
+  if (m_currentState != state) {
+    m_currentState = state;
   }
-
-  m_currentState = state;
 }
 
 MaintenanceInfo Aircraft::getLastMaintenance() const { return m_lastMaintenance; }
@@ -191,17 +235,17 @@ void Aircraft::addFaultCode(const FaultCode& code) {
 }
 
 bool Aircraft::resolveFaultCode(int code) {
-  const auto beforeSize = m_faultCodes.size();
-  m_faultCodes.erase(std::remove_if(m_faultCodes.begin(), m_faultCodes.end(),
-                                    [code](const FaultCode& fault) { return fault.code == code; }),
-                     m_faultCodes.end());
+  const auto removed_count = std::erase_if(m_faultCodes, [code](const FaultCode& fault) {
+    return fault.code == code;
+  });
 
-  if (m_faultCodes.size() == beforeSize) {
-    return false;
+  bool resolved = false;
+  if (removed_count > 0U) {
+    evaluateAutomaticTransitionFromCurrentState();
+    resolved = true;
   }
 
-  evaluateAutomaticTransitionFromCurrentState();
-  return true;
+  return resolved;
 }
 
 void Aircraft::clearFaultCodes() {
@@ -222,42 +266,45 @@ bool Aircraft::hasMajorFaults() const {
 bool Aircraft::hasOnlyMinorFaults() const { return hasAnyFaults() && !hasMajorFaults(); }
 
 void Aircraft::evaluateAutomaticTransitionFromCurrentState() {
-  if (automatic_transition_in_progress_) {
-    return;
-  }
-
-  const auto currentState = stateIdFromString(m_currentState);
-  if (!currentState) {
-    return;
-  }
-
-  std::optional<network::StateId> targetState;
-  switch (*currentState) {
-    case network::StateId::MAINTENANCE:
-      if (hasMajorFaults()) {
-        targetState = network::StateId::FAULT;
-      } else if (!hasAnyFaults()) {
-        targetState = network::StateId::STANDBY;
+  if (!automatic_transition_in_progress_) {
+    const auto currentState = stateIdFromString(m_currentState);
+    if (currentState) {
+      std::optional<network::StateId> targetState;
+      switch (*currentState) {
+        case network::StateId::MAINTENANCE:
+          if (hasMajorFaults()) {
+            targetState = network::StateId::FAULT;
+          } else if (!hasAnyFaults()) {
+            targetState = network::StateId::STANDBY;
+          } else {
+            // No automatic transition.
+          }
+          break;
+        case network::StateId::FAULT:
+          if (!hasAnyFaults()) {
+            targetState = network::StateId::STANDBY;
+          } else if (hasOnlyMinorFaults()) {
+            targetState = network::StateId::DIAGNOSTIC;
+          } else {
+            // No automatic transition.
+          }
+          break;
+        default:
+          // No automatic transition from other states.
+          break;
       }
-      break;
-    case network::StateId::FAULT:
-      if (!hasAnyFaults()) {
-        targetState = network::StateId::STANDBY;
-      } else if (hasOnlyMinorFaults()) {
-        targetState = network::StateId::DIAGNOSTIC;
+
+      if (targetState) {
+        automatic_transition_in_progress_ = true;
+        const bool transitioned = transitionToState(*targetState, TransitionSource::AUTOMATIC);
+        if (!transitioned) {
+          spdlog::warn("Automatic transition from {} to {} was rejected", m_currentState,
+                       network::stateIdToString(*targetState));
+        }
+        automatic_transition_in_progress_ = false;
       }
-      break;
-    default:
-      break;
+    }
   }
-
-  if (!targetState) {
-    return;
-  }
-
-  automatic_transition_in_progress_ = true;
-  transitionToState(*targetState, TransitionSource::AUTOMATIC);
-  automatic_transition_in_progress_ = false;
 }
 
 void Aircraft::connectToMMA(const std::string& host, uint16_t port) {
@@ -437,17 +484,19 @@ bool Aircraft::sendImageFromFile(const std::string& filepath) {
     spdlog::error("Failed to open image file: {}", filepath);
     return false;
   }
-  file.seekg(0, std::ios::end);
+
+  bool ok = true;
+  ok = ok && static_cast<bool>(file.seekg(0, std::ios::end));
   const std::streampos file_size_pos = file.tellg();
   const size_t file_size = static_cast<size_t>(file_size_pos);
-  file.seekg(0, std::ios::beg);
+  ok = ok && static_cast<bool>(file.seekg(0, std::ios::beg));
 
   std::vector<char> raw_data(file_size);
   if (file_size > 0U) {
-    file.read(raw_data.data(), static_cast<std::streamsize>(file_size));
+    ok = ok && static_cast<bool>(file.read(raw_data.data(), static_cast<std::streamsize>(file_size)));
   }
 
-  if (!file || file.gcount() != static_cast<std::streamsize>(file_size)) {
+  if (!ok || (file.gcount() != static_cast<std::streamsize>(file_size))) {
     spdlog::error("Failed to read image file: {}: expected {} bytes, got {}", filepath, file_size,
                   file.gcount());
     return false;
@@ -496,7 +545,10 @@ bool Aircraft::sendImage(const std::vector<uint8_t>& image_data, network::ImageF
   while (sent_image_cache_order_.size() > kMaxCachedImagesForRetry) {
     const uint32_t evict_image_id = sent_image_cache_order_.front();
     sent_image_cache_order_.pop_front();
-    sent_image_chunk_payloads_.erase(evict_image_id);
+    const auto erased_count = sent_image_chunk_payloads_.erase(evict_image_id);
+    if (erased_count == 0U) {
+      spdlog::warn("Image cache eviction requested unknown image {}", evict_image_id);
+    }
   }
 
   spdlog::info("Sent image {} in {} chunks ({} bytes total)", image_id, chunk_payloads.size(),
@@ -511,7 +563,10 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
 
   network::PacketHeader header;
   std::vector<uint8_t> payload;
-  if (!network::deserializePacket(data, header, payload)) return;
+  const bool packet_ok = network::deserializePacket(data, header, payload);
+  if (!packet_ok) {
+    return;
+  }
 
   if (!verified_) {
     if (header.type == network::PacketType::VERIFICATION_REQUEST) {
@@ -521,9 +576,9 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
         return;
       }
       network::VerificationRequest req;
-      std::memcpy(&req, payload.data(), sizeof(req));
+      (void)std::memcpy(&req, payload.data(), sizeof(req));
       network::VerificationResponse resp;
-      resp.challenge_response = req.challenge ^ 0xDEADBEEF;
+      resp.challenge_response = req.challenge ^ 0xDEADBEEFU;
       resp.client_id = aircraft_id_;
       auto resp_packet = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, resp);
       connection_->send(resp_packet);
@@ -545,7 +600,7 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
       }
 
       network::StateChangeRequest req{};
-      std::memcpy(&req, payload.data(), sizeof(req));
+      (void)std::memcpy(&req, payload.data(), sizeof(req));
       if (!transitionToState(req.target_state, TransitionSource::MMA_COMMAND)) {
         spdlog::warn("STATE_CHANGE rejected: invalid target state {}",
                      network::stateIdToString(req.target_state));
@@ -568,10 +623,13 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
       auto it = image_reassembly_buffers_.find(chunk_header.image_id);
       if (it == image_reassembly_buffers_.end()) {
         // Create new reassembly buffer
-        image_reassembly_buffers_.emplace(
-            chunk_header.image_id, network::ImageBuffer(chunk_header.image_id, chunk_header.format,
-                                                        chunk_header.total_chunks));
-        it = image_reassembly_buffers_.find(chunk_header.image_id);
+        const auto emplace_result = image_reassembly_buffers_.emplace(
+            chunk_header.image_id,
+            network::ImageBuffer(chunk_header.image_id, chunk_header.format, chunk_header.total_chunks));
+        it = emplace_result.first;
+        if (!emplace_result.second) {
+          spdlog::warn("Failed to create image reassembly buffer for image {}", chunk_header.image_id);
+        }
       }
 
       if (!it->second.setExpectedImageCrc(chunk_header.image_crc32)) {
@@ -593,14 +651,14 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
               "0x{:08X})",
               chunk_header.image_id, it->second.expected_image_crc32,
               network::Crc32::calculate(complete_image.data(), complete_image.size()));
-          image_reassembly_buffers_.erase(it);
+          it = image_reassembly_buffers_.erase(it);
           return;
         }
 
         spdlog::info("Image {} received and reassembled ({} bytes total, format: {})",
                      chunk_header.image_id, complete_image.size(),
                      network::imageFormatToString(chunk_header.format));
-        image_reassembly_buffers_.erase(it);
+        it = image_reassembly_buffers_.erase(it);
       }
       return;
     }
@@ -612,7 +670,7 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
       }
 
       network::SchematicChunkRetryRequest request{};
-      std::memcpy(&request, payload.data(), sizeof(request));
+      (void)std::memcpy(&request, payload.data(), sizeof(request));
 
       const auto cached_image_it = sent_image_chunk_payloads_.find(request.image_id);
       if (cached_image_it == sent_image_chunk_payloads_.end()) {
@@ -656,7 +714,7 @@ void Aircraft::onNetworkMessage(const std::vector<uint8_t>& data) {
       }
 
       network::DiagnosticCodeClearRequest request{};
-      std::memcpy(&request, payload.data(), sizeof(request));
+      (void)std::memcpy(&request, payload.data(), sizeof(request));
 
       const auto currentState = stateIdFromString(m_currentState);
       if (!currentState

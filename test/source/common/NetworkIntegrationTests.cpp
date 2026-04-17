@@ -231,7 +231,7 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057: MMA logs landed and state transi
 
   {
     aircraft::Aircraft client;
-    StateManager stateManager;
+    aircraft::StateManager stateManager;
     client.setStateManager(&stateManager);
     client.syncStateManagerToCurrentState();
 
@@ -348,7 +348,7 @@ TEST_CASE(
 
   {
     aircraft::Aircraft client;
-    StateManager stateManager;
+    aircraft::StateManager stateManager;
     client.setStateManager(&stateManager);
     client.syncStateManagerToCurrentState();
 
@@ -415,7 +415,7 @@ TEST_CASE("REQ-SYS-010/REQ-NET-013/REQ-SYS-060: MMA allows clear request in FAUL
 
   {
     aircraft::Aircraft client;
-    StateManager stateManager;
+    aircraft::StateManager stateManager;
     client.setStateManager(&stateManager);
     client.syncStateManagerToCurrentState();
 

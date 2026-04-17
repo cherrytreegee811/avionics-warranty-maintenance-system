@@ -7,11 +7,11 @@
 #include <memory>
 
 namespace {
-  class RecordingState final : public BaseState {
+  class RecordingState final : public aircraft::BaseState {
   public:
-    RecordingState(aircraft::Aircraft& aircraft, StateManager& manager, int& initCount,
+    RecordingState(aircraft::Aircraft& aircraft, aircraft::StateManager& manager, int& initCount,
                    int& cleanupCount, int& updateCount)
-        : BaseState(aircraft, manager),
+        : aircraft::BaseState(aircraft, manager),
           initCount_(initCount),
           cleanupCount_(cleanupCount),
           updateCount_(updateCount) {}
@@ -34,7 +34,7 @@ namespace {
 
 TEST_CASE("REQ-SYS-060: StateManager SetState initializes and cleans up states") {
   aircraft::Aircraft aircraft;
-  StateManager manager;
+  aircraft::StateManager manager;
 
   int initCount = 0;
   int cleanupCount = 0;
@@ -53,7 +53,7 @@ TEST_CASE("REQ-SYS-060: StateManager SetState initializes and cleans up states")
 
 TEST_CASE("REQ-SYS-060: StateManager Update ticks the active state") {
   aircraft::Aircraft aircraft;
-  StateManager manager;
+  aircraft::StateManager manager;
 
   int initCount = 0;
   int cleanupCount = 0;
@@ -68,14 +68,14 @@ TEST_CASE("REQ-SYS-060: StateManager Update ticks the active state") {
 }
 
 TEST_CASE("REQ-SYS-060: StateManager Update is safe with no state") {
-  StateManager manager;
+  aircraft::StateManager manager;
   manager.Update();
   CHECK(true);
 }
 
 TEST_CASE("REQ-SYS-060: StateManager can enqueue requested state changes") {
   aircraft::Aircraft aircraft;
-  StateManager manager;
+  aircraft::StateManager manager;
 
   int initCount = 0;
   int cleanupCount = 0;

@@ -8,7 +8,9 @@
 
 #include <iostream>
 
-DiagnosticState::DiagnosticState(aircraft::Aircraft& aircraft, StateManager& stateManager)
+namespace aircraft {
+
+DiagnosticState::DiagnosticState(Aircraft& aircraft, StateManager& stateManager)
     : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
 
 void DiagnosticState::UpdateState() {}
@@ -26,9 +28,10 @@ void DiagnosticState::InitState() {
   if (diagnostic_sent) {
     // After diagnostics are reported, move into maintenance so the server can
     // clear codes or escalate to FAULT if required by the current fault set.
-    m_aircraft.transitionToState(network::StateId::MAINTENANCE,
-                                 aircraft::TransitionSource::AUTOMATIC);
+    m_aircraft.transitionToState(network::StateId::MAINTENANCE, TransitionSource::AUTOMATIC);
   }
 }
 
 void DiagnosticState::CleanUpState() {}
+
+}  // namespace aircraft

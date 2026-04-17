@@ -7,17 +7,15 @@
 #include "BaseState.h"
 
 namespace aircraft {
-  class Aircraft;
-}
 
 class FaultState : public BaseState {
 public:
   /**
    * @brief Constructs fault state behavior.
    * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
-   * @param stateManager Type: @ref StateManager&. Transition manager used by this state.
+   * @param stateManager Type: @ref aircraft::StateManager&. Transition manager used by this state.
    */
-  FaultState(aircraft::Aircraft& aircraft, StateManager& stateManager);
+  FaultState(Aircraft& aircraft, StateManager& stateManager);
 
   /** @brief Runs periodic fault-state update behavior. */
   void UpdateState() override;
@@ -29,3 +27,5 @@ public:
 private:
   StateManager& m_stateManager;
 };
+
+}  // namespace aircraft

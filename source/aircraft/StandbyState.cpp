@@ -11,7 +11,9 @@
 #include <iostream>
 #include <memory>
 
-StandbyState::StandbyState(aircraft::Aircraft& aircraft, StateManager& stateManager)
+namespace aircraft {
+
+StandbyState::StandbyState(Aircraft& aircraft, StateManager& stateManager)
     : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
 
 void StandbyState::UpdateState() {}
@@ -19,3 +21,5 @@ void StandbyState::UpdateState() {}
 void StandbyState::InitState() { m_aircraft.setCurrentState("STANDBY"); }
 
 void StandbyState::CleanUpState() {}
+
+}  // namespace aircraft
