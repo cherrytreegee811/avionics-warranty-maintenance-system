@@ -71,6 +71,10 @@ namespace test_helpers {
         if (deserializeWarrantyDataPayload(payload, warranty)) {
           received_warranty_data_ = true;
         }
+      } else if (header.type == PacketType::SCHEMATIC_CHUNK) {
+        schematic_chunk_count_.fetch_add(1);
+        std::lock_guard<std::mutex> lock(schematic_chunks_mutex_);
+        received_schematic_chunk_payloads_.push_back(payload);
       }
     }
   }
@@ -86,6 +90,28 @@ namespace test_helpers {
 
     const StateChangeRequest request{targetState};
     const auto packet = serializePacket(PacketType::STATE_CHANGE, request);
+    connection_->send(packet);
+    return true;
+  }
+
+  bool MockMMA::sendChunkRetryRequest(uint32_t imageId, uint16_t chunkIndex) {
+    if (!verified_.load() || !connection_) {
+      return false;
+    }
+
+    const SchematicChunkRetryRequest request{imageId, chunkIndex};
+    const auto packet = serializePacket(PacketType::SCHEMATIC_CHUNK_RETRY_REQUEST, request);
+    connection_->send(packet);
+    return true;
+  }
+
+  bool MockMMA::sendSchematicChunkPayload(const std::vector<uint8_t>& chunkPayload) {
+    if (!verified_.load() || !connection_) {
+      return false;
+    }
+
+    const auto packet
+        = serializePacket(PacketType::SCHEMATIC_CHUNK, chunkPayload.data(), chunkPayload.size());
     connection_->send(packet);
     return true;
   }
@@ -108,6 +134,13 @@ namespace test_helpers {
   size_t MockMMA::receivedDiagnosticFaultCount() const { return diagnostic_fault_count_.load(); }
 
   bool MockMMA::hasReceivedWarrantyData() const { return received_warranty_data_.load(); }
+
+  size_t MockMMA::receivedSchematicChunkCount() const { return schematic_chunk_count_.load(); }
+
+  std::vector<std::vector<uint8_t>> MockMMA::receivedSchematicChunkPayloads() const {
+    std::lock_guard<std::mutex> lock(schematic_chunks_mutex_);
+    return received_schematic_chunk_payloads_;
+  }
 
   void MockMMA::closeClientConnection() {
     if (connection_) {

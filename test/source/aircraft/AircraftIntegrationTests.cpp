@@ -191,3 +191,74 @@ TEST_CASE(
   CHECK(test_helpers::waitFor(
       [&]() { return mockServer.hasConfirmationForState(network::StateId::FAULT); }, 2000));
 }
+
+TEST_CASE("REQ-NET-081: Integration - Aircraft reassembles SCHEMATIC_CHUNK sent by MMA") {
+  const std::string clientLogFile = "test_aircraft_receive_schematic_chunk_log.txt";
+  std::remove(clientLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(clientLogFile, true);
+  auto logger = std::make_shared<spdlog::logger>("aircraft_schematic_chunk_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  {
+    const uint16_t testPort = 8025;
+    test_helpers::MockMMA mockServer(testPort);
+    std::this_thread::sleep_for(100ms);
+
+    aircraft::Aircraft client;
+    client.connectToMMA("127.0.0.1", testPort);
+
+    REQUIRE(test_helpers::waitFor([&]() { return mockServer.isVerified(); }, 3000));
+
+    const std::vector<uint8_t> image_data{0x01, 0x02, 0x03, 0x04};
+    const auto chunk_payloads
+        = network::serializeImagePayload(77, image_data, network::ImageFormat::RAW);
+    REQUIRE(chunk_payloads.size() == 1);
+    REQUIRE(mockServer.sendSchematicChunkPayload(chunk_payloads.front()));
+
+    CHECK(test_helpers::waitFor(
+        [&]() {
+          return test_helpers::logContains(clientLogFile,
+                                           "Image 77 received and reassembled \\(4 bytes total, "
+                                           "format: RAW\\)");
+        },
+        3000));
+  }
+
+  spdlog::shutdown();
+  std::remove(clientLogFile.c_str());
+}
+
+TEST_CASE(
+    "REQ-NET-081: Integration - Aircraft handles SCHEMATIC_CHUNK_RETRY_REQUEST by resending "
+    "cached chunk") {
+  const uint16_t testPort = 8026;
+  test_helpers::MockMMA mockServer(testPort);
+  std::this_thread::sleep_for(100ms);
+
+  aircraft::Aircraft client;
+  client.connectToMMA("127.0.0.1", testPort);
+
+  REQUIRE(test_helpers::waitFor([&]() { return mockServer.isVerified(); }, 3000));
+
+  const std::vector<uint8_t> image_data{0x10, 0x20, 0x30, 0x40};
+  REQUIRE(client.sendImage(image_data, network::ImageFormat::RAW));
+
+  REQUIRE(test_helpers::waitFor([&]() { return mockServer.receivedSchematicChunkCount() >= 1; },
+                                3000));
+
+  const auto initial_chunks = mockServer.receivedSchematicChunkPayloads();
+  REQUIRE(!initial_chunks.empty());
+  const auto expected_chunk_payload = initial_chunks.front();
+
+  REQUIRE(mockServer.sendChunkRetryRequest(1, 0));
+
+  REQUIRE(test_helpers::waitFor([&]() { return mockServer.receivedSchematicChunkCount() >= 2; },
+                                3000));
+
+  const auto chunks_after_retry = mockServer.receivedSchematicChunkPayloads();
+  REQUIRE(chunks_after_retry.size() >= 2);
+  CHECK(chunks_after_retry.back() == expected_chunk_payload);
+}
