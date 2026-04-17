@@ -12,6 +12,19 @@
 
 namespace network {
 
+  namespace {
+
+    std::string bytesToString(const uint8_t* data, size_t length) {
+      std::string result;
+      result.resize(length);
+      for (size_t i = 0; i < length; ++i) {
+        result[i] = static_cast<char>(data[i]);
+      }
+      return result;
+    }
+
+  }  // namespace
+
   std::vector<uint8_t> serializePacket(PacketType type, const void* payload, size_t payload_size) {
     PacketHeader header;
     header.magic = PACKET_MAGIC;
@@ -147,8 +160,8 @@ namespace network {
       parsed.code = wire.code;
       parsed.timestamp_epoch_ms = wire.timestamp_epoch_ms;
       parsed.severity = wire.severity;
-      parsed.description.assign(reinterpret_cast<const char*>(payload.data() + offset),
-                                wire.description_size);
+      parsed.description = bytesToString(payload.data() + offset,
+                     static_cast<size_t>(wire.description_size));
       offset += wire.description_size;
 
       faults.push_back(std::move(parsed));
@@ -209,7 +222,8 @@ namespace network {
     if (offset + expiry_size > payload.size()) {
       return false;
     }
-    warranty.expiryDate.assign(reinterpret_cast<const char*>(payload.data() + offset), expiry_size);
+    warranty.expiryDate
+        = bytesToString(payload.data() + offset, static_cast<size_t>(expiry_size));
     offset += expiry_size;
 
     if (offset + sizeof(uint16_t) > payload.size()) {
@@ -223,7 +237,8 @@ namespace network {
     if (offset + provider_size > payload.size()) {
       return false;
     }
-    warranty.provider.assign(reinterpret_cast<const char*>(payload.data() + offset), provider_size);
+    warranty.provider
+        = bytesToString(payload.data() + offset, static_cast<size_t>(provider_size));
     offset += provider_size;
 
     return offset == payload.size();

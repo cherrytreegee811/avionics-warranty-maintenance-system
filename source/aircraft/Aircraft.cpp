@@ -98,7 +98,7 @@ namespace {
 
 }  // namespace
 
-using namespace aircraft;
+namespace aircraft {
 
 Aircraft::Aircraft()
     : m_currentState("STANDBY"),
@@ -442,13 +442,20 @@ bool Aircraft::sendImageFromFile(const std::string& filepath) {
   const size_t file_size = static_cast<size_t>(file_size_pos);
   file.seekg(0, std::ios::beg);
 
-  std::vector<uint8_t> image_data(file_size);
-  file.read(reinterpret_cast<char*>(image_data.data()), static_cast<std::streamsize>(file_size));
+  std::vector<char> raw_data(file_size);
+  if (file_size > 0U) {
+    file.read(raw_data.data(), static_cast<std::streamsize>(file_size));
+  }
 
   if (!file || file.gcount() != static_cast<std::streamsize>(file_size)) {
     spdlog::error("Failed to read image file: {}: expected {} bytes, got {}", filepath, file_size,
                   file.gcount());
     return false;
+  }
+
+  std::vector<uint8_t> image_data(file_size);
+  for (size_t i = 0; i < file_size; ++i) {
+    image_data[i] = static_cast<uint8_t>(raw_data[i]);
   }
 
   return sendImage(image_data, network::ImageFormat::PNG);
@@ -689,3 +696,5 @@ void Aircraft::sendLandedNotification() {
   // REQ-CLT-054
   spdlog::info("Landed notification sent to MMA");
 }
+
+}  // namespace aircraft

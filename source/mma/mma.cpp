@@ -68,7 +68,13 @@ static bool saveReceivedImage(uint64_t aircraft_id, uint32_t image_id,
       return false;
     }
 
-    file.write(reinterpret_cast<const char*>(image_data.data()), image_data.size());
+    std::vector<char> bytes_to_write(image_data.size());
+    for (size_t i = 0; i < image_data.size(); ++i) {
+      bytes_to_write[i] = static_cast<char>(image_data[i]);
+    }
+    if (!bytes_to_write.empty()) {
+      file.write(bytes_to_write.data(), static_cast<std::streamsize>(bytes_to_write.size()));
+    }
 
     if (!file) {
       spdlog::error("Error writing image data to file: {}", filepath);
@@ -100,11 +106,15 @@ static bool saveReceivedImage(uint64_t aircraft_id, uint32_t image_id,
     verify_file.seekg(0, std::ios::beg);
     std::vector<uint8_t> saved_data(saved_size);
     if (saved_size > 0) {
-      verify_file.read(reinterpret_cast<char*>(saved_data.data()),
-                       static_cast<std::streamsize>(saved_size));
+      std::vector<char> read_buffer(saved_size);
+      verify_file.read(read_buffer.data(), static_cast<std::streamsize>(saved_size));
       if (!verify_file || verify_file.gcount() != static_cast<std::streamsize>(saved_size)) {
         spdlog::error("Failed to read saved image data for verification: {}", filepath);
         return false;
+      }
+
+      for (size_t i = 0; i < saved_size; ++i) {
+        saved_data[i] = static_cast<uint8_t>(read_buffer[i]);
       }
     }
 
