@@ -40,6 +40,23 @@ target_link_libraries(AircraftUnitTests PRIVATE ${DOCTEST_LIB_TARGET} Aircraft T
 target_include_directories(AircraftUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(AircraftUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
+add_executable(CliInterfaceUnitTests source/aircraft/CliInterfaceUnitTests.cpp)
+target_link_libraries(CliInterfaceUnitTests PRIVATE ${DOCTEST_LIB_TARGET} Aircraft)
+target_include_directories(CliInterfaceUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(CliInterfaceUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
+
+add_executable(CliInterfaceUsabilityTests source/aircraft/CliInterfaceUsabilityTests.cpp)
+target_link_libraries(CliInterfaceUsabilityTests PRIVATE ${DOCTEST_LIB_TARGET} Aircraft)
+target_include_directories(CliInterfaceUsabilityTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(
+  CliInterfaceUsabilityTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON
+)
+
+add_executable(StateManagerUnitTests source/aircraft/StateManagerUnitTests.cpp)
+target_link_libraries(StateManagerUnitTests PRIVATE ${DOCTEST_LIB_TARGET} Aircraft)
+target_include_directories(StateManagerUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+set_target_properties(StateManagerUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
+
 add_executable(PacketUnitTests source/common/PacketUnitTests.cpp)
 target_link_libraries(PacketUnitTests PRIVATE ${DOCTEST_LIB_TARGET} Common)
 target_include_directories(PacketUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
@@ -89,6 +106,9 @@ endif()
 
 include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 doctest_discover_tests(AircraftUnitTests)
+doctest_discover_tests(CliInterfaceUnitTests)
+doctest_discover_tests(CliInterfaceUsabilityTests)
+doctest_discover_tests(StateManagerUnitTests)
 doctest_discover_tests(PacketUnitTests)
 doctest_discover_tests(NetworkIntegrationTests)
 doctest_discover_tests(SystemTests)
