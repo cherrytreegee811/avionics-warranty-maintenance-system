@@ -1,7 +1,8 @@
 ignore:
-  - "test/**"
-  - "**/_deps/**"
-  - "build/**/_deps/**"
-
+  - "**/test/**"
+  - "**/deps/**"
+  - "**/aircraft_main.cpp"
+  - "**/mma_main.cpp"
+  
 comment:
   require_changes: true
