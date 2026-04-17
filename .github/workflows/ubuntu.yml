@@ -84,7 +84,8 @@ jobs:
             --filter "^include/" \
             --filter "^$GITHUB_WORKSPACE/source/" \
             --filter "^$GITHUB_WORKSPACE/include/" \
-            --exclude ".*/(aircraft_main|mma_main)\\.cpp$" \
+            --exclude "source/aircraft/aircraft_main.cpp" \
+            --exclude "source/mma/mma_main.cpp" \
             --xml-pretty \
             --output build/coverage.xml \
             --html-details build/coverage.html \
