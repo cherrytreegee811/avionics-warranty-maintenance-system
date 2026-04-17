@@ -880,9 +880,8 @@ TEST_CASE(
   const std::vector<uint8_t> chunk0_data{0xAA, 0xBB, 0xCC};
   const std::vector<uint8_t> full_image_data{0xAA, 0xBB, 0xCC, 0xDD};
   const uint32_t image_id = 9002;
-  const uint32_t image_crc
-      = network::Crc32::calculate(
-        std::span<const uint8_t>(full_image_data.data(), full_image_data.size()));
+  const uint32_t image_crc = network::Crc32::calculate(
+      std::span<const uint8_t>(full_image_data.data(), full_image_data.size()));
 
   const network::ImageChunkHeader chunk0_header{
       image_id,
@@ -890,15 +889,15 @@ TEST_CASE(
       2,
       static_cast<uint32_t>(chunk0_data.size()),
       network::ImageFormat::RAW,
-        network::Crc32::calculate(std::span<const uint8_t>(chunk0_data.data(), chunk0_data.size())),
+      network::Crc32::calculate(std::span<const uint8_t>(chunk0_data.data(), chunk0_data.size())),
       image_crc};
   std::vector<uint8_t> chunk0_payload(sizeof(chunk0_header) + chunk0_data.size());
-      (void)std::memcpy(chunk0_payload.data(), &chunk0_header, sizeof(chunk0_header));
-      (void)std::memcpy(chunk0_payload.data() + sizeof(chunk0_header), chunk0_data.data(),
-              chunk0_data.size());
+  (void)std::memcpy(chunk0_payload.data(), &chunk0_header, sizeof(chunk0_header));
+  (void)std::memcpy(chunk0_payload.data() + sizeof(chunk0_header), chunk0_data.data(),
+                    chunk0_data.size());
 
-      const auto chunk0_packet
-        = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK, chunk0_payload);
+  const auto chunk0_packet
+      = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK, chunk0_payload);
   asio::write(socket, asio::buffer(chunk0_packet), ec);
   REQUIRE(!ec);
 

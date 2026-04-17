@@ -172,8 +172,8 @@ namespace network {
       parsed.code = wire.code;
       parsed.timestamp_epoch_ms = wire.timestamp_epoch_ms;
       parsed.severity = wire.severity;
-      parsed.description = bytesToString(payload.data() + offset,
-                     static_cast<size_t>(wire.description_size));
+      parsed.description
+          = bytesToString(payload.data() + offset, static_cast<size_t>(wire.description_size));
       offset += wire.description_size;
 
       faults.push_back(std::move(parsed));
@@ -234,8 +234,7 @@ namespace network {
     if (offset + expiry_size > payload.size()) {
       return false;
     }
-    warranty.expiryDate
-        = bytesToString(payload.data() + offset, static_cast<size_t>(expiry_size));
+    warranty.expiryDate = bytesToString(payload.data() + offset, static_cast<size_t>(expiry_size));
     offset += expiry_size;
 
     if (offset + sizeof(uint16_t) > payload.size()) {
@@ -249,8 +248,7 @@ namespace network {
     if (offset + provider_size > payload.size()) {
       return false;
     }
-    warranty.provider
-        = bytesToString(payload.data() + offset, static_cast<size_t>(provider_size));
+    warranty.provider = bytesToString(payload.data() + offset, static_cast<size_t>(provider_size));
     offset += provider_size;
 
     return offset == payload.size();
@@ -341,8 +339,7 @@ namespace network {
                         header_out.chunk_data_size);
     }
 
-    const uint32_t computed_chunk_crc
-        = Crc32::calculate(std::span<const uint8_t>(chunk_data_out));
+    const uint32_t computed_chunk_crc = Crc32::calculate(std::span<const uint8_t>(chunk_data_out));
     if (computed_chunk_crc != header_out.chunk_crc32) {
       spdlog::warn("Chunk CRC mismatch for image {} chunk {}: expected 0x{:08X}, computed 0x{:08X}",
                    header_out.image_id, header_out.chunk_index, header_out.chunk_crc32,

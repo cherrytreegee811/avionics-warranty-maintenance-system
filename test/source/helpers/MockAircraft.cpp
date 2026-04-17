@@ -43,7 +43,7 @@ namespace test_helpers {
     }
 
     VerificationRequest req;
-  (void)std::memcpy(&req, payload.data(), sizeof(req));
+    (void)std::memcpy(&req, payload.data(), sizeof(req));
 
     // Compute response
     VerificationResponse resp;

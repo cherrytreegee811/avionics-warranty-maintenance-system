@@ -220,10 +220,10 @@ TEST_CASE(
   CHECK(header.chunk_index == 0);
   CHECK(header.total_chunks == 1);
   CHECK(header.format == ImageFormat::PNG);
-    CHECK(header.chunk_crc32
-      == Crc32::calculate(std::span<const uint8_t>(image_data.data(), image_data.size())));
-    CHECK(header.image_crc32
-      == Crc32::calculate(std::span<const uint8_t>(image_data.data(), image_data.size())));
+  CHECK(header.chunk_crc32
+        == Crc32::calculate(std::span<const uint8_t>(image_data.data(), image_data.size())));
+  CHECK(header.image_crc32
+        == Crc32::calculate(std::span<const uint8_t>(image_data.data(), image_data.size())));
   CHECK(chunk_data == image_data);
 }
 
@@ -252,9 +252,9 @@ TEST_CASE(
     CHECK(header.total_chunks == static_cast<uint16_t>(chunks.size()));
     CHECK(header.format == ImageFormat::JPEG);
     CHECK(header.chunk_data_size == chunk_data.size());
-        CHECK(header.chunk_crc32
+    CHECK(header.chunk_crc32
           == Crc32::calculate(std::span<const uint8_t>(chunk_data.data(), chunk_data.size())));
-        CHECK(header.image_crc32
+    CHECK(header.image_crc32
           == Crc32::calculate(std::span<const uint8_t>(large_image.data(), large_image.size())));
   }
 }
@@ -378,8 +378,8 @@ TEST_CASE(
   const auto reassembled = buffer.reassemble();
   CHECK(reassembled == original_image);
 
-  CHECK(buffer.setExpectedImageCrc(Crc32::calculate(
-      std::span<const uint8_t>(original_image.data(), original_image.size()))));
+  CHECK(buffer.setExpectedImageCrc(
+      Crc32::calculate(std::span<const uint8_t>(original_image.data(), original_image.size()))));
   CHECK(buffer.validateReassembledCrc(reassembled));
 }
 
