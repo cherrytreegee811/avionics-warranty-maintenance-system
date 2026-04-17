@@ -13,9 +13,17 @@
 
 using namespace aircraft;
 
-CliInterface::CliInterface(Aircraft& aircraft) : m_aircraft(aircraft) {}
+CliInterface::CliInterface(Aircraft& aircraft)
+    : CliInterface(aircraft, std::cin, std::cout, true) {}
+
+CliInterface::CliInterface(Aircraft& aircraft, std::istream& in, std::ostream& out,
+                           bool enable_screen_control)
+    : m_aircraft(aircraft), in_(in), out_(out), screen_control_enabled_(enable_screen_control) {}
 
 void CliInterface::clearScreen() {
+  if (!screen_control_enabled_) {
+    return;
+  }
 // Cross-platform clear screen
 #ifdef _WIN32
   system("cls");
@@ -25,18 +33,22 @@ void CliInterface::clearScreen() {
 }
 
 void CliInterface::waitForEnter() {
-  std::cout << "\nPress Enter to continue...";
-  std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-  std::cin.get();
+  if (!screen_control_enabled_) {
+    return;
+  }
+  out_ << "\nPress Enter to continue...";
+  out_.flush();
+  in_.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+  in_.get();
 }
 
 void CliInterface::printHeader(const std::string& title) {
-  std::cout << "\n========================================\n";
-  std::cout << "   " << title << "\n";
-  std::cout << "========================================\n";
+  out_ << "\n========================================\n";
+  out_ << "   " << title << "\n";
+  out_ << "========================================\n";
 }
 
-void CliInterface::printSeparator() { std::cout << "----------------------------------------\n"; }
+void CliInterface::printSeparator() { out_ << "----------------------------------------\n"; }
 
 std::string CliInterface::formatTimePoint(const std::chrono::system_clock::time_point& tp) const {
   auto time_t = std::chrono::system_clock::to_time_t(tp);
@@ -53,38 +65,39 @@ void CliInterface::showMainMenu() {
     printHeader("AIRCRAFT MAINTENANCE MANAGEMENT");
 
     // Display current state prominently
-    std::cout << "\nCurrent State: ";
+    out_ << "\nCurrent State: ";
     std::string state = m_aircraft.getCurrentState();
     if (state == "STANDBY") {
-      std::cout << "\033[32m";  // Green
+      out_ << "\033[32m";  // Green
     } else if (state == "DIAGNOSTIC") {
-      std::cout << "\033[33m";  // Yellow
+      out_ << "\033[33m";  // Yellow
     } else if (state == "MAINTENANCE") {
-      std::cout << "\033[36m";  // Cyan
+      out_ << "\033[36m";  // Cyan
     } else if (state == "FAULT") {
-      std::cout << "\033[31m";  // Red
+      out_ << "\033[31m";  // Red
     }
-    std::cout << state << "\033[0m\n";
+    out_ << state << "\033[0m\n";
 
     printSeparator();
 
-    std::cout << "\nPlease select an option:\n";
-    std::cout << "  1. View Current State\n";
-    std::cout << "  2. View Last Maintenance Time\n";
-    std::cout << "  3. View Fault Codes\n";
-    std::cout << "  4. View Warranty Status\n";
-    std::cout << "  5. View All Information\n";
-    std::cout << "  6. Exit\n";
+    out_ << "\nPlease select an option:\n";
+    out_ << "  1. View Current State\n";
+    out_ << "  2. View Last Maintenance Time\n";
+    out_ << "  3. View Fault Codes\n";
+    out_ << "  4. View Warranty Status\n";
+    out_ << "  5. View All Information\n";
+    out_ << "  6. Exit\n";
     printSeparator();
-    std::cout << "Enter choice (1-6): ";
+    out_ << "Enter choice (1-6): ";
+    out_.flush();
 
     int choice;
-    std::cin >> choice;
+    in_ >> choice;
 
-    if (std::cin.fail()) {
-      std::cin.clear();
-      std::cin.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
-      std::cout << "Invalid input. Please enter a number.\n";
+    if (in_.fail()) {
+      in_.clear();
+      in_.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+      out_ << "Invalid input. Please enter a number.\n";
       waitForEnter();
       continue;
     }
@@ -111,11 +124,11 @@ void CliInterface::showMainMenu() {
         waitForEnter();
         break;
       case 6:
-        std::cout << "\nExiting application...\n";
+        out_ << "\nExiting application...\n";
         running = false;
         break;
       default:
-        std::cout << "Invalid choice. Please select 1-6.\n";
+        out_ << "Invalid choice. Please select 1-6.\n";
         waitForEnter();
     }
   }
@@ -124,22 +137,22 @@ void CliInterface::showMainMenu() {
 void CliInterface::displayCurrentState() {
   clearScreen();
   printHeader("CURRENT AIRCRAFT STATE");
-  std::cout << "\nOperational State: " << m_aircraft.getCurrentState() << "\n";
+  out_ << "\nOperational State: " << m_aircraft.getCurrentState() << "\n";
 
   // Add state description
   std::string state = m_aircraft.getCurrentState();
   if (state == "STANDBY") {
-    std::cout << "\nDescription: Aircraft is on standby, awaiting commands.\n";
-    std::cout << "Available: Landed notification, diagnostic entry.\n";
+    out_ << "\nDescription: Aircraft is on standby, awaiting commands.\n";
+    out_ << "Available: Landed notification, diagnostic entry.\n";
   } else if (state == "DIAGNOSTIC") {
-    std::cout << "\nDescription: Aircraft is running diagnostics.\n";
-    std::cout << "Available: System checks, data transfer, schematic upload.\n";
+    out_ << "\nDescription: Aircraft is running diagnostics.\n";
+    out_ << "Available: System checks, data transfer, schematic upload.\n";
   } else if (state == "MAINTENANCE") {
-    std::cout << "\nDescription: Aircraft is in maintenance mode.\n";
-    std::cout << "Available: Repairs, component replacement, system tests.\n";
+    out_ << "\nDescription: Aircraft is in maintenance mode.\n";
+    out_ << "Available: Repairs, component replacement, system tests.\n";
   } else if (state == "FAULT") {
-    std::cout << "\nDescription: Aircraft has detected a fault.\n";
-    std::cout << "Action Required: Diagnostic check needed.\n";
+    out_ << "\nDescription: Aircraft has detected a fault.\n";
+    out_ << "Action Required: Diagnostic check needed.\n";
   }
 }
 
@@ -148,9 +161,9 @@ void CliInterface::displayLastMaintenance() {
   printHeader("LAST MAINTENANCE RECORD");
 
   MaintenanceInfo info = m_aircraft.getLastMaintenance();
-  std::cout << "\nDate/Time: " << formatTimePoint(info.lastMaintenance) << "\n";
-  std::cout << "Technician: " << info.technician << "\n";
-  std::cout << "Notes: " << info.notes << "\n";
+  out_ << "\nDate/Time: " << formatTimePoint(info.lastMaintenance) << "\n";
+  out_ << "Technician: " << info.technician << "\n";
+  out_ << "Notes: " << info.notes << "\n";
 }
 
 void CliInterface::displayFaultCodes() {
@@ -159,16 +172,15 @@ void CliInterface::displayFaultCodes() {
 
   auto faults = m_aircraft.getFaultCodes();
   if (faults.empty()) {
-    std::cout << "\nNo active fault codes.\n";
-    std::cout << "All systems operational.\n";
+    out_ << "\nNo active fault codes.\n";
+    out_ << "All systems operational.\n";
   } else {
-    std::cout << "\nActive Fault Codes:\n\n";
+    out_ << "\nActive Fault Codes:\n\n";
     for (const auto& fault : faults) {
-      std::cout << "  [CODE " << fault.code << "]\n";
-      std::cout << "    Severity: " << network::diagnosticFaultSeverityToString(fault.severity)
-                << "\n";
-      std::cout << "    Description: " << fault.description << "\n";
-      std::cout << "    Detected: " << formatTimePoint(fault.timestamp) << "\n\n";
+      out_ << "  [CODE " << fault.code << "]\n";
+      out_ << "    Severity: " << network::diagnosticFaultSeverityToString(fault.severity) << "\n";
+      out_ << "    Description: " << fault.description << "\n";
+      out_ << "    Detected: " << formatTimePoint(fault.timestamp) << "\n\n";
     }
   }
 }
@@ -178,19 +190,19 @@ void CliInterface::displayWarrantyStatus() {
   printHeader("WARRANTY STATUS");
 
   WarrantyInfo info = m_aircraft.getWarranty();
-  std::cout << "\nStatus: ";
+  out_ << "\nStatus: ";
   if (info.isActive) {
-    std::cout << "\033[32mACTIVE\033[0m\n";
-    std::cout << "Expires: " << info.expiryDate << "\n";
-    std::cout << "Provider: " << info.provider << "\n";
+    out_ << "\033[32mACTIVE\033[0m\n";
+    out_ << "Expires: " << info.expiryDate << "\n";
+    out_ << "Provider: " << info.provider << "\n";
 
     // Calculate days remaining
-    std::cout << "\nCoverage: Full parts and labor\n";
-    std::cout << "Contact: warranty@aviationcorp.com\n";
+    out_ << "\nCoverage: Full parts and labor\n";
+    out_ << "Contact: warranty@aviationcorp.com\n";
   } else {
-    std::cout << "\033[31mEXPIRED\033[0m\n";
-    std::cout << "Expired on: " << info.expiryDate << "\n";
-    std::cout << "\nPlease contact service center for renewal options.\n";
+    out_ << "\033[31mEXPIRED\033[0m\n";
+    out_ << "Expired on: " << info.expiryDate << "\n";
+    out_ << "\nPlease contact service center for renewal options.\n";
   }
 }
 
@@ -199,32 +211,31 @@ void CliInterface::displayAllInfo() {
   printHeader("COMPLETE AIRCRAFT STATUS");
 
   // Current State
-  std::cout << "\n[STATE]\n";
-  std::cout << "  " << m_aircraft.getCurrentState() << "\n";
+  out_ << "\n[STATE]\n";
+  out_ << "  " << m_aircraft.getCurrentState() << "\n";
 
   // Maintenance
-  std::cout << "\n[MAINTENANCE]\n";
+  out_ << "\n[MAINTENANCE]\n";
   MaintenanceInfo maint = m_aircraft.getLastMaintenance();
-  std::cout << "  Last Maintenance: " << formatTimePoint(maint.lastMaintenance) << "\n";
-  std::cout << "  Technician: " << maint.technician << "\n";
+  out_ << "  Last Maintenance: " << formatTimePoint(maint.lastMaintenance) << "\n";
+  out_ << "  Technician: " << maint.technician << "\n";
 
   // Warranty
-  std::cout << "\n[WARRANTY]\n";
+  out_ << "\n[WARRANTY]\n";
   WarrantyInfo warranty = m_aircraft.getWarranty();
-  std::cout << "  Status: " << (warranty.isActive ? "ACTIVE" : "EXPIRED") << "\n";
-  std::cout << "  Expiry: " << warranty.expiryDate << "\n";
-  std::cout << "  Provider: " << warranty.provider << "\n";
+  out_ << "  Status: " << (warranty.isActive ? "ACTIVE" : "EXPIRED") << "\n";
+  out_ << "  Expiry: " << warranty.expiryDate << "\n";
+  out_ << "  Provider: " << warranty.provider << "\n";
 
   // Fault Codes
-  std::cout << "\n[FAULT CODES]\n";
+  out_ << "\n[FAULT CODES]\n";
   auto faults = m_aircraft.getFaultCodes();
   if (faults.empty()) {
-    std::cout << "  None detected\n";
+    out_ << "  None detected\n";
   } else {
     for (const auto& fault : faults) {
-      std::cout << "  " << fault.code << " ["
-                << network::diagnosticFaultSeverityToString(fault.severity)
-                << "]: " << fault.description << "\n";
+      out_ << "  " << fault.code << " [" << network::diagnosticFaultSeverityToString(fault.severity)
+           << "]: " << fault.description << "\n";
     }
   }
 
