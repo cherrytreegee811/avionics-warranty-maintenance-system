@@ -14,75 +14,96 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v4
         with:
           path: "**/cpm_modules"
           key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
       
       - name: Install tools
         run: |
+          sudo apt update
+          sudo apt install -y wget gnupg jq
           wget -q -O - https://files.pvs-studio.com/etc/pubkey.txt \
             | sudo apt-key add -
           sudo wget -O /etc/apt/sources.list.d/viva64.list \
             https://files.pvs-studio.com/etc/viva64.list
           sudo apt update
           sudo apt install pvs-studio
-          pvs-studio-analyzer credentials ${{ secrets.PVS_STUDIO_CREDENTIALS }}
+          if [ -z "${{ secrets.PVS_STUDIO_CREDENTIALS }}" ]; then
+            echo "PVS-Studio credentials secret (PVS_STUDIO_CREDENTIALS) is not set." >&2
+            exit 1
+          fi
+          pvs-studio-analyzer credentials "${{ secrets.PVS_STUDIO_CREDENTIALS }}"
       
       - name: Build
         run: |
           cmake -DCMAKE_EXPORT_COMPILE_COMMANDS=On -B build .
           cmake --build build -j4
+
+      - name: Create scoped compilation database (source/ only)
+        run: |
+          jq '[.[] | select(.file | test("/source/"))]' build/compile_commands.json > build/compile_commands.project.json
+          COUNT=$(jq 'length' build/compile_commands.project.json)
+          echo "Scoped translation units: $COUNT"
+          if [ "$COUNT" -eq 0 ]; then
+            echo "No translation units matched /source/." >&2
+            exit 1
+          fi
       
       - name: Analyze
         run: |
           pvs-studio-analyzer analyze \
-            -f build/compile_commands.json \
-            -j \
+            -f build/compile_commands.project.json \
+            -j0 \
             -o pvs-studio.log \
-            --exclude-path "build/_deps" \
+            --analysis-mode MISRA \
+            --exclude-path "${{ github.workspace }}/build/_deps" \
+            --exclude-path "${{ github.workspace }}/cpm_modules" \
+            --exclude-path "${{ github.workspace }}/build/CMakeFiles" \
             --rules-config misra.cfg
-      
-      - name: Filter MISRA warnings
+
+      - name: Convert + gate on MISRA required/mandatory
         run: |
-          # Count total warnings
-          TOTAL_WARNINGS=$(wc -l < pvs-studio.log 2>/dev/null || echo "0")
-          echo "Total PVS-Studio warnings: $TOTAL_WARNINGS"
-          
-          # Filter MISRA C 2023 warnings (V30xx range)
-          grep -E "V30[0-9][0-9]" pvs-studio.log > misra-c-2023.log 2>/dev/null || true
-          C_WARNINGS=$(wc -l < misra-c-2023.log 2>/dev/null || echo "0")
-          
-          # Filter MISRA C++ 2008 warnings (V25xx, V26xx)
-          grep -E "V(25[0-9][0-9]|26[0-9][0-9])" pvs-studio.log > misra-cpp-2008.log 2>/dev/null || true
-          CPP_WARNINGS=$(wc -l < misra-cpp-2008.log 2>/dev/null || echo "0")
-          
-          echo "MISRA C 2023 violations: $C_WARNINGS"
-          echo "MISRA C++ 2008 violations: $CPP_WARNINGS"
-          
-          # Combine MISRA warnings
-          cat misra-c-2023.log misra-cpp-2008.log > misra-warnings.log 2>/dev/null || true
-          MISRA_TOTAL=$(wc -l < misra-warnings.log 2>/dev/null || echo "0")
-          
-          if [ "$MISRA_TOTAL" -gt 0 ]; then
-            echo "::warning::Found $MISRA_TOTAL MISRA violations ($C_WARNINGS C, $CPP_WARNINGS C++)"
-            echo "=== MISRA VIOLATIONS ==="
-            cat misra-warnings.log
-          else
-            echo "✅ No MISRA violations found"
+          mkdir -p pvs-report
+
+          set +e
+          plog-converter \
+            -a 'MISRA:1,2,3' \
+            -t json \
+            -t sarif \
+            -t fullhtml \
+            -o pvs-report \
+            -n pvs-misra \
+            -w \
+            pvs-studio.log
+          STATUS=$?
+          set -e
+
+          echo "PLOG_CONVERTER_EXIT_CODE=$STATUS" >> "$GITHUB_ENV"
+          echo "plog-converter exit code: $STATUS"
+
+          if [ "$STATUS" -ne 0 ] && [ "$STATUS" -ne 2 ]; then
+            echo "plog-converter failed (exit code $STATUS)." >&2
+            exit 1
           fi
 
-      - name: Fail if mandatory or required MISRA violations exist
+      - name: Upload PVS-Studio artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pvs-studio-report
+          path: |
+            pvs-studio.log
+            pvs-report/
+
+      - name: Fail if MISRA required/mandatory violations exist
         if: always()
         run: |
-          HIGH_COUNT=$(grep -c -E "V(25|30)[0-9][0-9]" misra-warnings.log 2>/dev/null || echo "0")
-          
-          if [ "$HIGH_COUNT" -gt 0 ]; then
-            echo "❌ Build failed: $HIGH_COUNT high severity MISRA violations must be fixed"
+          if [ "${PLOG_CONVERTER_EXIT_CODE:-0}" -eq 2 ]; then
+            echo "❌ Build failed: MISRA required/mandatory violations present"
             exit 1
-          else
-            echo "✅ High severity MISRA checks passed"
-            exit 0
           fi
+
+          echo "✅ MISRA required/mandatory gate passed"
