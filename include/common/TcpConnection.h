@@ -96,9 +96,8 @@ namespace network {
     std::string getRemoteAddress() const {
       std::string result = "unknown";
       std::error_code ec;
-      const auto address = socket_.remote_endpoint(ec).address();
-      if (!ec) {
-        result = address.to_string();
+      if (const auto endpoint = socket_.remote_endpoint(ec); !ec) {
+        result = endpoint.address().to_string();
       }
       return result;
     }

@@ -13,16 +13,29 @@
 #include <chrono>
 #include <filesystem>
 #include <format>
+#include <iostream>
 #include <memory>
 
-static std::string getCurrentDate() {
-  auto now = std::chrono::system_clock::now();
-  auto year_month_day = std::chrono::floor<std::chrono::days>(now);
-  return std::format("{:%Y%m%d}", year_month_day);
-}
+namespace {
+
+  std::string getCurrentDate() {
+    const auto now = std::chrono::system_clock::now();
+    const auto year_month_day = std::chrono::floor<std::chrono::days>(now);
+    return std::format("{:%Y%m%d}", year_month_day);
+  }
+
+}  // namespace
 
 int main() {
-  std::filesystem::create_directories("logs");
+  std::error_code dir_ec;
+  const bool created_logs_dir = std::filesystem::create_directories("logs", dir_ec);
+  std::error_code exists_ec;
+  const bool logs_dir_exists = std::filesystem::exists("logs", exists_ec);
+  if (dir_ec || exists_ec || (!created_logs_dir && !logs_dir_exists)) {
+    // Continue even if logs cannot be created; console logging still works.
+    std::cerr << "Warning: failed to ensure logs directory exists\n";
+  }
+
   std::string logFileName = std::format("logs/aircraft_{}.log", getCurrentDate());
 
   auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(logFileName, true);

@@ -19,6 +19,7 @@
 #include <fstream>
 #include <future>
 #include <memory>
+#include <span>
 #include <thread>
 
 using namespace std::chrono_literals;
@@ -94,7 +95,7 @@ TEST_CASE("REQ-NET-081: Integration - client and server communicate over TcpConn
     }
 
     StateChangeRequest request{};
-    std::memcpy(&request, payload.data(), sizeof(request));
+    (void)std::memcpy(&request, payload.data(), sizeof(request));
     client_received_state_promise.set_value(request.target_state);
   });
   client_connection->start();
@@ -105,7 +106,7 @@ TEST_CASE("REQ-NET-081: Integration - client and server communicate over TcpConn
   auto server_connection = accepted_connection_future.get();
   REQUIRE(server_connection != nullptr);
 
-  const auto landed = serializePacket(PacketType::LANDED_NOTIFICATION, nullptr, 0);
+  const auto landed = serializePacket(PacketType::LANDED_NOTIFICATION);
   client_connection->send(landed);
 
   REQUIRE(test_helpers::waitUntilReady(server_received_type_future));
@@ -176,7 +177,7 @@ TEST_CASE(
   REQUIRE(!ec);
 
   // 2. SEND THE ILLEGAL COMMAND
-  auto packet = network::serializePacket(network::PacketType::LANDED_NOTIFICATION, nullptr, 0);
+  auto packet = network::serializePacket(network::PacketType::LANDED_NOTIFICATION);
   asio::write(socket, asio::buffer(packet));
 
   // 3. WAIT AND CHECK FOR CLOSURE
@@ -539,7 +540,7 @@ TEST_CASE(
   REQUIRE(payload.size() == sizeof(network::VerificationRequest));
 
   network::VerificationRequest request{};
-  std::memcpy(&request, payload.data(), sizeof(request));
+  (void)std::memcpy(&request, payload.data(), sizeof(request));
 
   // Send an invalid challenge response intentionally.
   network::VerificationResponse invalid_response{};
@@ -760,7 +761,7 @@ TEST_CASE(
   REQUIRE(incoming_payload.size() == sizeof(network::VerificationRequest));
 
   network::VerificationRequest verification_request{};
-  std::memcpy(&verification_request, incoming_payload.data(), sizeof(verification_request));
+  (void)std::memcpy(&verification_request, incoming_payload.data(), sizeof(verification_request));
   network::VerificationResponse verification_response{};
   verification_response.challenge_response = verification_request.challenge ^ 0xDEADBEEF;
   verification_response.client_id = 12345;
@@ -771,7 +772,8 @@ TEST_CASE(
 
   const std::vector<uint8_t> image_data{0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70};
   const uint32_t image_id = 9001;
-  const uint32_t image_crc = network::Crc32::calculate(image_data.data(), image_data.size());
+  const uint32_t image_crc
+      = network::Crc32::calculate(std::span<const uint8_t>(image_data.data(), image_data.size()));
 
   const std::vector<uint8_t> chunk0_data{0x10, 0x20, 0x30};
   const std::vector<uint8_t> chunk1_data{0x40, 0x50, 0x60, 0x70};
@@ -782,7 +784,7 @@ TEST_CASE(
       2,
       static_cast<uint32_t>(chunk0_data.size()),
       network::ImageFormat::RAW,
-      network::Crc32::calculate(chunk0_data.data(), chunk0_data.size()),
+      network::Crc32::calculate(std::span<const uint8_t>(chunk0_data.data(), chunk0_data.size())),
       image_crc};
   const network::ImageChunkHeader chunk1_header{
       image_id,
@@ -790,22 +792,22 @@ TEST_CASE(
       2,
       static_cast<uint32_t>(chunk1_data.size()),
       network::ImageFormat::RAW,
-      network::Crc32::calculate(chunk1_data.data(), chunk1_data.size()),
+      network::Crc32::calculate(std::span<const uint8_t>(chunk1_data.data(), chunk1_data.size())),
       image_crc};
 
   std::vector<uint8_t> chunk0_payload(sizeof(chunk0_header) + chunk0_data.size());
-  std::memcpy(chunk0_payload.data(), &chunk0_header, sizeof(chunk0_header));
-  std::memcpy(chunk0_payload.data() + sizeof(chunk0_header), chunk0_data.data(),
-              chunk0_data.size());
+  (void)std::memcpy(chunk0_payload.data(), &chunk0_header, sizeof(chunk0_header));
+  (void)std::memcpy(chunk0_payload.data() + sizeof(chunk0_header), chunk0_data.data(),
+                    chunk0_data.size());
 
   std::vector<uint8_t> chunk1_payload(sizeof(chunk1_header) + chunk1_data.size());
-  std::memcpy(chunk1_payload.data(), &chunk1_header, sizeof(chunk1_header));
-  std::memcpy(chunk1_payload.data() + sizeof(chunk1_header), chunk1_data.data(),
-              chunk1_data.size());
+  (void)std::memcpy(chunk1_payload.data(), &chunk1_header, sizeof(chunk1_header));
+  (void)std::memcpy(chunk1_payload.data() + sizeof(chunk1_header), chunk1_data.data(),
+                    chunk1_data.size());
 
   // Send only first chunk so MMA must request retry for chunk 1.
-  const auto chunk0_packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
-                                                      chunk0_payload.data(), chunk0_payload.size());
+  const auto chunk0_packet
+      = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK, chunk0_payload);
   asio::write(socket, asio::buffer(chunk0_packet), ec);
   REQUIRE(!ec);
 
@@ -816,12 +818,12 @@ TEST_CASE(
   REQUIRE(retry_payload.size() == sizeof(network::SchematicChunkRetryRequest));
 
   network::SchematicChunkRetryRequest retry_request{};
-  std::memcpy(&retry_request, retry_payload.data(), sizeof(retry_request));
+  (void)std::memcpy(&retry_request, retry_payload.data(), sizeof(retry_request));
   CHECK(retry_request.image_id == image_id);
   CHECK(retry_request.chunk_index == 1);
 
-  const auto chunk1_packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
-                                                      chunk1_payload.data(), chunk1_payload.size());
+  const auto chunk1_packet
+      = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK, chunk1_payload);
   asio::write(socket, asio::buffer(chunk1_packet), ec);
   REQUIRE(!ec);
 
@@ -866,7 +868,7 @@ TEST_CASE(
   REQUIRE(incoming_payload.size() == sizeof(network::VerificationRequest));
 
   network::VerificationRequest verification_request{};
-  std::memcpy(&verification_request, incoming_payload.data(), sizeof(verification_request));
+  (void)std::memcpy(&verification_request, incoming_payload.data(), sizeof(verification_request));
   network::VerificationResponse verification_response{};
   verification_response.challenge_response = verification_request.challenge ^ 0xDEADBEEF;
   verification_response.client_id = 12345;
@@ -879,7 +881,8 @@ TEST_CASE(
   const std::vector<uint8_t> full_image_data{0xAA, 0xBB, 0xCC, 0xDD};
   const uint32_t image_id = 9002;
   const uint32_t image_crc
-      = network::Crc32::calculate(full_image_data.data(), full_image_data.size());
+      = network::Crc32::calculate(
+        std::span<const uint8_t>(full_image_data.data(), full_image_data.size()));
 
   const network::ImageChunkHeader chunk0_header{
       image_id,
@@ -887,15 +890,15 @@ TEST_CASE(
       2,
       static_cast<uint32_t>(chunk0_data.size()),
       network::ImageFormat::RAW,
-      network::Crc32::calculate(chunk0_data.data(), chunk0_data.size()),
+        network::Crc32::calculate(std::span<const uint8_t>(chunk0_data.data(), chunk0_data.size())),
       image_crc};
   std::vector<uint8_t> chunk0_payload(sizeof(chunk0_header) + chunk0_data.size());
-  std::memcpy(chunk0_payload.data(), &chunk0_header, sizeof(chunk0_header));
-  std::memcpy(chunk0_payload.data() + sizeof(chunk0_header), chunk0_data.data(),
+      (void)std::memcpy(chunk0_payload.data(), &chunk0_header, sizeof(chunk0_header));
+      (void)std::memcpy(chunk0_payload.data() + sizeof(chunk0_header), chunk0_data.data(),
               chunk0_data.size());
 
-  const auto chunk0_packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
-                                                      chunk0_payload.data(), chunk0_payload.size());
+      const auto chunk0_packet
+        = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK, chunk0_payload);
   asio::write(socket, asio::buffer(chunk0_packet), ec);
   REQUIRE(!ec);
 

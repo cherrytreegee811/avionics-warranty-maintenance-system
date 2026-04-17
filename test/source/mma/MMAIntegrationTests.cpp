@@ -76,8 +76,7 @@ TEST_CASE("REQ-SYS-080: MMA closes connection on invalid verification response s
   REQUIRE(test_helpers::readPacketWithTimeout(socket, request_header, request_payload, 2000ms));
   CHECK(request_header.type == network::PacketType::VERIFICATION_REQUEST);
 
-  const auto invalid_response
-      = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, nullptr, 0);
+  const auto invalid_response = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE);
   asio::write(socket, asio::buffer(invalid_response), ec);
   REQUIRE(!ec);
 
@@ -128,7 +127,7 @@ TEST_CASE("REQ-SYS-080: MMA closes connection on incorrect verification challeng
   REQUIRE(request_payload.size() == sizeof(network::VerificationRequest));
 
   network::VerificationRequest req{};
-  std::memcpy(&req, request_payload.data(), sizeof(req));
+  (void)std::memcpy(&req, request_payload.data(), sizeof(req));
 
   network::VerificationResponse bad_resp{};
   bad_resp.client_id = 424242;

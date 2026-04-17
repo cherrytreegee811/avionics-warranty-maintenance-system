@@ -7,8 +7,10 @@
 #include <common/Crc32.h>
 #include <common/WarrantyData.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <span>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -143,11 +145,37 @@ namespace network {
   /**
    * @brief Serializes a packet from raw payload bytes.
    * @param type Type: @ref network::PacketType. Packet type discriminator.
-   * @param payload Type: const void*. Pointer to payload bytes.
-   * @param payload_size Type: size_t. Number of payload bytes.
+   * @param payload Type: std::span<const std::byte>. Payload bytes.
    * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
    */
-  std::vector<uint8_t> serializePacket(PacketType type, const void* payload, size_t payload_size);
+  std::vector<uint8_t> serializePacket(PacketType type, std::span<const std::byte> payload);
+
+  /**
+   * @brief Convenience overload for packets with no payload.
+   * @param type Type: @ref network::PacketType. Packet type discriminator.
+   * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
+   */
+  inline std::vector<uint8_t> serializePacket(PacketType type) { return serializePacket(type, {}); }
+
+  /**
+   * @brief Convenience overload for serializing a byte buffer payload.
+   * @param type Type: @ref network::PacketType. Packet type discriminator.
+   * @param payload Type: std::span<const uint8_t>. Payload bytes.
+   * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
+   */
+  inline std::vector<uint8_t> serializePacket(PacketType type, std::span<const uint8_t> payload) {
+    return serializePacket(type, std::as_bytes(payload));
+  }
+
+  /**
+   * @brief Convenience overload for serializing a byte-vector payload.
+   * @param type Type: @ref network::PacketType. Packet type discriminator.
+   * @param payload Type: const std::vector<uint8_t>&. Payload bytes.
+   * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
+   */
+  inline std::vector<uint8_t> serializePacket(PacketType type, const std::vector<uint8_t>& payload) {
+    return serializePacket(type, std::as_bytes(std::span{payload}));
+  }
   /**
    * @brief Convenience wrapper that serializes a POD payload object.
    * @param type Type: @ref network::PacketType. Packet type discriminator.
@@ -155,7 +183,7 @@ namespace network {
    * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
    */
   template <typename T> std::vector<uint8_t> serializePacket(PacketType type, const T& payload) {
-    return serializePacket(type, &payload, sizeof(T));
+    return serializePacket(type, std::as_bytes(std::span{&payload, 1U}));
   }
 
   /**
@@ -226,12 +254,20 @@ namespace network {
    * @brief Computes packet checksum for test verification and diagnostics.
    * @param header Type: const @ref network::PacketHeader&. Packet header with checksum field
    * ignored.
-   * @param payload Type: const void*. Pointer to payload bytes.
-   * @param payload_size Type: size_t. Number of payload bytes.
+   * @param payload Type: std::span<const std::byte>. Payload bytes.
    * @return Type: uint32_t. CRC-32 checksum for packet header and payload.
    */
-  uint32_t computePacketChecksum(const PacketHeader& header, const void* payload,
-                                 size_t payload_size);
+  uint32_t computePacketChecksum(const PacketHeader& header, std::span<const std::byte> payload);
+
+  /**
+   * @brief Convenience overload for computing checksum for a byte buffer payload.
+   * @param header Type: const @ref network::PacketHeader&. Packet header with checksum field ignored.
+   * @param payload Type: std::span<const uint8_t>. Payload bytes.
+   * @return Type: uint32_t. CRC-32 checksum for packet header and payload.
+   */
+  inline uint32_t computePacketChecksum(const PacketHeader& header, std::span<const uint8_t> payload) {
+    return computePacketChecksum(header, std::as_bytes(payload));
+  }
 
   /**
    * @brief Converts a state identifier to a human-readable string.
@@ -452,7 +488,8 @@ namespace network {
       bool result = false;
 
       if (expected_image_crc32_set) {
-        result = (Crc32::calculate(reassembled.data(), reassembled.size()) == expected_image_crc32);
+        result = (Crc32::calculate(std::span<const uint8_t>(reassembled))
+                  == expected_image_crc32);
       }
 
       return result;
