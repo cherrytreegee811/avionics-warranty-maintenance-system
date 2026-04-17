@@ -11,7 +11,7 @@
 #include <limits>
 #include <sstream>
 
-using namespace aircraft;
+namespace aircraft {
 
 CliInterface::CliInterface(Aircraft& aircraft)
     : CliInterface(aircraft, std::cin, std::cout, true) {}
@@ -24,12 +24,8 @@ void CliInterface::clearScreen() {
   if (!screen_control_enabled_) {
     return;
   }
-// Cross-platform clear screen
-#ifdef _WIN32
-  system("cls");
-#else
-  system("clear");
-#endif
+  out_ << "\x1B[2J\x1B[H";
+  out_.flush();
 }
 
 void CliInterface::waitForEnter() {
@@ -241,3 +237,5 @@ void CliInterface::displayAllInfo() {
 
   printSeparator();
 }
+
+}  // namespace aircraft

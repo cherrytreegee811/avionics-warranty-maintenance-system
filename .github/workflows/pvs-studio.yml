@@ -21,7 +21,9 @@ jobs:
           path: "**/cpm_modules"
           key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
       
-      - name: Install tools
+      - name: Install tools + configure PVS license
+        env:
+          PVS_STUDIO_CREDENTIALS: ${{ secrets.PVS_STUDIO_CREDENTIALS }}
         run: |
           sudo apt update
           sudo apt install -y wget gnupg jq
@@ -31,11 +33,32 @@ jobs:
             https://files.pvs-studio.com/etc/viva64.list
           sudo apt update
           sudo apt install pvs-studio
-          if [ -z "${{ secrets.PVS_STUDIO_CREDENTIALS }}" ]; then
-            echo "PVS-Studio credentials secret (PVS_STUDIO_CREDENTIALS) is not set." >&2
+
+          if [ -z "$PVS_STUDIO_CREDENTIALS" ]; then
+            echo "PVS-Studio credentials secret (PVS_STUDIO_CREDENTIALS) is not set; skipping analysis." >&2
+            echo "PVS_ANALYZE=0" >> "$GITHUB_ENV"
+            exit 0
+          fi
+
+          echo "PVS_ANALYZE=1" >> "$GITHUB_ENV"
+
+          # Prefer the official 2-arg form: credentials <email> <key>.
+          # If the secret is a single string with whitespace/newlines, split it.
+          CLEANED=$(printf '%s' "$PVS_STUDIO_CREDENTIALS" | tr '\n\r\t' '   ')
+          read -r PVS_EMAIL PVS_KEY PVS_EXTRA <<< "$CLEANED"
+          if [ -n "$PVS_EMAIL" ] && [ -n "$PVS_KEY" ] && [ -z "$PVS_EXTRA" ]; then
+            pvs-studio-analyzer credentials "$PVS_EMAIL" "$PVS_KEY"
+          else
+            # Fallback for legacy single-argument secret formats.
+            pvs-studio-analyzer credentials "$PVS_STUDIO_CREDENTIALS"
+          fi
+
+          LIC_FILE="$HOME/.config/PVS-Studio/PVS-Studio.lic"
+          if [ ! -s "$LIC_FILE" ]; then
+            echo "PVS-Studio license file was not created at $LIC_FILE" >&2
+            ls -la "$HOME/.config/PVS-Studio" || true
             exit 1
           fi
-          pvs-studio-analyzer credentials "${{ secrets.PVS_STUDIO_CREDENTIALS }}"
       
       - name: Build
         run: |
@@ -53,6 +76,7 @@ jobs:
           fi
       
       - name: Analyze
+        if: env.PVS_ANALYZE == '1'
         run: |
           pvs-studio-analyzer analyze \
             -f build/compile_commands.project.json \
@@ -65,6 +89,7 @@ jobs:
             --rules-config misra.cfg
 
       - name: Convert + gate on MISRA required/mandatory
+        if: env.PVS_ANALYZE == '1'
         run: |
           mkdir -p pvs-report
 
@@ -90,7 +115,7 @@ jobs:
           fi
 
       - name: Upload PVS-Studio artifacts
-        if: always()
+        if: always() && env.PVS_ANALYZE == '1'
         uses: actions/upload-artifact@v4
         with:
           name: pvs-studio-report
@@ -99,7 +124,7 @@ jobs:
             pvs-report/
 
       - name: Fail if MISRA required/mandatory violations exist
-        if: always()
+        if: always() && env.PVS_ANALYZE == '1'
         run: |
           if [ "${PLOG_CONVERTER_EXIT_CODE:-0}" -eq 2 ]; then
             echo "❌ Build failed: MISRA required/mandatory violations present"
