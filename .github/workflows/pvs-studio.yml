@@ -25,7 +25,6 @@ jobs:
         env:
           PVS_STUDIO_CREDENTIALS: ${{ secrets.PVS_STUDIO_CREDENTIALS }}
         run: |
-<<<<<<< HEAD
           sudo apt update
           sudo apt install -y wget gnupg jq
 
@@ -38,15 +37,16 @@ jobs:
 
           wget -q -O /tmp/viva64.list https://files.pvs-studio.com/etc/viva64.list
 
-          # The downloaded list already includes an options block (e.g. "deb [arch=amd64] ...").
-          # apt expects a single bracketed options list, so we must merge signed-by into it.
+          # The upstream list may already include an options block like: deb [arch=amd64] ...
+          # apt expects a single bracket block, so merge signed-by into it if present.
           if grep -qE '^deb \[' /tmp/viva64.list; then
-            sed -E 's|^deb \[([^]]*)\]|deb [\1 signed-by=/etc/apt/keyrings/pvs-studio.gpg]|' /tmp/viva64.list \
+            sudo sed -E 's|^deb \[([^]]*)\]|deb [\1 signed-by=/etc/apt/keyrings/pvs-studio.gpg]|' /tmp/viva64.list \
               | sudo tee /etc/apt/sources.list.d/viva64.list > /dev/null
           else
-            sed -E 's|^deb |deb [signed-by=/etc/apt/keyrings/pvs-studio.gpg] |' /tmp/viva64.list \
+            sudo sed -E 's|^deb |deb [signed-by=/etc/apt/keyrings/pvs-studio.gpg] |' /tmp/viva64.list \
               | sudo tee /etc/apt/sources.list.d/viva64.list > /dev/null
           fi
+
           sudo apt update
           sudo apt install -y pvs-studio
 
@@ -75,21 +75,6 @@ jobs:
             ls -la "$HOME/.config/PVS-Studio" || true
             exit 1
           fi
-=======
-          sudo apt update
-          sudo apt install -y wget gnupg jq
-          wget -q -O - https://files.pvs-studio.com/etc/pubkey.txt \
-            | sudo apt-key add -
-          sudo wget -O /etc/apt/sources.list.d/viva64.list \
-            https://files.pvs-studio.com/etc/viva64.list
-          sudo apt update
-          sudo apt install pvs-studio
-          if [ -z "${{ secrets.PVS_STUDIO_CREDENTIALS }}" ]; then
-            echo "PVS-Studio credentials secret (PVS_STUDIO_CREDENTIALS) is not set." >&2
-            exit 1
-          fi
-          pvs-studio-analyzer credentials "${{ secrets.PVS_STUDIO_CREDENTIALS }}"
->>>>>>> 73d2911 (Improve MISRA Scan)
       
       - name: Build
         run: |
@@ -98,13 +83,9 @@ jobs:
 
       - name: Create scoped compilation database (source/ only)
         run: |
-<<<<<<< HEAD
           jq --arg root "${{ github.workspace }}" \
             '[.[] | select(.file | startswith($root + "/source/"))]' \
             build/compile_commands.json > build/compile_commands.project.json
-=======
-          jq '[.[] | select(.file | test("/source/"))]' build/compile_commands.json > build/compile_commands.project.json
->>>>>>> 73d2911 (Improve MISRA Scan)
           COUNT=$(jq 'length' build/compile_commands.project.json)
           echo "Scoped translation units: $COUNT"
           if [ "$COUNT" -eq 0 ]; then
@@ -126,20 +107,13 @@ jobs:
             --rules-config misra.cfg
 
       - name: Convert + gate on MISRA required/mandatory
-<<<<<<< HEAD
         if: env.PVS_ANALYZE == '1'
-=======
->>>>>>> 73d2911 (Improve MISRA Scan)
         run: |
           mkdir -p pvs-report
 
           set +e
           plog-converter \
-<<<<<<< HEAD
             -a 'MISRA:1,2' \
-=======
-            -a 'MISRA:1,2,3' \
->>>>>>> 73d2911 (Improve MISRA Scan)
             -t json \
             -t sarif \
             -t fullhtml \
@@ -159,11 +133,7 @@ jobs:
           fi
 
       - name: Upload PVS-Studio artifacts
-<<<<<<< HEAD
         if: always() && env.PVS_ANALYZE == '1'
-=======
-        if: always()
->>>>>>> 73d2911 (Improve MISRA Scan)
         uses: actions/upload-artifact@v4
         with:
           name: pvs-studio-report
@@ -172,11 +142,7 @@ jobs:
             pvs-report/
 
       - name: Fail if MISRA required/mandatory violations exist
-<<<<<<< HEAD
         if: always() && env.PVS_ANALYZE == '1'
-=======
-        if: always()
->>>>>>> 73d2911 (Improve MISRA Scan)
         run: |
           if [ "${PLOG_CONVERTER_EXIT_CODE:-0}" -eq 2 ]; then
             echo "❌ Build failed: MISRA required/mandatory violations present"

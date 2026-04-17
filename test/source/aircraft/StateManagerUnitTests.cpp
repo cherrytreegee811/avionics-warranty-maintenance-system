@@ -7,35 +7,18 @@
 #include <memory>
 
 namespace {
-<<<<<<< HEAD
   class RecordingState final : public aircraft::BaseState {
   public:
     RecordingState(aircraft::Aircraft& aircraft, aircraft::StateManager& manager, int& initCount,
                    int& cleanupCount)
         : aircraft::BaseState(aircraft, manager), initCount_(initCount), cleanupCount_(cleanupCount) {}
 
-=======
-  class RecordingState final : public BaseState {
-  public:
-    RecordingState(aircraft::Aircraft& aircraft, StateManager& manager, int& initCount,
-                   int& cleanupCount, int& updateCount)
-        : BaseState(aircraft, manager),
-          initCount_(initCount),
-          cleanupCount_(cleanupCount),
-          updateCount_(updateCount) {}
-
-    void UpdateState() override { ++updateCount_; }
->>>>>>> 44a7d60 (Add Usability Tests + Improve Code Coverage)
     void InitState() override { ++initCount_; }
     void CleanUpState() override { ++cleanupCount_; }
 
   private:
     int& initCount_;
     int& cleanupCount_;
-<<<<<<< HEAD
-=======
-    int& updateCount_;
->>>>>>> 44a7d60 (Add Usability Tests + Improve Code Coverage)
   };
 }  // namespace
 
@@ -46,7 +29,6 @@ namespace {
 
 TEST_CASE("REQ-SYS-060: StateManager SetState initializes and cleans up states") {
   aircraft::Aircraft aircraft;
-<<<<<<< HEAD
   aircraft::StateManager manager;
 
   int initCount = 0;
@@ -60,58 +42,3 @@ TEST_CASE("REQ-SYS-060: StateManager SetState initializes and cleans up states")
   CHECK(initCount == 2);
   CHECK(cleanupCount == 1);
 }
-=======
-  StateManager manager;
-
-  int initCount = 0;
-  int cleanupCount = 0;
-  int updateCount = 0;
-
-  manager.SetState(
-      std::make_unique<RecordingState>(aircraft, manager, initCount, cleanupCount, updateCount));
-  CHECK(initCount == 1);
-  CHECK(cleanupCount == 0);
-
-  manager.SetState(
-      std::make_unique<RecordingState>(aircraft, manager, initCount, cleanupCount, updateCount));
-  CHECK(initCount == 2);
-  CHECK(cleanupCount == 1);
-}
-
-TEST_CASE("REQ-SYS-060: StateManager Update ticks the active state") {
-  aircraft::Aircraft aircraft;
-  StateManager manager;
-
-  int initCount = 0;
-  int cleanupCount = 0;
-  int updateCount = 0;
-
-  manager.SetState(
-      std::make_unique<RecordingState>(aircraft, manager, initCount, cleanupCount, updateCount));
-  manager.Update();
-  manager.Update();
-
-  CHECK(updateCount == 2);
-}
-
-TEST_CASE("REQ-SYS-060: StateManager Update is safe with no state") {
-  StateManager manager;
-  manager.Update();
-  CHECK(true);
-}
-
-TEST_CASE("REQ-SYS-060: StateManager can enqueue requested state changes") {
-  aircraft::Aircraft aircraft;
-  StateManager manager;
-
-  int initCount = 0;
-  int cleanupCount = 0;
-  int updateCount = 0;
-
-  manager.RequestStateChange(
-      std::make_unique<RecordingState>(aircraft, manager, initCount, cleanupCount, updateCount));
-
-  // Current implementation stores requests; processing is outside current scope.
-  CHECK(true);
-}
->>>>>>> 44a7d60 (Add Usability Tests + Improve Code Coverage)
