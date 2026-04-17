@@ -24,8 +24,12 @@ void CliInterface::clearScreen() {
   if (!screen_control_enabled_) {
     return;
   }
-  out_ << "\x1B[2J\x1B[H";
-  out_.flush();
+// Cross-platform clear screen
+#ifdef _WIN32
+  system("cls");
+#else
+  system("clear");
+#endif
 }
 
 void CliInterface::waitForEnter() {
