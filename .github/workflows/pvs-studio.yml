@@ -14,9 +14,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check out repository code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4
 
-      - uses: actions/cache@v5
+      - uses: actions/cache@v4
         with:
           path: "**/cpm_modules"
           key: ${{ github.workflow }}-cpm-modules-${{ hashFiles('**/CMakeLists.txt', '**/*.cmake') }}
@@ -36,10 +36,18 @@ jobs:
           sudo chmod a+r /etc/apt/keyrings/pvs-studio.gpg
 
           wget -q -O /tmp/viva64.list https://files.pvs-studio.com/etc/viva64.list
-          sudo sed -E 's|^deb |deb [signed-by=/etc/apt/keyrings/pvs-studio.gpg] |' /tmp/viva64.list \
-            | sudo tee /etc/apt/sources.list.d/viva64.list > /dev/null
+
+          # The downloaded list already includes an options block (e.g. "deb [arch=amd64] ...").
+          # apt expects a single bracketed options list, so we must merge signed-by into it.
+          if grep -qE '^deb \[' /tmp/viva64.list; then
+            sed -E 's|^deb \[([^]]*)\]|deb [\1 signed-by=/etc/apt/keyrings/pvs-studio.gpg]|' /tmp/viva64.list \
+              | sudo tee /etc/apt/sources.list.d/viva64.list > /dev/null
+          else
+            sed -E 's|^deb |deb [signed-by=/etc/apt/keyrings/pvs-studio.gpg] |' /tmp/viva64.list \
+              | sudo tee /etc/apt/sources.list.d/viva64.list > /dev/null
+          fi
           sudo apt update
-          sudo apt install pvs-studio
+          sudo apt install -y pvs-studio
 
           if [ -z "$PVS_STUDIO_CREDENTIALS" ]; then
             echo "PVS-Studio credentials secret (PVS_STUDIO_CREDENTIALS) is not set; skipping analysis." >&2
