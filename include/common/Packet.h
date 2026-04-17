@@ -10,12 +10,13 @@
 #include <cstdint>
 #include <cstring>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace network {
 
   /** @brief Magic constant used to validate packet framing. */
-  constexpr uint32_t PACKET_MAGIC = 0xABCD1234;
+  constexpr uint32_t PACKET_MAGIC = 0xABCD1234U;
 
   /** @brief Supported message types for client-server protocol packets. */
   enum class PacketType : uint8_t {
@@ -238,18 +239,25 @@ namespace network {
    * @return Type: std::string_view. String representation of state.
    */
   inline constexpr std::string_view stateIdToString(StateId state) {
+    std::string_view result = "UNKNOWN";
     switch (state) {
       case StateId::STANDBY:
-        return "STANDBY";
+        result = "STANDBY";
+        break;
       case StateId::DIAGNOSTIC:
-        return "DIAGNOSTIC";
+        result = "DIAGNOSTIC";
+        break;
       case StateId::MAINTENANCE:
-        return "MAINTENANCE";
+        result = "MAINTENANCE";
+        break;
       case StateId::FAULT:
-        return "FAULT";
+        result = "FAULT";
+        break;
       default:
-        return "UNKNOWN";
+        break;
     }
+
+    return result;
   }
 
   /**
@@ -259,14 +267,19 @@ namespace network {
    */
   inline constexpr std::string_view diagnosticFaultSeverityToString(
       DiagnosticFaultSeverity severity) {
+    std::string_view result = "UNKNOWN";
     switch (severity) {
       case DiagnosticFaultSeverity::MINOR:
-        return "MINOR";
+        result = "MINOR";
+        break;
       case DiagnosticFaultSeverity::MAJOR:
-        return "MAJOR";
+        result = "MAJOR";
+        break;
       default:
-        return "UNKNOWN";
+        break;
     }
+
+    return result;
   }
 
   /**
@@ -275,16 +288,22 @@ namespace network {
    * @return Type: std::string_view. String representation of image format.
    */
   inline constexpr std::string_view imageFormatToString(ImageFormat format) {
+    std::string_view result = "UNKNOWN";
     switch (format) {
       case ImageFormat::RAW:
-        return "RAW";
+        result = "RAW";
+        break;
       case ImageFormat::PNG:
-        return "PNG";
+        result = "PNG";
+        break;
       case ImageFormat::JPEG:
-        return "JPEG";
+        result = "JPEG";
+        break;
       default:
-        return "UNKNOWN";
+        break;
     }
+
+    return result;
   }
 
   /**
@@ -294,18 +313,25 @@ namespace network {
    */
   inline constexpr std::string_view diagnosticCodeClearStatusToString(
       DiagnosticCodeClearStatus status) {
+    std::string_view result = "UNKNOWN";
     switch (status) {
       case DiagnosticCodeClearStatus::SUCCESS:
-        return "SUCCESS";
+        result = "SUCCESS";
+        break;
       case DiagnosticCodeClearStatus::REJECTED_NOT_IN_CLEARABLE_STATE:
-        return "REJECTED_NOT_IN_CLEARABLE_STATE";
+        result = "REJECTED_NOT_IN_CLEARABLE_STATE";
+        break;
       case DiagnosticCodeClearStatus::CODE_NOT_FOUND:
-        return "CODE_NOT_FOUND";
+        result = "CODE_NOT_FOUND";
+        break;
       case DiagnosticCodeClearStatus::MALFORMED_REQUEST:
-        return "MALFORMED_REQUEST";
+        result = "MALFORMED_REQUEST";
+        break;
       default:
-        return "UNKNOWN";
+        break;
     }
+
+    return result;
   }
 
   /**
@@ -345,12 +371,17 @@ namespace network {
      * @return Type: bool. True if value was set or matches the existing expectation.
      */
     bool setExpectedImageCrc(uint32_t crc32) {
+      bool result = false;
+
       if (!expected_image_crc32_set) {
         expected_image_crc32 = crc32;
         expected_image_crc32_set = true;
-        return true;
+        result = true;
+      } else {
+        result = (expected_image_crc32 == crc32);
       }
-      return expected_image_crc32 == crc32;
+
+      return result;
     }
 
     /**
@@ -360,17 +391,22 @@ namespace network {
      * @return Type: bool. True when the image is complete after this insert.
      */
     bool addChunk(uint16_t chunk_index, const std::vector<uint8_t>& data) {
-      if (chunk_index >= total_chunks) {
-        return false;  // Invalid chunk index
-      }
-      if (received[chunk_index]) {
-        return isComplete();  // Already have this chunk
+      bool result = false;
+
+      if (chunk_index < total_chunks) {
+        if (received[chunk_index]) {
+          result = isComplete();
+        } else {
+          chunks[chunk_index] = data;
+          received[chunk_index] = true;
+          total_size_bytes += data.size();
+          result = isComplete();
+        }
+      } else {
+        result = false;
       }
 
-      chunks[chunk_index] = data;
-      received[chunk_index] = true;
-      total_size_bytes += data.size();
-      return isComplete();
+      return result;
     }
 
     /**
@@ -378,10 +414,16 @@ namespace network {
      * @return Type: bool. True when no chunk is missing.
      */
     bool isComplete() const {
+      bool complete = true;
+
       for (bool r : received) {
-        if (!r) return false;
+        if (!r) {
+          complete = false;
+          break;
+        }
       }
-      return true;
+
+      return complete;
     }
 
     /**
@@ -403,10 +445,13 @@ namespace network {
      * @return Type: bool. True if CRC matches the expected image checksum.
      */
     bool validateReassembledCrc(const std::vector<uint8_t>& reassembled) const {
-      if (!expected_image_crc32_set) {
-        return false;
+      bool result = false;
+
+      if (expected_image_crc32_set) {
+        result = (Crc32::calculate(reassembled.data(), reassembled.size()) == expected_image_crc32);
       }
-      return Crc32::calculate(reassembled.data(), reassembled.size()) == expected_image_crc32;
+
+      return result;
     }
   };
 }  // namespace network
