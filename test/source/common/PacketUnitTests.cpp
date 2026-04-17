@@ -451,3 +451,55 @@ TEST_CASE(
   std::vector<uint8_t> chunk_data;
   CHECK(!deserializeImageChunk(chunks[0], header, chunk_data));
 }
+
+  TEST_CASE("REQ-NET-013: Packet enum string helpers include unknown values") {
+    CHECK(stateIdToString(StateId::STANDBY) == "STANDBY");
+    CHECK(stateIdToString(StateId::DIAGNOSTIC) == "DIAGNOSTIC");
+    CHECK(stateIdToString(StateId::MAINTENANCE) == "MAINTENANCE");
+    CHECK(stateIdToString(StateId::FAULT) == "FAULT");
+    CHECK(stateIdToString(static_cast<StateId>(0xFF)) == "UNKNOWN");
+
+    CHECK(diagnosticFaultSeverityToString(DiagnosticFaultSeverity::MINOR) == "MINOR");
+    CHECK(diagnosticFaultSeverityToString(DiagnosticFaultSeverity::MAJOR) == "MAJOR");
+    CHECK(diagnosticFaultSeverityToString(static_cast<DiagnosticFaultSeverity>(0xFF))
+      == "UNKNOWN");
+
+    CHECK(imageFormatToString(ImageFormat::RAW) == "RAW");
+    CHECK(imageFormatToString(ImageFormat::PNG) == "PNG");
+    CHECK(imageFormatToString(ImageFormat::JPEG) == "JPEG");
+    CHECK(imageFormatToString(static_cast<ImageFormat>(0xFF)) == "UNKNOWN");
+
+    CHECK(diagnosticCodeClearStatusToString(DiagnosticCodeClearStatus::SUCCESS) == "SUCCESS");
+    CHECK(diagnosticCodeClearStatusToString(
+      DiagnosticCodeClearStatus::REJECTED_NOT_IN_CLEARABLE_STATE)
+      == "REJECTED_NOT_IN_CLEARABLE_STATE");
+    CHECK(diagnosticCodeClearStatusToString(DiagnosticCodeClearStatus::CODE_NOT_FOUND)
+      == "CODE_NOT_FOUND");
+    CHECK(diagnosticCodeClearStatusToString(DiagnosticCodeClearStatus::MALFORMED_REQUEST)
+      == "MALFORMED_REQUEST");
+    CHECK(diagnosticCodeClearStatusToString(static_cast<DiagnosticCodeClearStatus>(0xFF))
+      == "UNKNOWN");
+  }
+
+  TEST_CASE("REQ-NET-012: ImageBuffer CRC expectation edge cases") {
+    ImageBuffer buffer(1001, ImageFormat::PNG, 2);
+    const std::vector<uint8_t> chunk_a{0x01, 0x02, 0x03};
+    const std::vector<uint8_t> chunk_b{0x10, 0x20};
+
+    CHECK(!buffer.addChunk(0, chunk_a));
+    CHECK(buffer.addChunk(1, chunk_b));
+    const auto reassembled = buffer.reassemble();
+
+    CHECK(!buffer.validateReassembledCrc(reassembled));
+
+    const uint32_t crc = Crc32::calculate(reassembled.data(), reassembled.size());
+    CHECK(buffer.setExpectedImageCrc(crc));
+    CHECK(buffer.setExpectedImageCrc(crc));
+    CHECK(!buffer.setExpectedImageCrc(crc ^ 0xFFFFFFFFU));
+
+    CHECK(buffer.validateReassembledCrc(reassembled));
+
+    auto corrupted = reassembled;
+    corrupted[0] ^= 0xFF;
+    CHECK(!buffer.validateReassembledCrc(corrupted));
+  }
