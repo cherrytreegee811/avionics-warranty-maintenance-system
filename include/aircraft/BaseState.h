@@ -24,8 +24,6 @@ public:
       : m_aircraft(aircraft), m_stateManager(stateManager) {};
   /** @brief Virtual destructor for polymorphic deletion. */
   virtual ~BaseState() {}
-  /** @brief Executes one state update tick. */
-  virtual void UpdateState() = 0;
   /** @brief Performs state entry initialization logic. */
   virtual void InitState() = 0;
   /** @brief Performs state exit cleanup logic. */

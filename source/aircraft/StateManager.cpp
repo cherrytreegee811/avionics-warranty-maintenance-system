@@ -1,6 +1,6 @@
 /**
  * @file StateManager.cpp
- * @brief Implements queued state transition management.
+ * @brief Implements state transition management.
  */
 
 #include <aircraft/BaseState.h>
@@ -15,15 +15,5 @@ void StateManager::SetState(std::unique_ptr<BaseState> newState) {
   m_currentState = std::move(newState);
   if (m_currentState) {
     m_currentState->InitState();
-  }
-}
-
-void StateManager::RequestStateChange(std::unique_ptr<BaseState> newState) {
-  m_stateQueue.push(std::move(newState));
-}
-
-void StateManager::Update() {
-  if (m_currentState) {
-    m_currentState->UpdateState();
   }
 }
