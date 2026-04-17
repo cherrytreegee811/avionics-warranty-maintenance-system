@@ -19,8 +19,6 @@ public:
    */
   MaintenanceState(aircraft::Aircraft& aircraft, StateManager& stateManager);
 
-  /** @brief Runs periodic maintenance-state update behavior. */
-  void UpdateState() override;
   /** @brief Executes entry logic for maintenance state. */
   void InitState() override;
   /** @brief Executes exit logic for maintenance state. */

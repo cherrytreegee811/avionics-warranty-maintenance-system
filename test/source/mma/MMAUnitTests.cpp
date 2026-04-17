@@ -94,3 +94,54 @@ TEST_CASE("REQ-SRV-008: WarrantyManager saves data in correct CSV format") {
 
   std::remove(testFile.c_str());
 }
+
+TEST_CASE("REQ-SRV-008: WarrantyManager load returns false when file is missing") {
+  const std::string missingFile = "missing_warranty_file_should_not_exist.csv";
+  std::remove(missingFile.c_str());
+
+  WarrantyManager mgr(missingFile);
+  CHECK(mgr.load() == false);
+  CHECK(!mgr.getWarranty(1).has_value());
+}
+
+TEST_CASE("REQ-SRV-008: WarrantyManager load skips malformed and empty CSV lines") {
+  const std::string testFile = "mixed_warranty.csv";
+  std::remove(testFile.c_str());
+
+  {
+    std::ofstream out(testFile);
+    REQUIRE(out.is_open());
+    out << "\n";
+    out << "100,1,2030-12-31,ProviderA\n";
+    out << "400,1\n";  // malformed/incomplete line
+    out << "200,0,2020-01-01,ProviderB\n";
+  }
+
+  WarrantyManager mgr(testFile);
+  CHECK(mgr.load() == true);
+
+  auto first = mgr.getWarranty(100);
+  REQUIRE(first.has_value());
+  CHECK(first->isActive == true);
+  CHECK(first->expiryDate == "2030-12-31");
+  CHECK(first->provider == "ProviderA");
+
+  auto second = mgr.getWarranty(200);
+  REQUIRE(second.has_value());
+  CHECK(second->isActive == false);
+  CHECK(second->expiryDate == "2020-01-01");
+  CHECK(second->provider == "ProviderB");
+
+  CHECK(!mgr.getWarranty(400).has_value());
+
+  std::remove(testFile.c_str());
+}
+
+TEST_CASE("REQ-SRV-008: WarrantyManager save returns false when storage path is invalid") {
+  // Using a directory path as output file should fail to open for writing.
+  WarrantyManager mgr(".");
+  common::WarrantyInfo info{true, "2031-01-01", "ProviderInvalidPath"};
+  mgr.setWarranty(77, info);
+
+  CHECK(mgr.save() == false);
+}

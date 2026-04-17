@@ -11,8 +11,6 @@
 DiagnosticState::DiagnosticState(aircraft::Aircraft& aircraft, StateManager& stateManager)
     : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
 
-void DiagnosticState::UpdateState() {}
-
 void DiagnosticState::InitState() {
   m_aircraft.setCurrentState("DIAGNOSTIC");
   const bool diagnostic_sent = m_aircraft.sendDiagnosticData();
