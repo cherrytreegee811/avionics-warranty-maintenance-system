@@ -12,12 +12,6 @@
 #include <memory>
 
 namespace aircraft {
-<<<<<<< HEAD
-=======
-
-StandbyState::StandbyState(Aircraft& aircraft, StateManager& stateManager)
-    : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
->>>>>>> 26e8f62 (troubleshoot)
 
 StandbyState::StandbyState(Aircraft& aircraft, StateManager& stateManager)
     : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
