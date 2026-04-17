@@ -36,7 +36,10 @@ namespace network {
      * @return Type: @ref network::TcpConnection::Ptr. Shared connection instance.
      */
     static Ptr create(asio::ip::tcp::socket socket) {
-      return Ptr(new TcpConnection(std::move(socket)));
+      struct MakeSharedEnabler final : TcpConnection {
+        explicit MakeSharedEnabler(asio::ip::tcp::socket s) : TcpConnection(std::move(s)) {}
+      };
+      return std::make_shared<MakeSharedEnabler>(std::move(socket));
     }
 
     /** @brief Starts async receive loop on the underlying socket. */
