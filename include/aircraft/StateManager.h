@@ -22,18 +22,5 @@ public:
    * @param newState Type: std::unique_ptr<@ref aircraft::BaseState>. Newly active state instance.
    */
   void SetState(std::unique_ptr<BaseState> newState);
-<<<<<<< HEAD
 };
-=======
-  /**
-   * @brief Enqueues a state change request for later processing.
-   * @param newState Type: std::unique_ptr<@ref aircraft::BaseState>. Pending state instance to
-   * activate later.
-   */
-  void RequestStateChange(std::unique_ptr<BaseState> newState);
-  /** @brief Processes pending transitions and updates active state. */
-  void Update();
-};
-
->>>>>>> 26e8f62 (troubleshoot)
 }  // namespace aircraft
