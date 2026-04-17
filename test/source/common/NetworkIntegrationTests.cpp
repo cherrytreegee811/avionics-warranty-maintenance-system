@@ -136,7 +136,8 @@ TEST_CASE("REQ-NET-012/REQ-NET-081: TcpConnection closes on invalid packet magic
   std::remove(testLogFile.c_str());
 
   auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
-  auto logger = std::make_shared<spdlog::logger>("test_tcpconnection_invalid_magic_logger", file_sink);
+  auto logger
+      = std::make_shared<spdlog::logger>("test_tcpconnection_invalid_magic_logger", file_sink);
   spdlog::set_default_logger(logger);
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
@@ -364,7 +365,8 @@ TEST_CASE("REQ-NET-081: TcpConnection logs send-closed path when write is aborte
   std::remove(testLogFile.c_str());
 
   auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
-  auto logger = std::make_shared<spdlog::logger>("test_tcpconnection_send_closed_logger", file_sink);
+  auto logger
+      = std::make_shared<spdlog::logger>("test_tcpconnection_send_closed_logger", file_sink);
   spdlog::set_default_logger(logger);
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
@@ -407,8 +409,7 @@ TEST_CASE("REQ-NET-081: TcpConnection logs send-closed path when write is aborte
 
   CHECK(test_helpers::waitFor(
       [&]() {
-        return test_helpers::logContains(testLogFile,
-                                         "Connection send closed for|Send error:");
+        return test_helpers::logContains(testLogFile, "Connection send closed for|Send error:");
       },
       3000ms));
 
