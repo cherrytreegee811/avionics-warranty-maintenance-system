@@ -8,15 +8,15 @@
 
 namespace aircraft {
 
-StateManager::StateManager() : m_currentState(nullptr) {}
+  StateManager::StateManager() : m_currentState(nullptr) {}
 
-void StateManager::SetState(std::unique_ptr<BaseState> newState) {
-  if (m_currentState) {
-    m_currentState->CleanUpState();
+  void StateManager::SetState(std::unique_ptr<BaseState> newState) {
+    if (m_currentState) {
+      m_currentState->CleanUpState();
+    }
+    m_currentState = std::move(newState);
+    if (m_currentState) {
+      m_currentState->InitState();
+    }
   }
-  m_currentState = std::move(newState);
-  if (m_currentState) {
-    m_currentState->InitState();
-  }
-}
 }  // namespace aircraft

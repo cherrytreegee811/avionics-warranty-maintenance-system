@@ -8,22 +8,23 @@
 
 namespace aircraft {
 
-class DiagnosticState : public BaseState {
-public:
-  /**
-   * @brief Constructs diagnostic state behavior.
-   * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
-   * @param stateManager Type: @ref aircraft::StateManager&. Transition manager used by this state.
-   */
-  DiagnosticState(Aircraft& aircraft, StateManager& stateManager);
+  class DiagnosticState : public BaseState {
+  public:
+    /**
+     * @brief Constructs diagnostic state behavior.
+     * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
+     * @param stateManager Type: @ref aircraft::StateManager&. Transition manager used by this
+     * state.
+     */
+    DiagnosticState(Aircraft& aircraft, StateManager& stateManager);
 
-  /** @brief Executes entry logic for diagnostic state. */
-  void InitState() override;
-  /** @brief Executes exit logic for diagnostic state. */
-  void CleanUpState() override;
+    /** @brief Executes entry logic for diagnostic state. */
+    void InitState() override;
+    /** @brief Executes exit logic for diagnostic state. */
+    void CleanUpState() override;
 
-private:
-  StateManager& m_stateManager;
-};
+  private:
+    StateManager& m_stateManager;
+  };
 
 }  // namespace aircraft

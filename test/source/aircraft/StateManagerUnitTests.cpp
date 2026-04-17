@@ -11,7 +11,9 @@ namespace {
   public:
     RecordingState(aircraft::Aircraft& aircraft, aircraft::StateManager& manager, int& initCount,
                    int& cleanupCount)
-        : aircraft::BaseState(aircraft, manager), initCount_(initCount), cleanupCount_(cleanupCount) {}
+        : aircraft::BaseState(aircraft, manager),
+          initCount_(initCount),
+          cleanupCount_(cleanupCount) {}
 
     void InitState() override { ++initCount_; }
     void CleanUpState() override { ++cleanupCount_; }

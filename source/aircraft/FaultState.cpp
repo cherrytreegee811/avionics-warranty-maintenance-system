@@ -10,11 +10,11 @@
 
 namespace aircraft {
 
-FaultState::FaultState(Aircraft& aircraft, StateManager& stateManager)
-    : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
+  FaultState::FaultState(Aircraft& aircraft, StateManager& stateManager)
+      : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
 
-void FaultState::InitState() { m_aircraft.setCurrentState("FAULT"); }
+  void FaultState::InitState() { m_aircraft.setCurrentState("FAULT"); }
 
-void FaultState::CleanUpState() {}
+  void FaultState::CleanUpState() {}
 
 }  // namespace aircraft

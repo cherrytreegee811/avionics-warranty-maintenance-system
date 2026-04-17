@@ -254,6 +254,7 @@ namespace network {
         result = "FAULT";
         break;
       default:
+        // Unknown state id.
         break;
     }
 
@@ -276,6 +277,7 @@ namespace network {
         result = "MAJOR";
         break;
       default:
+        // Unknown severity.
         break;
     }
 
@@ -300,6 +302,7 @@ namespace network {
         result = "JPEG";
         break;
       default:
+        // Unknown image format.
         break;
     }
 
@@ -328,6 +331,7 @@ namespace network {
         result = "MALFORMED_REQUEST";
         break;
       default:
+        // Unknown status.
         break;
     }
 
@@ -434,7 +438,7 @@ namespace network {
       std::vector<uint8_t> result;
       result.reserve(total_size_bytes);
       for (const auto& chunk : chunks) {
-        result.insert(result.end(), chunk.begin(), chunk.end());
+        (void)result.insert(result.end(), chunk.begin(), chunk.end());
       }
       return result;
     }

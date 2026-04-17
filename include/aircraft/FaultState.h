@@ -8,22 +8,23 @@
 
 namespace aircraft {
 
-class FaultState : public BaseState {
-public:
-  /**
-   * @brief Constructs fault state behavior.
-   * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
-   * @param stateManager Type: @ref aircraft::StateManager&. Transition manager used by this state.
-   */
-  FaultState(Aircraft& aircraft, StateManager& stateManager);
+  class FaultState : public BaseState {
+  public:
+    /**
+     * @brief Constructs fault state behavior.
+     * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
+     * @param stateManager Type: @ref aircraft::StateManager&. Transition manager used by this
+     * state.
+     */
+    FaultState(Aircraft& aircraft, StateManager& stateManager);
 
-  /** @brief Executes entry logic for fault state. */
-  void InitState() override;
-  /** @brief Executes exit logic for fault state. */
-  void CleanUpState() override;
+    /** @brief Executes entry logic for fault state. */
+    void InitState() override;
+    /** @brief Executes exit logic for fault state. */
+    void CleanUpState() override;
 
-private:
-  StateManager& m_stateManager;
-};
+  private:
+    StateManager& m_stateManager;
+  };
 
 }  // namespace aircraft

@@ -13,11 +13,11 @@
 
 namespace aircraft {
 
-StandbyState::StandbyState(Aircraft& aircraft, StateManager& stateManager)
-    : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
+  StandbyState::StandbyState(Aircraft& aircraft, StateManager& stateManager)
+      : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
 
-void StandbyState::InitState() { m_aircraft.setCurrentState("STANDBY"); }
+  void StandbyState::InitState() { m_aircraft.setCurrentState("STANDBY"); }
 
-void StandbyState::CleanUpState() {}
+  void StandbyState::CleanUpState() {}
 
 }  // namespace aircraft

@@ -39,7 +39,7 @@ int main() {
 
   spdlog::info("MMA server starting");
 
-  MMA mma;
+  mma::MMA mma;
   mma.initialize();
   mma.startServer(8000);
   mma.runMenu();

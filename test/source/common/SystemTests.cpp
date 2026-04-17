@@ -32,7 +32,7 @@ TEST_CASE(
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
   const uint16_t testPort = 8050;
   server.startServer(testPort);
   test_helpers::ScopedMmaStopper stop_server(server);
@@ -108,7 +108,7 @@ TEST_CASE(
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
   const uint16_t testPort = 8051;
   server.startServer(testPort);
   test_helpers::ScopedMmaStopper stop_server(server);
@@ -182,7 +182,7 @@ TEST_CASE("REQ-SYS-060/REQ-CLT-061: System - MAJOR fault escalates to FAULT stat
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
   const uint16_t testPort = 8052;
   server.startServer(testPort);
   test_helpers::ScopedMmaStopper stop_server(server);

@@ -135,7 +135,7 @@ namespace test_helpers {
     }
   }
 
-  ScopedMmaStopper::ScopedMmaStopper(MMA& server) : server_(server) {}
+  ScopedMmaStopper::ScopedMmaStopper(mma::MMA& server) : server_(server) {}
 
   ScopedMmaStopper::~ScopedMmaStopper() { server_.stopServer(); }
 
