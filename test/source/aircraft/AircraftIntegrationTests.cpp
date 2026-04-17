@@ -65,12 +65,13 @@ TEST_CASE("REQ-CLT-054: Client logs after sending LANDED notification") {
 }
 
 // ============================================================================
-// US-012: Integration state transitions: simulated inputs, timed events, fault injections
+// REQ-SYS-060 / REQ-CLT-061 / REQ-CLT-063 / REQ-CLT-071 / REQ-SRV-008:
+// Integration - State transitions and data transfer
 // ============================================================================
 
 TEST_CASE(
-    "US-012: Simulate network transition to DIAGNOSTIC and verify diagnostic/warranty data is "
-    "sent") {
+  "REQ-SYS-060/REQ-CLT-061/REQ-CLT-063/REQ-CLT-071/REQ-SRV-008: Integration - Transition to "
+  "DIAGNOSTIC and verify diagnostic/warranty data transfer") {
   const uint16_t testPort = 8022;
   test_helpers::MockMMA mockServer(testPort);
   std::this_thread::sleep_for(100ms);
@@ -100,7 +101,7 @@ TEST_CASE(
   CHECK(mockServer.hasReceivedWarrantyData());
 }
 
-TEST_CASE("US-012: Simulated invalid transition input is rejected") {
+TEST_CASE("REQ-SYS-060/REQ-CLT-062: Integration - Invalid transition input is rejected") {
   const uint16_t testPort = 8023;
   test_helpers::MockMMA mockServer(testPort);
   std::this_thread::sleep_for(100ms);
@@ -159,7 +160,8 @@ TEST_CASE("REQ-CLT-082: Timed connection fallback transitions to DIAGNOSTIC") {
   std::remove(logFile.c_str());
 }
 
-TEST_CASE("US-012: Fault injection in MAINTENANCE escalates to aircraft to FAULT state") {
+TEST_CASE(
+    "REQ-SYS-060/REQ-CLT-061: Integration - MAJOR fault in MAINTENANCE transitions to FAULT") {
   const uint16_t testPort = 8024;
   test_helpers::MockMMA mockServer(testPort);
   std::this_thread::sleep_for(100ms);

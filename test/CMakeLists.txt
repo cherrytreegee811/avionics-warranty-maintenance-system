@@ -14,7 +14,6 @@ CPMAddPackage(
   OPTIONS "CMAKE_FORMAT_EXCLUDE (^|/)cmake/.*"
 )
 
-# ---- Normalize doctest target name (fixes missing ALIAS target) ----
 if(TARGET doctest::doctest)
   set(DOCTEST_LIB_TARGET doctest::doctest)
 elseif(TARGET doctest)
@@ -31,8 +30,8 @@ add_library(
 target_include_directories(
   TestHelpers PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include ${CMAKE_SOURCE_DIR}/include
 )
-target_include_directories(TestHelpers PRIVATE ${asio_SOURCE_DIR}/include)
-target_link_libraries(TestHelpers PRIVATE Common)
+target_include_directories(TestHelpers PUBLIC ${asio_SOURCE_DIR}/include)
+target_link_libraries(TestHelpers PRIVATE Common MMA)
 set_target_properties(TestHelpers PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 # ---- Create Test Executables ----
@@ -47,12 +46,22 @@ target_include_directories(PacketUnitTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 set_target_properties(PacketUnitTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 add_executable(NetworkIntegrationTests source/common/NetworkIntegrationTests.cpp)
-target_link_libraries(NetworkIntegrationTests PRIVATE ${DOCTEST_LIB_TARGET} Common MMA Aircraft)
+target_link_libraries(
+  NetworkIntegrationTests PRIVATE ${DOCTEST_LIB_TARGET} Common MMA Aircraft TestHelpers
+)
 target_include_directories(NetworkIntegrationTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
 if(WIN32)
   target_link_libraries(NetworkIntegrationTests PRIVATE ws2_32 mswsock)
 endif()
 set_target_properties(NetworkIntegrationTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
+
+add_executable(SystemTests source/common/SystemTests.cpp)
+target_link_libraries(SystemTests PRIVATE ${DOCTEST_LIB_TARGET} Common MMA Aircraft TestHelpers)
+target_include_directories(SystemTests PRIVATE ${CMAKE_SOURCE_DIR}/include)
+if(WIN32)
+  target_link_libraries(SystemTests PRIVATE ws2_32 mswsock)
+endif()
+set_target_properties(SystemTests PROPERTIES CXX_STANDARD 23 CXX_STANDARD_REQUIRED ON)
 
 add_executable(AircraftIntegrationTests source/aircraft/AircraftIntegrationTests.cpp)
 target_link_libraries(
@@ -74,7 +83,6 @@ set_target_properties(MMAIntegrationTests PROPERTIES CXX_STANDARD 23 CXX_STANDAR
 # ---- Discover Tests ----
 enable_testing()
 
-# This include path is fine *if* doctest_SOURCE_DIR is set by CPM; keep it but fail early if not.
 if(NOT DEFINED doctest_SOURCE_DIR)
   message(FATAL_ERROR "doctest_SOURCE_DIR not set; CPMAddPackage(doctest) did not populate it")
 endif()
@@ -83,6 +91,7 @@ include(${doctest_SOURCE_DIR}/scripts/cmake/doctest.cmake)
 doctest_discover_tests(AircraftUnitTests)
 doctest_discover_tests(PacketUnitTests)
 doctest_discover_tests(NetworkIntegrationTests)
+doctest_discover_tests(SystemTests)
 doctest_discover_tests(MMAUnitTests)
 doctest_discover_tests(AircraftIntegrationTests)
 doctest_discover_tests(MMAIntegrationTests)
