@@ -6,6 +6,7 @@
 #include <aircraft/CliInterface.h>
 
 #include <chrono>
+#include <cstdlib>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -26,9 +27,9 @@ void CliInterface::clearScreen() {
   }
 // Cross-platform clear screen
 #ifdef _WIN32
-  system("cls");
+  (void)std::system("cls");
 #else
-  system("clear");
+  (void)std::system("clear");
 #endif
 }
 
