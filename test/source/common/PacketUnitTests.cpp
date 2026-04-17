@@ -190,10 +190,16 @@ TEST_CASE("REQ-CLT-005: LANDED packet serialization/deserialization") {
 }
 
 // ============================================================================
-// Image packet tests - Single chunk, multi-chunk, reassembly
+// REQ-SYS-010: All data transferred between Client and Server shall use a pre-defined structure.
+// REQ-SYS-030: The data packet structure shall contain at least 1 dynamically allocated element.
+// REQ-NET-012: The packet shall contain packet integrity checks to ensure validity/authenticity.
+// REQ-NET-013: The client and the server shall support internal processing logic for reading
+//              received information, and serialize information for transfer.
 // ============================================================================
 
-TEST_CASE("Image packet: Single chunk serialization/deserialization") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - Single chunk "
+    "serialization/deserialization") {
   // Create a small test image (1KB)
   std::vector<uint8_t> image_data(1024);
   for (size_t i = 0; i < image_data.size(); ++i) {
@@ -218,7 +224,9 @@ TEST_CASE("Image packet: Single chunk serialization/deserialization") {
   CHECK(chunk_data == image_data);
 }
 
-TEST_CASE("Image packet: Multi-chunk image serialization") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - Multi-chunk image "
+    "serialization") {
   // Create a large test image (2.5 MB - spans 3+ chunks)
   const size_t image_size = 2621440;  // 2.5 MB
   std::vector<uint8_t> large_image(image_size);
@@ -246,7 +254,9 @@ TEST_CASE("Image packet: Multi-chunk image serialization") {
   }
 }
 
-TEST_CASE("Image packet: ImageBuffer add single chunk") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - ImageBuffer add single "
+    "chunk") {
   ImageBuffer buffer(789, ImageFormat::RAW, 1);
   std::vector<uint8_t> data{0xAA, 0xBB, 0xCC};
 
@@ -262,7 +272,9 @@ TEST_CASE("Image packet: ImageBuffer add single chunk") {
   CHECK(buffer.validateReassembledCrc(reassembled));
 }
 
-TEST_CASE("Image packet: ImageBuffer multi-chunk reassembly") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - ImageBuffer multi-chunk "
+    "reassembly") {
   const size_t total_chunks = 5;
   ImageBuffer buffer(111, ImageFormat::PNG, total_chunks);
 
@@ -294,7 +306,9 @@ TEST_CASE("Image packet: ImageBuffer multi-chunk reassembly") {
   }
 }
 
-TEST_CASE("Image packet: ImageBuffer duplicate chunk handling") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - ImageBuffer duplicate chunk "
+    "handling") {
   ImageBuffer buffer(222, ImageFormat::PNG, 3);
   std::vector<uint8_t> chunk_data{0x01, 0x02, 0x03};
 
@@ -315,7 +329,9 @@ TEST_CASE("Image packet: ImageBuffer duplicate chunk handling") {
   CHECK(complete);
 }
 
-TEST_CASE("Image packet: ImageBuffer rejects invalid chunk index") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - ImageBuffer rejects invalid "
+    "chunk index") {
   ImageBuffer buffer(333, ImageFormat::JPEG, 3);
   std::vector<uint8_t> data{0xAA, 0xBB};
 
@@ -324,7 +340,8 @@ TEST_CASE("Image packet: ImageBuffer rejects invalid chunk index") {
   CHECK(!buffer.addChunk(10, data));  // Invalid: far out of range
 }
 
-TEST_CASE("Image packet: Multi-chunk full round trip") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - Multi-chunk full round trip") {
   // Create test image
   const size_t test_size = 5 * 1024 * 1024;  // 5 MB
   std::vector<uint8_t> original_image(test_size);
@@ -359,7 +376,9 @@ TEST_CASE("Image packet: Multi-chunk full round trip") {
   CHECK(buffer.validateReassembledCrc(reassembled));
 }
 
-TEST_CASE("Image packet: Boundary - exactly 1MB chunk size") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - Boundary - exactly 1MB chunk "
+    "size") {
   // Create image that's exactly one chunk
   const std::vector<uint8_t> image(kMaxImageChunkPayloadSize, 0xAA);
 
@@ -372,7 +391,9 @@ TEST_CASE("Image packet: Boundary - exactly 1MB chunk size") {
   CHECK(chunk_data.size() == kMaxImageChunkPayloadSize);
 }
 
-TEST_CASE("Image packet: Boundary - one byte over 1MB") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - Boundary - one byte over "
+    "1MB") {
   // Create image just over one chunk
   const size_t oversized = kMaxImageChunkPayloadSize + 1;
   const std::vector<uint8_t> image(oversized, 0xBB);
@@ -392,13 +413,17 @@ TEST_CASE("Image packet: Boundary - one byte over 1MB") {
   CHECK(chunk_data2.size() == 1);
 }
 
-TEST_CASE("Image packet: Empty image serialization fails gracefully") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - Empty image serialization "
+    "fails gracefully") {
   const std::vector<uint8_t> empty_image;
   const auto chunks = serializeImagePayload(666, empty_image, ImageFormat::PNG);
   CHECK(chunks.empty());
 }
 
-TEST_CASE("Image packet: Malformed chunk deserialization fails") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - Malformed chunk "
+    "deserialization fails") {
   // Payload too short for header
   std::vector<uint8_t> malformed(10);
   ImageChunkHeader header;
@@ -412,7 +437,9 @@ TEST_CASE("Image packet: Malformed chunk deserialization fails") {
   CHECK(!deserializeImageChunk(invalid_payload, header, chunk_data));
 }
 
-TEST_CASE("Image packet: Corrupted chunk CRC is rejected") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-SYS-030/REQ-NET-012/REQ-NET-013: Image packet - Corrupted chunk CRC is "
+    "rejected") {
   std::vector<uint8_t> image_data(512, 0x5A);
   auto chunks = serializeImagePayload(777, image_data, ImageFormat::PNG);
   REQUIRE(chunks.size() == 1);
