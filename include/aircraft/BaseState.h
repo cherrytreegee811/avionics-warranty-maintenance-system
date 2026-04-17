@@ -22,7 +22,13 @@ public:
   BaseState(Aircraft& aircraft, StateManager& stateManager)
       : m_aircraft(aircraft), m_stateManager(stateManager) {}
   /** @brief Virtual destructor for polymorphic deletion. */
+<<<<<<< HEAD
   virtual ~BaseState() {}
+=======
+  virtual ~BaseState() = default;
+  /** @brief Executes one state update tick. */
+  virtual void UpdateState() = 0;
+>>>>>>> origin/feature/misra
   /** @brief Performs state entry initialization logic. */
   virtual void InitState() = 0;
   /** @brief Performs state exit cleanup logic. */

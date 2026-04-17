@@ -19,4 +19,18 @@ void StateManager::SetState(std::unique_ptr<BaseState> newState) {
     m_currentState->InitState();
   }
 }
+<<<<<<< HEAD
+=======
+
+void StateManager::RequestStateChange(std::unique_ptr<BaseState> newState) {
+  m_stateQueue.push(std::move(newState));
+}
+
+void StateManager::Update() {
+  if (m_currentState) {
+    m_currentState->UpdateState();
+  }
+}
+
+>>>>>>> origin/feature/misra
 }  // namespace aircraft

@@ -9,6 +9,12 @@
 #include <iostream>
 
 namespace aircraft {
+<<<<<<< HEAD
+=======
+
+DiagnosticState::DiagnosticState(Aircraft& aircraft, StateManager& stateManager)
+    : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
+>>>>>>> origin/feature/misra
 
 DiagnosticState::DiagnosticState(Aircraft& aircraft, StateManager& stateManager)
     : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}

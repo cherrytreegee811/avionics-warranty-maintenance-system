@@ -12,6 +12,12 @@
 #include <memory>
 
 namespace aircraft {
+<<<<<<< HEAD
+=======
+
+StandbyState::StandbyState(Aircraft& aircraft, StateManager& stateManager)
+    : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
+>>>>>>> origin/feature/misra
 
 StandbyState::StandbyState(Aircraft& aircraft, StateManager& stateManager)
     : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
