@@ -34,14 +34,11 @@ TEST_CASE("REQ-SYS-060: StateManager SetState initializes and cleans up states")
   int initCount = 0;
   int cleanupCount = 0;
 
-  manager.SetState(
-      std::make_unique<RecordingState>(aircraft, manager, initCount, cleanupCount));
+  manager.SetState(std::make_unique<RecordingState>(aircraft, manager, initCount, cleanupCount));
   CHECK(initCount == 1);
   CHECK(cleanupCount == 0);
 
-  manager.SetState(
-      std::make_unique<RecordingState>(aircraft, manager, initCount, cleanupCount));
+  manager.SetState(std::make_unique<RecordingState>(aircraft, manager, initCount, cleanupCount));
   CHECK(initCount == 2);
   CHECK(cleanupCount == 1);
 }
-
