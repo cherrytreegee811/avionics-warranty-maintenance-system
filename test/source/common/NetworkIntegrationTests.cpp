@@ -123,6 +123,309 @@ TEST_CASE("REQ-NET-081: Integration - client and server communicate over TcpConn
   }
 }
 
+TEST_CASE("REQ-NET-081: TcpConnection returns unknown remote address when endpoint unavailable") {
+  asio::io_context io;
+  asio::ip::tcp::socket socket(io);
+  auto connection = TcpConnection::create(std::move(socket));
+
+  CHECK(connection->getRemoteAddress() == "unknown");
+}
+
+TEST_CASE("REQ-NET-012/REQ-NET-081: TcpConnection closes on invalid packet magic") {
+  const std::string testLogFile = "test_tcpconnection_invalid_magic_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger
+      = std::make_shared<spdlog::logger>("test_tcpconnection_invalid_magic_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  asio::io_context io;
+  auto work_guard = asio::make_work_guard(io);
+  using tcp = asio::ip::tcp;
+
+  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
+  const uint16_t port = acceptor.local_endpoint().port();
+
+  std::promise<TcpConnection::Ptr> accepted_promise;
+  auto accepted_future = accepted_promise.get_future();
+
+  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
+    if (ec) {
+      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
+      return;
+    }
+    auto server_connection = TcpConnection::create(std::move(socket));
+    server_connection->setMessageHandler([](const std::vector<uint8_t>&) {});
+    server_connection->start();
+    accepted_promise.set_value(server_connection);
+  });
+
+  tcp::socket client_socket(io);
+  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
+
+  std::thread io_thread([&]() { io.run(); });
+
+  auto cleanup = [&]() {
+    std::error_code ignored;
+    client_socket.close(ignored);
+    acceptor.close();
+    work_guard.reset();
+    io.stop();
+    if (io_thread.joinable()) {
+      io_thread.join();
+    }
+  };
+
+  const bool accepted_ready = test_helpers::waitUntilReady(accepted_future);
+  if (!accepted_ready) {
+    cleanup();
+    FAIL("Accepted connection was not ready in time");
+  }
+
+  auto server_connection = accepted_future.get();
+  if (server_connection == nullptr) {
+    cleanup();
+    FAIL("Accepted server connection was null");
+  }
+
+  PacketHeader bad_header{};
+  bad_header.magic = 0x12345678;
+  bad_header.type = PacketType::LANDED_NOTIFICATION;
+  bad_header.payload_size = 0;
+  bad_header.sequence = 1;
+  bad_header.checksum = 0;
+
+  std::array<uint8_t, sizeof(PacketHeader)> raw{};
+  std::memcpy(raw.data(), &bad_header, sizeof(PacketHeader));
+  asio::write(client_socket, asio::buffer(raw));
+
+  CHECK(test_helpers::waitFor(
+      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
+  CHECK(test_helpers::waitFor(
+      [&]() { return test_helpers::logContains(testLogFile, "Invalid packet magic"); }, 2000ms));
+
+  std::error_code ignored;
+  client_socket.close(ignored);
+  acceptor.close();
+  work_guard.reset();
+  io.stop();
+  if (io_thread.joinable()) {
+    io_thread.join();
+  }
+
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
+TEST_CASE("REQ-NET-012/REQ-NET-081: TcpConnection closes on oversized packet header") {
+  const std::string testLogFile = "test_tcpconnection_oversized_packet_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger
+      = std::make_shared<spdlog::logger>("test_tcpconnection_oversized_packet_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  asio::io_context io;
+  auto work_guard = asio::make_work_guard(io);
+  using tcp = asio::ip::tcp;
+
+  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
+  const uint16_t port = acceptor.local_endpoint().port();
+
+  std::promise<TcpConnection::Ptr> accepted_promise;
+  auto accepted_future = accepted_promise.get_future();
+
+  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
+    if (ec) {
+      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
+      return;
+    }
+    auto server_connection = TcpConnection::create(std::move(socket));
+    server_connection->setMessageHandler([](const std::vector<uint8_t>&) {});
+    server_connection->start();
+    accepted_promise.set_value(server_connection);
+  });
+
+  tcp::socket client_socket(io);
+  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
+
+  std::thread io_thread([&]() { io.run(); });
+
+  REQUIRE(test_helpers::waitUntilReady(accepted_future));
+  auto server_connection = accepted_future.get();
+  REQUIRE(server_connection != nullptr);
+
+  PacketHeader oversized_header{};
+  oversized_header.magic = PACKET_MAGIC;
+  oversized_header.type = PacketType::SCHEMATIC_CHUNK;
+  oversized_header.payload_size = 60U * 1024U * 1024U;
+  oversized_header.sequence = 1;
+  oversized_header.checksum = 0;
+
+  std::array<uint8_t, sizeof(PacketHeader)> raw{};
+  std::memcpy(raw.data(), &oversized_header, sizeof(PacketHeader));
+  asio::write(client_socket, asio::buffer(raw));
+
+  CHECK(test_helpers::waitFor(
+      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
+  CHECK(test_helpers::waitFor(
+      [&]() { return test_helpers::logContains(testLogFile, "Packet too large"); }, 2000ms));
+
+  std::error_code ignored;
+  client_socket.close(ignored);
+  acceptor.close();
+  work_guard.reset();
+  io.stop();
+  if (io_thread.joinable()) {
+    io_thread.join();
+  }
+
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
+TEST_CASE("REQ-NET-013/REQ-NET-081: TcpConnection buffers partial packet until complete") {
+  asio::io_context io;
+  auto work_guard = asio::make_work_guard(io);
+  using tcp = asio::ip::tcp;
+
+  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
+  const uint16_t port = acceptor.local_endpoint().port();
+
+  std::promise<TcpConnection::Ptr> accepted_promise;
+  auto accepted_future = accepted_promise.get_future();
+
+  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
+    if (ec) {
+      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
+      return;
+    }
+    auto server_connection = TcpConnection::create(std::move(socket));
+    server_connection->start();
+    accepted_promise.set_value(server_connection);
+  });
+
+  tcp::socket client_socket(io);
+  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
+
+  std::thread io_thread([&]() { io.run(); });
+
+  auto cleanup = [&]() {
+    std::error_code ignored;
+    client_socket.close(ignored);
+    acceptor.close();
+    work_guard.reset();
+    io.stop();
+    if (io_thread.joinable()) {
+      io_thread.join();
+    }
+  };
+
+  const bool accepted_ready = test_helpers::waitUntilReady(accepted_future);
+  if (!accepted_ready) {
+    cleanup();
+    FAIL("Accepted connection was not ready in time");
+  }
+
+  auto server_connection = accepted_future.get();
+  if (server_connection == nullptr) {
+    cleanup();
+    FAIL("Accepted server connection was null");
+  }
+
+  const VerificationRequest request{0x12345678U, 0xABCDEF1234567890ULL};
+  const auto packet = serializePacket(PacketType::VERIFICATION_REQUEST, request);
+  CHECK(packet.size() > sizeof(PacketHeader));
+
+  const size_t first_part = sizeof(PacketHeader) + 1;
+  if (first_part >= packet.size()) {
+    cleanup();
+    FAIL("Partial-split precondition failed");
+  }
+
+  asio::write(client_socket, asio::buffer(packet.data(), first_part));
+
+  std::this_thread::sleep_for(150ms);
+  CHECK(server_connection->getState() != ConnectionState::CLOSED);
+
+  server_connection->close();
+  CHECK(test_helpers::waitFor(
+      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
+  cleanup();
+}
+
+TEST_CASE("REQ-NET-081: TcpConnection logs send-closed path when write is aborted") {
+  const std::string testLogFile = "test_tcpconnection_send_closed_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger
+      = std::make_shared<spdlog::logger>("test_tcpconnection_send_closed_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  asio::io_context io;
+  auto work_guard = asio::make_work_guard(io);
+  using tcp = asio::ip::tcp;
+
+  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
+  const uint16_t port = acceptor.local_endpoint().port();
+
+  std::promise<TcpConnection::Ptr> accepted_promise;
+  auto accepted_future = accepted_promise.get_future();
+
+  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
+    if (ec) {
+      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
+      return;
+    }
+    auto server_connection = TcpConnection::create(std::move(socket));
+    accepted_promise.set_value(server_connection);
+  });
+
+  tcp::socket client_socket(io);
+  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
+
+  std::thread io_thread([&]() { io.run(); });
+
+  REQUIRE(test_helpers::waitUntilReady(accepted_future));
+  auto server_connection = accepted_future.get();
+  REQUIRE(server_connection != nullptr);
+
+  // Large payload increases chance that close races with in-flight write.
+  std::vector<uint8_t> large_payload(4 * 1024 * 1024, 0xAB);
+  server_connection->send(large_payload);
+  server_connection->close();
+
+  CHECK(test_helpers::waitFor(
+      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
+
+  CHECK(test_helpers::waitFor(
+      [&]() {
+        return test_helpers::logContains(testLogFile, "Connection send closed for|Send error:");
+      },
+      3000ms));
+
+  std::error_code ignored;
+  client_socket.close(ignored);
+  acceptor.close();
+  work_guard.reset();
+  io.stop();
+  if (io_thread.joinable()) {
+    io_thread.join();
+  }
+
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
 // ============================================================================
 // REQ-SYS-080: Both the client and server shall require connection verification before accepting
 //              any commands or returning results.
