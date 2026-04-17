@@ -77,7 +77,7 @@ TEST_CASE(
   std::this_thread::sleep_for(100ms);
 
   aircraft::Aircraft client;
-  StateManager stateManager;
+  aircraft::StateManager stateManager;
   client.setStateManager(&stateManager);
   client.syncStateManagerToCurrentState();
   client.clearFaultCodes();
@@ -107,7 +107,7 @@ TEST_CASE("REQ-SYS-060/REQ-CLT-062: Integration - Invalid transition input is re
   std::this_thread::sleep_for(100ms);
 
   aircraft::Aircraft client;
-  StateManager stateManager;
+  aircraft::StateManager stateManager;
   client.setStateManager(&stateManager);
   client.syncStateManagerToCurrentState();
   client.clearFaultCodes();
@@ -138,7 +138,7 @@ TEST_CASE("REQ-CLT-082: Timed connection fallback transitions to DIAGNOSTIC") {
   spdlog::flush_on(spdlog::level::info);
 
   aircraft::Aircraft client;
-  StateManager stateManager;
+  aircraft::StateManager stateManager;
   client.setStateManager(&stateManager);
   client.syncStateManagerToCurrentState();
 
@@ -167,7 +167,7 @@ TEST_CASE(
   std::this_thread::sleep_for(100ms);
 
   aircraft::Aircraft client;
-  StateManager stateManager;
+  aircraft::StateManager stateManager;
   client.setStateManager(&stateManager);
   client.syncStateManagerToCurrentState();
   client.clearFaultCodes();

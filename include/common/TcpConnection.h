@@ -95,10 +95,13 @@ namespace network {
      * @return Type: std::string. Remote address string or "unknown" when unavailable.
      */
     std::string getRemoteAddress() const {
+      std::string result = "unknown";
       std::error_code ec;
-      auto endpoint = socket_.remote_endpoint(ec);
-      if (ec) return "unknown";
-      return endpoint.address().to_string();
+      const auto endpoint = socket_.remote_endpoint(ec);
+      if (!ec) {
+        result = endpoint.address().to_string();
+      }
+      return result;
     }
 
   private:
@@ -143,7 +146,7 @@ namespace network {
         }
 
         PacketHeader header{};
-        std::memcpy(&header, incoming_buffer_.data(), sizeof(PacketHeader));
+        (void)std::memcpy(&header, incoming_buffer_.data(), sizeof(PacketHeader));
 
         if (header.magic != PACKET_MAGIC) {
           spdlog::warn("Invalid packet magic from {}. Closing connection.", getRemoteAddress());
@@ -164,7 +167,7 @@ namespace network {
         }
 
         std::vector<uint8_t> packet(packet_size);
-        std::memcpy(packet.data(), incoming_buffer_.data(), packet_size);
+  (void)std::memcpy(packet.data(), incoming_buffer_.data(), packet_size);
         incoming_buffer_.erase(incoming_buffer_.begin(), incoming_buffer_.begin() + packet_size);
 
         if (handler_) {
@@ -175,7 +178,9 @@ namespace network {
 
     void readData() {
       auto self = shared_from_this();
-      socket_.async_read_some(asio::buffer(buffer_), [self](std::error_code ec, size_t length) {
+
+      auto read_handler = std::make_shared<std::function<void(std::error_code, size_t)>>();
+      *read_handler = [self, read_handler](std::error_code ec, size_t length) {
         if (ec) {
           if (ec == asio::error::eof || ec == asio::error::connection_reset
               || ec == asio::error::operation_aborted) {
@@ -190,11 +195,16 @@ namespace network {
         self->incoming_buffer_.insert(self->incoming_buffer_.end(), self->buffer_.begin(),
                                       self->buffer_.begin() + length);
         self->processIncomingBuffer();
-        self->readData();  // continue reading
-      });
+
+        if (self->state_.load() != ConnectionState::CLOSED && self->socket_.is_open()) {
+          self->socket_.async_read_some(asio::buffer(self->buffer_), *read_handler);
+        }
+      };
+
+      socket_.async_read_some(asio::buffer(buffer_), *read_handler);
     }
 
-    static constexpr size_t kMaxPacketSizeBytes = 50 * 1024 * 1024;
+    static constexpr size_t kMaxPacketSizeBytes = 50U * 1024U * 1024U;
     asio::ip::tcp::socket socket_;
     std::array<uint8_t, 4096> buffer_;
     std::vector<uint8_t> incoming_buffer_;

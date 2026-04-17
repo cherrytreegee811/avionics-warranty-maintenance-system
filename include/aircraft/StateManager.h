@@ -8,6 +8,8 @@
 
 #include "BaseState.h"
 
+namespace aircraft {
+
 class StateManager {
 private:
   std::unique_ptr<BaseState> m_currentState;
@@ -17,7 +19,8 @@ public:
   StateManager();
   /**
    * @brief Immediately replaces the active state object.
-   * @param newState Type: std::unique_ptr<@ref BaseState>. Newly active state instance.
+   * @param newState Type: std::unique_ptr<@ref aircraft::BaseState>. Newly active state instance.
    */
   void SetState(std::unique_ptr<BaseState> newState);
 };
+}  // namespace aircraft

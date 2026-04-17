@@ -43,7 +43,7 @@ int main() {
   // Start connection to MMA on localhost port 8000
   aircraft.connectToMMA("127.0.0.1", 8000);
 
-  StateManager stateManager;
+  aircraft::StateManager stateManager;
   aircraft.setStateManager(&stateManager);
   aircraft.syncStateManagerToCurrentState();
 

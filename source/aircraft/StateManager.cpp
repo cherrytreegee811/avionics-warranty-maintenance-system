@@ -6,6 +6,8 @@
 #include <aircraft/BaseState.h>
 #include <aircraft/StateManager.h>
 
+namespace aircraft {
+
 StateManager::StateManager() : m_currentState(nullptr) {}
 
 void StateManager::SetState(std::unique_ptr<BaseState> newState) {
@@ -17,3 +19,4 @@ void StateManager::SetState(std::unique_ptr<BaseState> newState) {
     m_currentState->InitState();
   }
 }
+}  // namespace aircraft

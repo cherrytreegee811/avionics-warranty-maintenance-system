@@ -7,11 +7,11 @@
 #include <memory>
 
 namespace {
-  class RecordingState final : public BaseState {
+  class RecordingState final : public aircraft::BaseState {
   public:
-    RecordingState(aircraft::Aircraft& aircraft, StateManager& manager, int& initCount,
+    RecordingState(aircraft::Aircraft& aircraft, aircraft::StateManager& manager, int& initCount,
                    int& cleanupCount)
-        : BaseState(aircraft, manager), initCount_(initCount), cleanupCount_(cleanupCount) {}
+        : aircraft::BaseState(aircraft, manager), initCount_(initCount), cleanupCount_(cleanupCount) {}
 
     void InitState() override { ++initCount_; }
     void CleanUpState() override { ++cleanupCount_; }
@@ -29,7 +29,7 @@ namespace {
 
 TEST_CASE("REQ-SYS-060: StateManager SetState initializes and cleans up states") {
   aircraft::Aircraft aircraft;
-  StateManager manager;
+  aircraft::StateManager manager;
 
   int initCount = 0;
   int cleanupCount = 0;

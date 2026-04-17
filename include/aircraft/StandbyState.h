@@ -8,19 +8,17 @@
 #include "StateManager.h"
 
 namespace aircraft {
-  class Aircraft;
-}
 
 class StandbyState : public BaseState {
 public:
   /**
    * @brief Constructs standby state behavior.
    * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
-   * @param stateManager Type: @ref StateManager&. Transition manager used by this state.
+   * @param stateManager Type: @ref aircraft::StateManager&. Transition manager used by this state.
    */
-  StandbyState(aircraft::Aircraft& aircraft, StateManager& stateManager);
+  StandbyState(Aircraft& aircraft, StateManager& stateManager);
   /** @brief Virtual destructor for polymorphic cleanup. */
-  virtual ~StandbyState() {}
+  ~StandbyState() override = default;
 
   /** @brief Executes entry logic for standby state. */
   void InitState() override;
@@ -30,3 +28,5 @@ public:
 private:
   StateManager& m_stateManager;
 };
+
+}  // namespace aircraft
