@@ -70,8 +70,8 @@ TEST_CASE("REQ-CLT-054: Client logs after sending LANDED notification") {
 // ============================================================================
 
 TEST_CASE(
-  "REQ-SYS-060/REQ-CLT-061/REQ-CLT-063/REQ-CLT-071/REQ-SRV-008: Integration - Transition to "
-  "DIAGNOSTIC and verify diagnostic/warranty data transfer") {
+    "REQ-SYS-060/REQ-CLT-061/REQ-CLT-063/REQ-CLT-071/REQ-SRV-008: Integration - Transition to "
+    "DIAGNOSTIC and verify diagnostic/warranty data transfer") {
   const uint16_t testPort = 8022;
   test_helpers::MockMMA mockServer(testPort);
   std::this_thread::sleep_for(100ms);

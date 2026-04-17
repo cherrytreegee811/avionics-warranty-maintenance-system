@@ -152,7 +152,8 @@ TEST_CASE("REQ-SYS-080/REQ-NET-081: Integration - Successful verification flow")
   server.stopServer();
 }
 
-TEST_CASE("REQ-SYS-080/REQ-NET-081: Integration - Command rejection when connection is UNVERIFIED") {
+TEST_CASE(
+    "REQ-SYS-080/REQ-NET-081: Integration - Command rejection when connection is UNVERIFIED") {
   MMA server;
   const uint16_t testPort = 8005;  // Use a fresh port
   server.startServer(testPort);
@@ -324,7 +325,8 @@ TEST_CASE("REQ-NET-013: DIAGNOSTIC_DATA severity is logged by MMA") {
 // REQ-SYS-010: All data transferred between Client and Server shall use a pre-defined structure.
 // REQ-NET-013: The client and the server shall support internal processing logic for reading
 //              received information, and serialize information for transfer.
-// REQ-SYS-060: The client or server (or both) application shall contain an operational state machine.
+// REQ-SYS-060: The client or server (or both) application shall contain an operational state
+// machine.
 // ============================================================================
 
 TEST_CASE(
@@ -502,7 +504,7 @@ TEST_CASE("REQ-CLT-082/REQ-SYS-080/REQ-NET-081: Integration - Verification timeo
 }
 
 TEST_CASE(
-  "REQ-SYS-080/REQ-NET-013/REQ-NET-081: Integration - Invalid verification response handling") {
+    "REQ-SYS-080/REQ-NET-013/REQ-NET-081: Integration - Invalid verification response handling") {
   const std::string testLogFile = "/tmp/invalid_verification_response_test.log";
   std::remove(testLogFile.c_str());
 
@@ -836,7 +838,8 @@ TEST_CASE(
 }
 
 TEST_CASE(
-    "REQ-SYS-010/REQ-NET-012/REQ-NET-081: Integration - MMA logs error when missing chunk retry fails") {
+    "REQ-SYS-010/REQ-NET-012/REQ-NET-081: Integration - MMA logs error when missing chunk retry "
+    "fails") {
   const std::string testLogFile = "/tmp/image_retry_request_failure_test.log";
   std::remove(testLogFile.c_str());
 
