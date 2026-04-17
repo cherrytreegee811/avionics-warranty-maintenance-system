@@ -9,6 +9,12 @@
 #include <iostream>
 
 namespace aircraft {
+<<<<<<< HEAD
+=======
+
+DiagnosticState::DiagnosticState(Aircraft& aircraft, StateManager& stateManager)
+    : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
+>>>>>>> 26e8f62 (troubleshoot)
 
 DiagnosticState::DiagnosticState(Aircraft& aircraft, StateManager& stateManager)
     : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
@@ -30,11 +36,15 @@ void DiagnosticState::InitState() {
   if (diagnostic_sent) {
     // After diagnostics are reported, move into maintenance so the server can
     // clear codes or escalate to FAULT if required by the current fault set.
+<<<<<<< HEAD
     const bool transitioned = m_aircraft.transitionToState(network::StateId::MAINTENANCE,
                                                            TransitionSource::AUTOMATIC);
     if (!transitioned) {
       std::cout << "Warning: transition to MAINTENANCE was rejected.\n";
     }
+=======
+    m_aircraft.transitionToState(network::StateId::MAINTENANCE, TransitionSource::AUTOMATIC);
+>>>>>>> 26e8f62 (troubleshoot)
   }
 }
 

@@ -9,6 +9,12 @@
 #include <iostream>
 
 namespace aircraft {
+<<<<<<< HEAD
+=======
+
+MaintenanceState::MaintenanceState(Aircraft& aircraft, StateManager& stateManager)
+    : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
+>>>>>>> 26e8f62 (troubleshoot)
 
 MaintenanceState::MaintenanceState(Aircraft& aircraft, StateManager& stateManager)
     : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
