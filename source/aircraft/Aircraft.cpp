@@ -317,41 +317,49 @@ namespace aircraft {
 
     timer->expires_after(std::chrono::seconds(5));
     timer->async_wait([this, socket](std::error_code ec) {
+      bool should_return = false;
       if (shutting_down_.load()) {
-        return;
+        should_return = true;
       }
-
-      if (!ec) {
+      if (!should_return && !ec) {
         // REQ-CLT-082
         spdlog::error("Connection timeout, changing to DIAGNOSTIC");
         if (!transitionToState(network::StateId::DIAGNOSTIC,
                                TransitionSource::CONNECTION_FALLBACK)) {
           spdlog::warn("Connection fallback transition to DIAGNOSTIC was rejected");
         }
-
         socket->close();
+        should_return = true;
+      }
+      if (should_return) {
+        return;
       }
     });
 
     socket->async_connect(
         asio::ip::tcp::endpoint(asio::ip::make_address(host), port),
         [this, socket, timer](std::error_code ec) {
+          bool should_return = false;
           if (shutting_down_.load()) {
-            return;
+            should_return = true;
           }
-
-          timer->cancel();
-          if (ec) {
-            spdlog::error("Connect failed: {}", ec.message());
-            if (!transitionToState(network::StateId::DIAGNOSTIC,
-                                   TransitionSource::CONNECTION_FALLBACK)) {
-              spdlog::warn("Connection fallback transition to DIAGNOSTIC was rejected");
+          if (!should_return) {
+            timer->cancel();
+            if (ec) {
+              spdlog::error("Connect failed: {}", ec.message());
+              if (!transitionToState(network::StateId::DIAGNOSTIC,
+                                     TransitionSource::CONNECTION_FALLBACK)) {
+                spdlog::warn("Connection fallback transition to DIAGNOSTIC was rejected");
+              }
+            } else {
+              spdlog::info("Connected to MMA server");
+              connection_ = network::TcpConnection::create(std::move(*socket));
+              connection_->setMessageHandler([this](const auto& data) { onNetworkMessage(data); });
+              connection_->start();
             }
-          } else {
-            spdlog::info("Connected to MMA server");
-            connection_ = network::TcpConnection::create(std::move(*socket));
-            connection_->setMessageHandler([this](const auto& data) { onNetworkMessage(data); });
-            connection_->start();
+          }
+          if (should_return) {
+            return;
           }
         });
   }
@@ -359,24 +367,27 @@ namespace aircraft {
   void Aircraft::setStateManager(StateManager* stateManager) { stateManager_ = stateManager; }
 
   void Aircraft::syncStateManagerToCurrentState() {
+    bool should_return = false;
     if (!stateManager_) {
       spdlog::warn("StateManager unavailable. Cannot sync current state {}", m_currentState);
-      return;
+      should_return = true;
     }
-
     const auto currentState = stateIdFromString(m_currentState);
-    if (!currentState) {
+    if (!should_return && !currentState) {
       spdlog::warn("Cannot sync unknown aircraft state {}", m_currentState);
-      return;
+      should_return = true;
     }
-
-    auto state = makeStateForId(*this, *stateManager_, *currentState);
-    if (!state) {
+    auto state = should_return ? nullptr : makeStateForId(*this, *stateManager_, *currentState);
+    if (!should_return && !state) {
       spdlog::warn("Cannot sync unsupported aircraft state {}", m_currentState);
+      should_return = true;
+    }
+    if (!should_return) {
+      stateManager_->SetState(std::move(state));
+    }
+    if (should_return) {
       return;
     }
-
-    stateManager_->SetState(std::move(state));
   }
 
   bool Aircraft::transitionToState(network::StateId targetState, TransitionSource source) {
@@ -621,20 +632,17 @@ namespace aircraft {
               } else {
                 network::VerificationRequest req{};
                 (void)std::memcpy(&req, payload.data(), sizeof(req));
-                {
-                  network::VerificationResponse resp{};
-                  resp.challenge_response = req.challenge ^ 0xDEADBEEFU;
-                  resp.client_id = aircraft_id_;
-                  auto resp_packet
-                      = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, resp);
-                  if (connection_) {
-                    connection_->send(resp_packet);
-                    verified_ = true;
-                    connection_->setState(network::ConnectionState::VERIFIED);
-                  }
-                  spdlog::info("Verification successful, client ID {}", aircraft_id_);
-                  sendLandedNotification();
+                network::VerificationResponse resp{};
+                resp.challenge_response = req.challenge ^ 0xDEADBEEFU;
+                resp.client_id = aircraft_id_;
+                const auto resp_packet = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, resp);
+                if (connection_) {
+                  connection_->send(resp_packet);
+                  verified_ = true;
+                  connection_->setState(network::ConnectionState::VERIFIED);
                 }
+                spdlog::info("Verification successful, client ID {}", aircraft_id_);
+                sendLandedNotification();
               }
               break;
             }
@@ -731,9 +739,9 @@ namespace aircraft {
                                request.chunk_index, request.image_id);
                 } else {
                   const auto& chunk_payload = cached_image_it->second[request.chunk_index];
-                  const auto packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
-                                                               chunk_payload);
                   if (connection_) {
+                    const auto packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
+                                                               chunk_payload);
                     connection_->send(packet);
                   }
                   spdlog::info("Resent chunk {} for image {} after MMA retry request",

@@ -199,7 +199,7 @@ namespace mma {
       chunk_timeout_timer_ = std::make_unique<asio::steady_timer>(*io_context_);
       scheduleChunkTimeoutChecks();
       doAccept();
-      io_thread_ = std::thread([this]() { io_context_->run(); });
+      io_thread_ = std::thread([this]() { (void)io_context_->run(); });
     }
   }
 
@@ -258,17 +258,15 @@ namespace mma {
   }
 
   uint16_t MMA::getListeningPort() const {
-    if (!acceptor_) {
-      return 0;
+    uint16_t port = 0;
+    if (acceptor_) {
+      std::error_code ec;
+      const auto endpoint = acceptor_->local_endpoint(ec);
+      if (!ec) {
+        port = endpoint.port();
+      }
     }
-
-    std::error_code ec;
-    const auto endpoint = acceptor_->local_endpoint(ec);
-    if (ec) {
-      return 0;
-    }
-
-    return endpoint.port();
+    return port;
   }
 
   void MMA::doAccept() {
@@ -526,12 +524,10 @@ namespace mma {
 
     (void)chunk_timeout_timer_->expires_after(kMissingChunkCheckInterval);
     (void)chunk_timeout_timer_->async_wait([this](const std::error_code& ec) {
-      if (ec || !running_) {
-        return;
+      if (!(ec || !running_)) {
+        processMissingChunkTimeouts();
+        scheduleChunkTimeoutChecks();
       }
-
-      processMissingChunkTimeouts();
-      scheduleChunkTimeoutChecks();
     });
   }
 
@@ -599,16 +595,14 @@ namespace mma {
       spdlog::warn(
           "Cannot request missing chunk {} for image {}: aircraft {} not verified/connected",
           chunkIndex, imageId, aircraftId);
-      return;
+    } else {
+      const network::SchematicChunkRetryRequest request{imageId, chunkIndex};
+      const auto packet
+          = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK_RETRY_REQUEST, request);
+      connection_it->second->send(packet);
+      spdlog::warn("Requested retry for missing chunk {} of image {} from aircraft {}", chunkIndex,
+                   imageId, aircraftId);
     }
-
-    const network::SchematicChunkRetryRequest request{imageId, chunkIndex};
-    const auto packet
-        = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK_RETRY_REQUEST, request);
-    connection_it->second->send(packet);
-
-    spdlog::warn("Requested retry for missing chunk {} of image {} from aircraft {}", chunkIndex,
-                 imageId, aircraftId);
   }
 
   void MMA::runMenu() {
@@ -681,14 +675,13 @@ namespace mma {
     if (it == verified_connections_.end()) {
       spdlog::warn("Cannot send DIAGNOSTIC state change command: aircraft {} is not verified",
                    aircraftId);
-      return;
+    } else {
+      network::StateChangeRequest req{network::StateId::DIAGNOSTIC};
+      const auto packet = network::serializePacket(network::PacketType::STATE_CHANGE, req);
+      it->second->send(packet);
+      spdlog::info("Sent DIAGNOSTIC state change command to aircraft {}", aircraftId);
+      spdlog::default_logger()->flush();
     }
-
-    network::StateChangeRequest req{network::StateId::DIAGNOSTIC};
-    const auto packet = network::serializePacket(network::PacketType::STATE_CHANGE, req);
-    it->second->send(packet);
-    spdlog::info("Sent DIAGNOSTIC state change command to aircraft {}", aircraftId);
-    spdlog::default_logger()->flush();
   }
 
   void MMA::sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code) {
@@ -696,44 +689,39 @@ namespace mma {
     if (connection_it == verified_connections_.end()) {
       spdlog::warn("Cannot send diagnostic code clear command: aircraft {} is not verified",
                    aircraftId);
-      return;
+    } else {
+      const auto state_it = aircraft_states_.find(aircraftId);
+      if (state_it == aircraft_states_.end()) {
+        spdlog::warn(
+            "Cannot send diagnostic code clear command to aircraft {}: state is unknown. "
+            "Wait for state confirmation from the aircraft.",
+            aircraftId);
+      } else if (state_it->second != network::StateId::MAINTENANCE
+                 && state_it->second != network::StateId::FAULT) {
+        spdlog::warn(
+            "Cannot send diagnostic code clear command to aircraft {}: aircraft is in {} (requires "
+            "MAINTENANCE or FAULT)",
+            aircraftId, network::stateIdToString(state_it->second));
+      } else {
+        network::DiagnosticCodeClearRequest request{code};
+        const auto packet
+            = network::serializePacket(network::PacketType::CLEAR_DIAGNOSTIC_CODE, request);
+        connection_it->second->send(packet);
+        spdlog::info("Sent diagnostic code clear command to aircraft {} for code {}", aircraftId,
+                     code);
+      }
     }
-
-    const auto state_it = aircraft_states_.find(aircraftId);
-    if (state_it == aircraft_states_.end()) {
-      spdlog::warn(
-          "Cannot send diagnostic code clear command to aircraft {}: state is unknown. "
-          "Wait for state confirmation from the aircraft.",
-          aircraftId);
-      return;
-    }
-
-    if (state_it->second != network::StateId::MAINTENANCE
-        && state_it->second != network::StateId::FAULT) {
-      spdlog::warn(
-          "Cannot send diagnostic code clear command to aircraft {}: aircraft is in {} (requires "
-          "MAINTENANCE or FAULT)",
-          aircraftId, network::stateIdToString(state_it->second));
-      return;
-    }
-
-    network::DiagnosticCodeClearRequest request{code};
-    const auto packet
-        = network::serializePacket(network::PacketType::CLEAR_DIAGNOSTIC_CODE, request);
-    connection_it->second->send(packet);
-    spdlog::info("Sent diagnostic code clear command to aircraft {} for code {}", aircraftId, code);
   }
 
   void MMA::printDiagnosticFaults(uint64_t aircraftId,
                                   const std::vector<network::DiagnosticFaultCode>& faults) const {
     if (faults.empty()) {
       spdlog::info("Received diagnostic data from aircraft {} with no active faults", aircraftId);
-      return;
-    }
-
-    for (const auto& fault : faults) {
-      spdlog::info("Fault Code '{}' (aircraft: {}): [{}] - '{}'", fault.code, aircraftId,
-                   network::diagnosticFaultSeverityToString(fault.severity), fault.description);
+    } else {
+      for (const auto& fault : faults) {
+        spdlog::info("Fault Code '{}' (aircraft: {}): [{}] - '{}'", fault.code, aircraftId,
+                     network::diagnosticFaultSeverityToString(fault.severity), fault.description);
+      }
     }
   }
 
@@ -741,16 +729,16 @@ namespace mma {
     auto opt = warrantyManager_->getWarranty(aircraftId);
     if (!opt) {
       spdlog::warn("No warranty record found for aircraft {}", aircraftId);
-      return;
+    } else {
+      const auto& info = *opt;
+      spdlog::info("Displayed warranty information for aircraft {}", aircraftId);
+      spdlog::info("Warranty for aircraft {} is {}", aircraftId,
+                   info.isActive ? "ACTIVE" : "EXPIRED");
+      if (info.isActive) {
+        spdlog::info("Warranty for aircraft {} expires on {}", aircraftId, info.expiryDate);
+      }
+      spdlog::info("Warranty for aircraft {} is provided by {}", aircraftId, info.provider);
     }
-    const auto& info = *opt;
-    spdlog::info("Displayed warranty information for aircraft {}", aircraftId);
-    spdlog::info("Warranty for aircraft {} is {}", aircraftId,
-                 info.isActive ? "ACTIVE" : "EXPIRED");
-    if (info.isActive) {
-      spdlog::info("Warranty for aircraft {} expires on {}", aircraftId, info.expiryDate);
-    }
-    spdlog::info("Warranty for aircraft {} is provided by {}", aircraftId, info.provider);
   }
 
 }  // namespace mma
