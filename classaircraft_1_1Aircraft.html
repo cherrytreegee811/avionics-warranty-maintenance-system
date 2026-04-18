@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>aircraft::Aircraft class | Avionics
+Warranty
+Maintenance
+System</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,600,600i%7CSource+Code+Pro:400,400i,600" />
+  <link rel="stylesheet" href="m-dark+documentation.compiled.css" />
+  <link rel="icon" href="favicon-dark.png" type="image/png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#22272e" />
+</head>
+<body>
+<header><nav id="navigation">
+  <div class="m-container">
+    <div class="m-row">
+      <a href="index.html" id="m-navbar-brand" class="m-col-t-8 m-col-m-none m-left-m">Avionics
+Warranty
+Maintenance
+System</a>
+      <div class="m-col-t-4 m-hide-m m-text-right m-nopadr">
+        <a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+          <path id="m-doc-search-icon-path" d="m6 0c-3.31 0-6 2.69-6 6 0 3.31 2.69 6 6 6 1.49 0 2.85-0.541 3.89-1.44-0.0164 0.338 0.147 0.759 0.5 1.15l3.22 3.79c0.552 0.614 1.45 0.665 2 0.115 0.55-0.55 0.499-1.45-0.115-2l-3.79-3.22c-0.392-0.353-0.812-0.515-1.15-0.5 0.895-1.05 1.44-2.41 1.44-3.89 0-3.31-2.69-6-6-6zm0 1.56a4.44 4.44 0 0 1 4.44 4.44 4.44 4.44 0 0 1-4.44 4.44 4.44 4.44 0 0 1-4.44-4.44 4.44 4.44 0 0 1 4.44-4.44z"/>
+        </svg></a>
+        <a id="m-navbar-show" href="#navigation" title="Show navigation"></a>
+        <a id="m-navbar-hide" href="#" title="Hide navigation"></a>
+      </div>
+      <div id="m-navbar-collapse" class="m-col-t-12 m-show-m m-col-m-none m-right-m">
+        <div class="m-row">
+          <ol class="m-col-t-6 m-col-m-none">
+            <li>
+              <a href="pages.html">Pages</a>
+              <ol>
+                <li><a href="about.html">About</a></li>
+              </ol>
+            </li>
+            <li><a href="namespaces.html">Namespaces</a></li>
+          </ol>
+          <ol class="m-col-t-6 m-col-m-none" start="3">
+            <li><a href="annotated.html">Classes</a></li>
+            <li><a href="files.html">Files</a></li>
+            <li class="m-show-m"><a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+              <use href="#m-doc-search-icon-path" />
+            </svg></a></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav></header>
+<main><article>
+  <div class="m-container m-container-inflatable">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <h1>
+          <span class="m-breadcrumb"><a href="namespaceaircraft.html">aircraft</a>::<wbr/></span>Aircraft <span class="m-thin">class</span>
+          <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Aircraft_8h.html">&lt;aircraft/Aircraft.h&gt;</a></div>
+        </h1>
+        <p>Main aircraft aggregate used by the client simulator.</p>
+        <nav class="m-block m-default">
+          <h3>Contents</h3>
+          <ul>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#typeless-methods">Constructors, destructors, conversion operators</a></li>
+                <li><a href="#pub-methods">Public functions</a></li>
+                <li><a href="#pub-attribs">Public variables</a></li>
+              </ul>
+            </li>
+          </ul>
+        </nav>
+        <section id="typeless-methods">
+          <h2><a href="#typeless-methods">Constructors, destructors, conversion operators</a></h2>
+          <dl class="m-doc">
+            <dt id="a5dc923d2bb5dd93fc47af01018c18c39">
+              <span class="m-doc-wrap-bumper"><a href="#a5dc923d2bb5dd93fc47af01018c18c39" class="m-doc-self">Aircraft</a>(</span><span class="m-doc-wrap">)</span>
+            </dt>
+            <dd>Constructs an aircraft instance with default state.</dd>
+            <dt id="afd13dc83f6615bd4828e09d56a84925a">
+              <span class="m-doc-wrap-bumper"><a href="#afd13dc83f6615bd4828e09d56a84925a" class="m-doc-self">~Aircraft</a>(</span><span class="m-doc-wrap">)</span>
+            </dt>
+            <dd>Shuts down network resources and worker threads.</dd>
+          </dl>
+        </section>
+        <section id="pub-methods">
+          <h2><a href="#pub-methods">Public functions</a></h2>
+          <dl class="m-doc">
+            <dt id="a50cad86bd325faae3d38a44b07a8cb92">
+              <span class="m-doc-wrap-bumper">void <a href="#a50cad86bd325faae3d38a44b07a8cb92" class="m-doc-self">initialize</a>(</span><span class="m-doc-wrap">)</span>
+            </dt>
+            <dd>Initializes startup state and internal managers.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a5f97ca00ed06d0764eff6e2d9afe487e" class="m-doc">getCurrentState</a>(</span><span class="m-doc-wrap">) const -&gt; std::string</span>
+            </dt>
+            <dd>Gets the current state name.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">void <a href="#a1abbe5bcd7ad3fb95ea597012963d7af" class="m-doc">setCurrentState</a>(</span><span class="m-doc-wrap">const std::string&amp; state)</span>
+            </dt>
+            <dd>Sets the current state name.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a96f04e8b49588b8020508dd1d9a6d16b" class="m-doc">getLastMaintenance</a>(</span><span class="m-doc-wrap">) const -&gt; <a href="structaircraft_1_1MaintenanceInfo.html" class="m-doc">MaintenanceInfo</a></span>
+            </dt>
+            <dd>Gets the last maintenance record.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a41b5e1df61da459b84c966a4535fe056" class="m-doc">getFaultCodes</a>(</span><span class="m-doc-wrap">) const -&gt; std::vector&lt;<a href="structaircraft_1_1FaultCode.html" class="m-doc">FaultCode</a>&gt;</span>
+            </dt>
+            <dd>Gets all active fault codes.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a4c154e3c1fa44e933aae51863e81b48e" class="m-doc">getWarranty</a>(</span><span class="m-doc-wrap">) const -&gt; <a href="namespaceaircraft.html#aee2b93b13fd2103f5d670f24f55dd593" class="m-doc">WarrantyInfo</a></span>
+            </dt>
+            <dd>Gets current warranty information.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">void <a href="#a3a54c9d5ddd6ef3c88ba39de163e7349" class="m-doc">setLastMaintenance</a>(</span><span class="m-doc-wrap">const <a href="structaircraft_1_1MaintenanceInfo.html" class="m-doc">MaintenanceInfo</a>&amp; info)</span>
+            </dt>
+            <dd>Updates the last maintenance record.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">void <a href="#a793bdba291d837f381293bc1706a832d" class="m-doc">addFaultCode</a>(</span><span class="m-doc-wrap">const <a href="structaircraft_1_1FaultCode.html" class="m-doc">FaultCode</a>&amp; code)</span>
+            </dt>
+            <dd>Adds a fault code to the active fault list.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a0001ac9eb526d8b5b77ece8dfd1503af" class="m-doc">resolveFaultCode</a>(</span><span class="m-doc-wrap">int code) -&gt; bool</span>
+            </dt>
+            <dd>Attempts to resolve and remove a fault code by numeric code.</dd>
+            <dt id="a168634dbf7277b362877039e23ed9ddf">
+              <span class="m-doc-wrap-bumper">void <a href="#a168634dbf7277b362877039e23ed9ddf" class="m-doc-self">clearFaultCodes</a>(</span><span class="m-doc-wrap">)</span>
+            </dt>
+            <dd>Clears all tracked fault codes.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">void <a href="#a273f4f57bb9a41cab3ebf63c44309cb4" class="m-doc">setWarranty</a>(</span><span class="m-doc-wrap">const <a href="namespaceaircraft.html#aee2b93b13fd2103f5d670f24f55dd593" class="m-doc">WarrantyInfo</a>&amp; info)</span>
+            </dt>
+            <dd>Updates warranty information.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a2fa474247dafe7028cdab0904acaa48c" class="m-doc">getRunningStatus</a>(</span><span class="m-doc-wrap">) const -&gt; bool</span>
+            </dt>
+            <dd>Reports whether verification with MMA has completed.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a2dbdb1568ab440fdb2eda8d6dca63859" class="m-doc">getAircraftId</a>(</span><span class="m-doc-wrap">) const -&gt; uint64_t</span>
+            </dt>
+            <dd>Gets this aircraft unique identifier.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">void <a href="#a657a74e98295eec253bb360d9272cb22" class="m-doc">connectToMMA</a>(</span><span class="m-doc-wrap">const std::string&amp; host,
+              uint16_t port = 8000)</span>
+            </dt>
+            <dd>Connects to the MMA server endpoint.</dd>
+            <dt id="adf270b0d639d75f9b48211fc5daaf9ee">
+              <span class="m-doc-wrap-bumper">void <a href="#adf270b0d639d75f9b48211fc5daaf9ee" class="m-doc-self">sendLandedNotification</a>(</span><span class="m-doc-wrap">)</span>
+            </dt>
+            <dd>Sends a landed notification packet to MMA.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">void <a href="#a431fd6e2a835f8c9b0c3bc1fc0f80be7" class="m-doc">onNetworkMessage</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; data)</span>
+            </dt>
+            <dd>Handles a raw network packet delivered from the connection.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">void <a href="#ab94aab63d76b743540864d10a84437e1" class="m-doc">setStateManager</a>(</span><span class="m-doc-wrap"><a href="classaircraft_1_1StateManager.html" class="m-doc">StateManager</a>* stateManager)</span>
+            </dt>
+            <dd>Binds the state manager used by state objects.</dd>
+            <dt id="a667e4713a2f71caaee356306e6941f9a">
+              <span class="m-doc-wrap-bumper">void <a href="#a667e4713a2f71caaee356306e6941f9a" class="m-doc-self">syncStateManagerToCurrentState</a>(</span><span class="m-doc-wrap">)</span>
+            </dt>
+            <dd>Synchronizes the state manager to the current persisted state.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a4dad1ab41384c2723c2fb932b584cd21" class="m-doc">transitionToState</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#aacc92849dd918baac572a00dc6b557ac" class="m-doc">network::<wbr />StateId</a> targetState,
+              <a href="namespaceaircraft.html#ae1dae40b3aa3fd009a14b3901468cb39" class="m-doc">TransitionSource</a> source = <a href="namespaceaircraft.html#ae1dae40b3aa3fd009a14b3901468cb39a008f6cdd0c190839e9885cf9f9e2a652" class="m-doc">TransitionSource::<wbr />AUTOMATIC</a>) -&gt; bool</span>
+            </dt>
+            <dd>Requests transition to a target state.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a9110d69cc20d9eb1356d60eaaa3b80b3" class="m-doc">sendDiagnosticData</a>(</span><span class="m-doc-wrap">) -&gt; bool</span>
+            </dt>
+            <dd>Sends diagnostic fault payload to MMA.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a01339a9eafcc588eaa808ecef28aa333" class="m-doc">sendWarrantyData</a>(</span><span class="m-doc-wrap">) -&gt; bool</span>
+            </dt>
+            <dd>Sends warranty payload to MMA.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a9abbd4482bb71f6795be56528a5e6846" class="m-doc">canSendDiagnosticStageData</a>(</span><span class="m-doc-wrap">) const -&gt; bool</span>
+            </dt>
+            <dd>Returns whether diagnostic-stage payload can be transmitted.</dd>
+            <dt id="a2c06c129597a5e816d0df343501673cf">
+              <span class="m-doc-wrap-bumper">void <a href="#a2c06c129597a5e816d0df343501673cf" class="m-doc-self">markDiagnosticRequestedByMMA</a>(</span><span class="m-doc-wrap">)</span>
+            </dt>
+            <dd>Marks that MMA explicitly requested diagnostic data.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a54b4d6100c9d3b20494af3b8acf18cef" class="m-doc">sendImageFromFile</a>(</span><span class="m-doc-wrap">const std::string&amp; filepath) -&gt; bool</span>
+            </dt>
+            <dd>Loads and sends an image file as chunked packets.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a96bc8e0d3c16f648daf5b7cb690ff1ee" class="m-doc">sendImage</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; image_data,
+              <a href="namespacenetwork.html#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc">network::<wbr />ImageFormat</a> format) -&gt; bool</span>
+            </dt>
+            <dd>Sends image bytes using chunked transport.</dd>
+          </dl>
+        </section>
+        <section id="pub-attribs">
+          <h2><a href="#pub-attribs">Public variables</a></h2>
+          <dl class="m-doc">
+            <dt id="a48681d4e03b471010958167b0cc5f182">
+              int <a href="#a48681d4e03b471010958167b0cc5f182" class="m-doc-self">token</a>
+            </dt>
+            <dd>Session token used by external flows.</dd>
+          </dl>
+        </section>
+        <section>
+          <h2>Function documentation</h2>
+          <section class="m-doc-details" id="a5f97ca00ed06d0764eff6e2d9afe487e"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::string aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a5f97ca00ed06d0764eff6e2d9afe487e" class="m-doc-self">getCurrentState</a>(</span><span class="m-doc-wrap">) const</span></span>
+            </h3>
+            <p>Gets the current state name.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>Type: std::string. Current state label.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a1abbe5bcd7ad3fb95ea597012963d7af"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">void aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a1abbe5bcd7ad3fb95ea597012963d7af" class="m-doc-self">setCurrentState</a>(</span><span class="m-doc-wrap">const std::string&amp; state)</span></span>
+            </h3>
+            <p>Sets the current state name.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">state</td>
+                  <td>Type: const std::string&amp;. New state label.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a96f04e8b49588b8020508dd1d9a6d16b"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper"><a href="structaircraft_1_1MaintenanceInfo.html" class="m-doc">MaintenanceInfo</a> aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a96f04e8b49588b8020508dd1d9a6d16b" class="m-doc-self">getLastMaintenance</a>(</span><span class="m-doc-wrap">) const</span></span>
+            </h3>
+            <p>Gets the last maintenance record.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>Type: <a href="structaircraft_1_1MaintenanceInfo.html" class="m-doc">aircraft::<wbr />MaintenanceInfo</a>. Latest maintenance details snapshot.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a41b5e1df61da459b84c966a4535fe056"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::vector&lt;<a href="structaircraft_1_1FaultCode.html" class="m-doc">FaultCode</a>&gt; aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a41b5e1df61da459b84c966a4535fe056" class="m-doc-self">getFaultCodes</a>(</span><span class="m-doc-wrap">) const</span></span>
+            </h3>
+            <p>Gets all active fault codes.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>Type: std::vector&lt;<a href="structaircraft_1_1FaultCode.html" class="m-doc">aircraft::<wbr />FaultCode</a>&gt;. Copy of active fault records.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a4c154e3c1fa44e933aae51863e81b48e"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper"><a href="namespaceaircraft.html#aee2b93b13fd2103f5d670f24f55dd593" class="m-doc">WarrantyInfo</a> aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a4c154e3c1fa44e933aae51863e81b48e" class="m-doc-self">getWarranty</a>(</span><span class="m-doc-wrap">) const</span></span>
+            </h3>
+            <p>Gets current warranty information.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>Type: <a href="namespaceaircraft.html#aee2b93b13fd2103f5d670f24f55dd593" class="m-doc">aircraft::<wbr />WarrantyInfo</a>. Current warranty metadata.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a3a54c9d5ddd6ef3c88ba39de163e7349"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">void aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a3a54c9d5ddd6ef3c88ba39de163e7349" class="m-doc-self">setLastMaintenance</a>(</span><span class="m-doc-wrap">const <a href="structaircraft_1_1MaintenanceInfo.html" class="m-doc">MaintenanceInfo</a>&amp; info)</span></span>
+            </h3>
+            <p>Updates the last maintenance record.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">info</td>
+                  <td>Type: const aircraft::MaintenanceInfo&amp;. New maintenance details.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a793bdba291d837f381293bc1706a832d"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">void aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a793bdba291d837f381293bc1706a832d" class="m-doc-self">addFaultCode</a>(</span><span class="m-doc-wrap">const <a href="structaircraft_1_1FaultCode.html" class="m-doc">FaultCode</a>&amp; code)</span></span>
+            </h3>
+            <p>Adds a fault code to the active fault list.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">code</td>
+                  <td>Type: const aircraft::FaultCode&amp;. Fault entry to append.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a0001ac9eb526d8b5b77ece8dfd1503af"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a0001ac9eb526d8b5b77ece8dfd1503af" class="m-doc-self">resolveFaultCode</a>(</span><span class="m-doc-wrap">int code)</span></span>
+            </h3>
+            <p>Attempts to resolve and remove a fault code by numeric code.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">code</td>
+                  <td>Type: int. Numeric fault code to remove.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: bool. True if a matching fault code was removed.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a273f4f57bb9a41cab3ebf63c44309cb4"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">void aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a273f4f57bb9a41cab3ebf63c44309cb4" class="m-doc-self">setWarranty</a>(</span><span class="m-doc-wrap">const <a href="namespaceaircraft.html#aee2b93b13fd2103f5d670f24f55dd593" class="m-doc">WarrantyInfo</a>&amp; info)</span></span>
+            </h3>
+            <p>Updates warranty information.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">info</td>
+                  <td>Type: const aircraft::WarrantyInfo&amp;. New warranty metadata.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a2fa474247dafe7028cdab0904acaa48c"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a2fa474247dafe7028cdab0904acaa48c" class="m-doc-self">getRunningStatus</a>(</span><span class="m-doc-wrap">) const</span></span>
+            </h3>
+            <p>Reports whether verification with MMA has completed.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>Type: bool. True when connection verification is complete.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a2dbdb1568ab440fdb2eda8d6dca63859"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">uint64_t aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a2dbdb1568ab440fdb2eda8d6dca63859" class="m-doc-self">getAircraftId</a>(</span><span class="m-doc-wrap">) const</span></span>
+            </h3>
+            <p>Gets this aircraft unique identifier.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>Type: uint64_t. <a href="classaircraft_1_1Aircraft.html" class="m-doc">Aircraft</a> identifier value.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a657a74e98295eec253bb360d9272cb22"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">void aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a657a74e98295eec253bb360d9272cb22" class="m-doc-self">connectToMMA</a>(</span><span class="m-doc-wrap">const std::string&amp; host,
+              uint16_t port = 8000)</span></span>
+            </h3>
+            <p>Connects to the MMA server endpoint.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">host</td>
+                  <td>Type: const std::string&amp;. Hostname or address of MMA server.</td>
+                </tr>
+                <tr>
+                  <td>port</td>
+                  <td>Type: uint16_t. Listener port for MMA server.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a431fd6e2a835f8c9b0c3bc1fc0f80be7"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">void aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a431fd6e2a835f8c9b0c3bc1fc0f80be7" class="m-doc-self">onNetworkMessage</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; data)</span></span>
+            </h3>
+            <p>Handles a raw network packet delivered from the connection.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">data</td>
+                  <td>Type: const std::vector&lt;uint8_t&gt;&amp;. Serialized packet bytes.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="ab94aab63d76b743540864d10a84437e1"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">void aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#ab94aab63d76b743540864d10a84437e1" class="m-doc-self">setStateManager</a>(</span><span class="m-doc-wrap"><a href="classaircraft_1_1StateManager.html" class="m-doc">StateManager</a>* stateManager)</span></span>
+            </h3>
+            <p>Binds the state manager used by state objects.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">stateManager</td>
+                  <td>Type: <a href="classaircraft_1_1StateManager.html" class="m-doc">StateManager</a>*. State manager instance owned externally.</td>
+                </tr>
+              </tbody>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a4dad1ab41384c2723c2fb932b584cd21"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a4dad1ab41384c2723c2fb932b584cd21" class="m-doc-self">transitionToState</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#aacc92849dd918baac572a00dc6b557ac" class="m-doc">network::<wbr />StateId</a> targetState,
+              <a href="namespaceaircraft.html#ae1dae40b3aa3fd009a14b3901468cb39" class="m-doc">TransitionSource</a> source = <a href="namespaceaircraft.html#ae1dae40b3aa3fd009a14b3901468cb39a008f6cdd0c190839e9885cf9f9e2a652" class="m-doc">TransitionSource::<wbr />AUTOMATIC</a>)</span></span>
+            </h3>
+            <p>Requests transition to a target state.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">targetState</td>
+                  <td>Type: <a href="namespacenetwork.html#aacc92849dd918baac572a00dc6b557ac" class="m-doc">network::<wbr />StateId</a>. Requested destination state.</td>
+                </tr>
+                <tr>
+                  <td>source</td>
+                  <td>Type: <a href="namespaceaircraft.html#ae1dae40b3aa3fd009a14b3901468cb39" class="m-doc">aircraft::<wbr />TransitionSource</a>. Origin of the transition request.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: bool. True when transition was accepted and applied.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a9110d69cc20d9eb1356d60eaaa3b80b3"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a9110d69cc20d9eb1356d60eaaa3b80b3" class="m-doc-self">sendDiagnosticData</a>(</span><span class="m-doc-wrap">)</span></span>
+            </h3>
+            <p>Sends diagnostic fault payload to MMA.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>Type: bool. True if payload was serialized and queued for send.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a01339a9eafcc588eaa808ecef28aa333"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a01339a9eafcc588eaa808ecef28aa333" class="m-doc-self">sendWarrantyData</a>(</span><span class="m-doc-wrap">)</span></span>
+            </h3>
+            <p>Sends warranty payload to MMA.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>Type: bool. True if payload was serialized and queued for send.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a9abbd4482bb71f6795be56528a5e6846"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a9abbd4482bb71f6795be56528a5e6846" class="m-doc-self">canSendDiagnosticStageData</a>(</span><span class="m-doc-wrap">) const</span></span>
+            </h3>
+            <p>Returns whether diagnostic-stage payload can be transmitted.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <tfoot>
+                <tr>
+                  <th style="width: 1%">Returns</th>
+                  <td>Type: bool. True when current state permits diagnostic-stage transfer.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a54b4d6100c9d3b20494af3b8acf18cef"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a54b4d6100c9d3b20494af3b8acf18cef" class="m-doc-self">sendImageFromFile</a>(</span><span class="m-doc-wrap">const std::string&amp; filepath)</span></span>
+            </h3>
+            <p>Loads and sends an image file as chunked packets.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">filepath</td>
+                  <td>Type: const std::string&amp;. Path to image file.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: bool. True when file was read and all chunks were queued.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a96bc8e0d3c16f648daf5b7cb690ff1ee"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool aircraft::<wbr />Aircraft::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a96bc8e0d3c16f648daf5b7cb690ff1ee" class="m-doc-self">sendImage</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; image_data,
+              <a href="namespacenetwork.html#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc">network::<wbr />ImageFormat</a> format)</span></span>
+            </h3>
+            <p>Sends image bytes using chunked transport.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">image_data</td>
+                  <td>Type: const std::vector&lt;uint8_t&gt;&amp;. Raw encoded image bytes.</td>
+                </tr>
+                <tr>
+                  <td>format</td>
+                  <td>Type: <a href="namespacenetwork.html#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc">network::<wbr />ImageFormat</a>. Encoding format of image_data.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: bool. True when chunks were generated and queued.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+        </section>
+      </div>
+    </div>
+  </div>
+</article></main>
+<div class="m-doc-search" id="search">
+  <a href="#!" onclick="return hideSearch()"></a>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-m-8 m-push-m-2">
+        <div class="m-doc-search-header m-text m-small">
+          <div><span class="m-label m-default">Tab</span> / <span class="m-label m-default">T</span> to search, <span class="m-label m-default">Esc</span> to close</div>
+          <div id="search-symbolcount">&hellip;</div>
+        </div>
+        <div class="m-doc-search-content">
+          <form>
+            <input type="search" name="q" id="search-input" placeholder="Loading &hellip;" disabled="disabled" autofocus="autofocus" autocomplete="off" spellcheck="false" />
+          </form>
+          <noscript class="m-text m-danger m-text-center">Unlike everything else in the docs, the search functionality <em>requires</em> JavaScript.</noscript>
+          <div id="search-help" class="m-text m-dim m-text-center">
+            <p class="m-noindent">Search for symbols, directories, files, pages or
+            modules. You can omit any prefix from the symbol or file path; adding a
+            <code>:</code> or <code>/</code> suffix lists all members of given symbol or
+            directory.</p>
+            <p class="m-noindent">Use <span class="m-label m-dim">&darr;</span>
+            / <span class="m-label m-dim">&uarr;</span> to navigate through the list,
+            <span class="m-label m-dim">Enter</span> to go.
+            <span class="m-label m-dim">Tab</span> autocompletes common prefix, you can
+            copy a link to the result using <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">L</span> while <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">M</span> produces a Markdown link.</p>
+          </div>
+          <div id="search-notfound" class="m-text m-warning m-text-center">Sorry, nothing was found.</div>
+          <ul id="search-results"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="search-v2.js"></script>
+<script src="searchdata-v2.js" async="async"></script>
+<footer><nav>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <p>Avionics
+Warranty
+Maintenance
+System. Created with <a href="https://doxygen.org/">Doxygen</a> 1.16.1 and <a href="https://mcss.mosra.cz/">m.css</a>.</p>
+      </div>
+    </div>
+  </div>
+</nav></footer>
+</body>
+</html>

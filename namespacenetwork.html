@@ -1,0 +1,940 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>network namespace | Avionics
+Warranty
+Maintenance
+System</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Source+Sans+Pro:400,400i,600,600i%7CSource+Code+Pro:400,400i,600" />
+  <link rel="stylesheet" href="m-dark+documentation.compiled.css" />
+  <link rel="icon" href="favicon-dark.png" type="image/png" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#22272e" />
+</head>
+<body>
+<header><nav id="navigation">
+  <div class="m-container">
+    <div class="m-row">
+      <a href="index.html" id="m-navbar-brand" class="m-col-t-8 m-col-m-none m-left-m">Avionics
+Warranty
+Maintenance
+System</a>
+      <div class="m-col-t-4 m-hide-m m-text-right m-nopadr">
+        <a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+          <path id="m-doc-search-icon-path" d="m6 0c-3.31 0-6 2.69-6 6 0 3.31 2.69 6 6 6 1.49 0 2.85-0.541 3.89-1.44-0.0164 0.338 0.147 0.759 0.5 1.15l3.22 3.79c0.552 0.614 1.45 0.665 2 0.115 0.55-0.55 0.499-1.45-0.115-2l-3.79-3.22c-0.392-0.353-0.812-0.515-1.15-0.5 0.895-1.05 1.44-2.41 1.44-3.89 0-3.31-2.69-6-6-6zm0 1.56a4.44 4.44 0 0 1 4.44 4.44 4.44 4.44 0 0 1-4.44 4.44 4.44 4.44 0 0 1-4.44-4.44 4.44 4.44 0 0 1 4.44-4.44z"/>
+        </svg></a>
+        <a id="m-navbar-show" href="#navigation" title="Show navigation"></a>
+        <a id="m-navbar-hide" href="#" title="Hide navigation"></a>
+      </div>
+      <div id="m-navbar-collapse" class="m-col-t-12 m-show-m m-col-m-none m-right-m">
+        <div class="m-row">
+          <ol class="m-col-t-6 m-col-m-none">
+            <li>
+              <a href="pages.html">Pages</a>
+              <ol>
+                <li><a href="about.html">About</a></li>
+              </ol>
+            </li>
+            <li><a href="namespaces.html">Namespaces</a></li>
+          </ol>
+          <ol class="m-col-t-6 m-col-m-none" start="3">
+            <li><a href="annotated.html">Classes</a></li>
+            <li><a href="files.html">Files</a></li>
+            <li class="m-show-m"><a href="#search" class="m-doc-search-icon" title="Search" onclick="return showSearch()"><svg style="height: 0.9rem;" viewBox="0 0 16 16">
+              <use href="#m-doc-search-icon-path" />
+            </svg></a></li>
+          </ol>
+        </div>
+      </div>
+    </div>
+  </div>
+</nav></header>
+<main><article>
+  <div class="m-container m-container-inflatable">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <h1>
+          network <span class="m-thin">namespace</span>
+        </h1>
+        <p><span></span></p>
+        <nav class="m-block m-default">
+          <h3>Contents</h3>
+          <ul>
+            <li>
+              Reference
+              <ul>
+                <li><a href="#nested-classes">Classes</a></li>
+                <li><a href="#enum-members">Enums</a></li>
+                <li><a href="#func-members">Functions</a></li>
+                <li><a href="#var-members">Variables</a></li>
+              </ul>
+            </li>
+          </ul>
+        </nav>
+        <section id="nested-classes">
+          <h2><a href="#nested-classes">Classes</a></h2>
+          <dl class="m-doc">
+            <dt>
+              class <a href="classnetwork_1_1Crc32.html" class="m-doc">Crc32</a>
+            </dt>
+            <dd>Incremental CRC-32 calculator using IEEE 802.3 polynomial.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1PacketHeader.html" class="m-doc">PacketHeader</a>
+            </dt>
+            <dd>Fixed packet framing header prepended to all payloads.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1VerificationRequest.html" class="m-doc">VerificationRequest</a>
+            </dt>
+            <dd>Challenge packet sent by MMA to aircraft.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1VerificationResponse.html" class="m-doc">VerificationResponse</a>
+            </dt>
+            <dd>Challenge response sent by aircraft to MMA.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1StateChangeRequest.html" class="m-doc">StateChangeRequest</a>
+            </dt>
+            <dd>Request payload for a target state transition.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1StateChangeConfirmation.html" class="m-doc">StateChangeConfirmation</a>
+            </dt>
+            <dd>Confirmation payload for applied state transitions.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1DiagnosticCodeClearRequest.html" class="m-doc">DiagnosticCodeClearRequest</a>
+            </dt>
+            <dd>Request payload for clearing a specific diagnostic code.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1DiagnosticCodeClearConfirmation.html" class="m-doc">DiagnosticCodeClearConfirmation</a>
+            </dt>
+            <dd>Confirmation payload for a diagnostic code clear request.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1SchematicChunkRetryRequest.html" class="m-doc">SchematicChunkRetryRequest</a>
+            </dt>
+            <dd>Request payload for re-sending a missing image chunk.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1DiagnosticFaultCodeHeader.html" class="m-doc">DiagnosticFaultCodeHeader</a>
+            </dt>
+            <dd>Header used for one fault record inside diagnostic payloads.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1ImageChunkHeader.html" class="m-doc">ImageChunkHeader</a>
+            </dt>
+            <dd>Header prepended to each image chunk payload.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1DiagnosticFaultCode.html" class="m-doc">DiagnosticFaultCode</a>
+            </dt>
+            <dd>In-memory diagnostic fault record with string description.</dd>
+            <dt>
+              struct <a href="structnetwork_1_1ImageBuffer.html" class="m-doc">ImageBuffer</a>
+            </dt>
+            <dd>Stores chunked image reassembly state for one image identifier.</dd>
+            <dt>
+              class <a href="classnetwork_1_1TcpConnection.html" class="m-doc">TcpConnection</a>
+            </dt>
+            <dd>Async TCP connection with framed packet buffering and queued writes.</dd>
+          </dl>
+        </section>
+        <section id="enum-members">
+          <h2><a href="#enum-members">Enums</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">enum class <a href="#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a>: uint8_t { </span><span class="m-doc-wrap"><a href="#a17634b0cba4d91d3d33170381d4f39cea04fd9f2b6157a45de88b5e00c67bfc63" class="m-doc">VERIFICATION_REQUEST</a> = 1,
+              <a href="#a17634b0cba4d91d3d33170381d4f39cea5da6b2e71f76eff19fccc3bc7e283dc4" class="m-doc">VERIFICATION_RESPONSE</a> = 2,
+              <a href="#a17634b0cba4d91d3d33170381d4f39cea6a42a4b7d72959f9a820c604b7a5b295" class="m-doc">STATE_CHANGE</a> = 3,
+              <a href="#a17634b0cba4d91d3d33170381d4f39ceabe151b4e6aae4692e71763456544f8ca" class="m-doc">LANDED_NOTIFICATION</a> = 4,
+              <a href="#a17634b0cba4d91d3d33170381d4f39cea35dce95b0c6df2235d940d939a1494ca" class="m-doc">DIAGNOSTIC_DATA</a> = 5,
+              <a href="#a17634b0cba4d91d3d33170381d4f39cea76d4c8ba2b880a73541572a50a86c271" class="m-doc">SCHEMATIC_CHUNK</a> = 6,
+              <a href="#a17634b0cba4d91d3d33170381d4f39cead70e1cc4b11b121d2f24a67804c4aec5" class="m-doc">STATE_CHANGE_CONFIRMATION</a> = 7,
+              <a href="#a17634b0cba4d91d3d33170381d4f39cea6edc4fd860b191ce75c4b680859ba153" class="m-doc">CLEAR_DIAGNOSTIC_CODE</a> = 8,
+              <a href="#a17634b0cba4d91d3d33170381d4f39cea5437dd27a1c4ddade9a7d345074bdebf" class="m-doc">CLEAR_DIAGNOSTIC_CODE_CONFIRMATION</a> = 9,
+              <a href="#a17634b0cba4d91d3d33170381d4f39ceaa07ca039948a79a30696d758acb0bb71" class="m-doc">SCHEMATIC_CHUNK_RETRY_REQUEST</a> = 10,
+              <a href="#a17634b0cba4d91d3d33170381d4f39cea4b4a3d9621242060b4c74cf87ef0e117" class="m-doc">WARRANTY_DATA</a> = 11 }</span>
+            </dt>
+            <dd>Supported message types for client-server protocol packets.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">enum class <a href="#aacc92849dd918baac572a00dc6b557ac" class="m-doc">StateId</a>: uint8_t { </span><span class="m-doc-wrap"><a href="#aacc92849dd918baac572a00dc6b557acaeea559d5c56d48e94e586f7fe000c0b1" class="m-doc">STANDBY</a> = 0,
+              <a href="#aacc92849dd918baac572a00dc6b557aca1ba95aa8d735cc8ab55d670b1c957bec" class="m-doc">DIAGNOSTIC</a> = 1,
+              <a href="#aacc92849dd918baac572a00dc6b557acaa49182544bf417d2e02cae1f35c9c8b8" class="m-doc">MAINTENANCE</a> = 2,
+              <a href="#aacc92849dd918baac572a00dc6b557aca893b3aaf1661e3717b18e8335ff93a72" class="m-doc">FAULT</a> = 3 }</span>
+            </dt>
+            <dd>Operational aircraft state identifiers used in state messages.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">enum class <a href="#a238b3cf8725ece78735c86c4c1516465" class="m-doc">DiagnosticFaultSeverity</a>: uint8_t { </span><span class="m-doc-wrap"><a href="#a238b3cf8725ece78735c86c4c1516465a5903d85aebc0be5e89acc60e22f7cf76" class="m-doc">MINOR</a> = 0,
+              <a href="#a238b3cf8725ece78735c86c4c1516465a6781afd2e7223e6e97b3c4ed3cd05b47" class="m-doc">MAJOR</a> = 1 }</span>
+            </dt>
+            <dd>Severity levels for diagnostic fault records.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">enum class <a href="#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc">ImageFormat</a>: uint8_t { </span><span class="m-doc-wrap"><a href="#a7aaae8bcf29a7fee697a774dbe1a8e46a633d6abff0a3fc22404347728d195059" class="m-doc">RAW</a> = 0,
+              <a href="#a7aaae8bcf29a7fee697a774dbe1a8e46a55505ba281b015ec31f03ccb151b2a34" class="m-doc">PNG</a> = 1,
+              <a href="#a7aaae8bcf29a7fee697a774dbe1a8e46a907e06a16862d82ca6907a28a68d0ad6" class="m-doc">JPEG</a> = 2 }</span>
+            </dt>
+            <dd>Image encoding used for chunked schematic transfer.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">enum class <a href="#aa6bec128fe4026222f3a41c21e1abd28" class="m-doc">DiagnosticCodeClearStatus</a>: uint8_t { </span><span class="m-doc-wrap"><a href="#aa6bec128fe4026222f3a41c21e1abd28ad0749aaba8b833466dfcbb0428e4f89c" class="m-doc">SUCCESS</a> = 0,
+              <a href="#aa6bec128fe4026222f3a41c21e1abd28a6fc08b53f18a83bd56d1fd7b5dc0ddad" class="m-doc">REJECTED_NOT_IN_CLEARABLE_STATE</a> = 1,
+              <a href="#aa6bec128fe4026222f3a41c21e1abd28a28f40a9f3bb470bf293644c59a40bf53" class="m-doc">CODE_NOT_FOUND</a> = 2,
+              <a href="#aa6bec128fe4026222f3a41c21e1abd28a58919aeb20e25ad443c121585839382e" class="m-doc">MALFORMED_REQUEST</a> = 3 }</span>
+            </dt>
+            <dd>Result of a diagnostic code clear request.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">enum class <a href="#a924ee6dae1ab9f91ade3c866ea7e7cb6" class="m-doc">ConnectionState</a> { </span><span class="m-doc-wrap"><a href="#a924ee6dae1ab9f91ade3c866ea7e7cb6a0dda3249de3efdf2a6a33708ec5aa1c3" class="m-doc">UNVERIFIED</a>,
+              <a href="#a924ee6dae1ab9f91ade3c866ea7e7cb6a2778dde25400a8e3df508c90229d2657" class="m-doc">VERIFIED</a>,
+              <a href="#a924ee6dae1ab9f91ade3c866ea7e7cb6a110ccf2f5d2ff4eda1fd1a494293467d" class="m-doc">CLOSED</a> }</span>
+            </dt>
+            <dd>Lifecycle state of a network connection session.</dd>
+          </dl>
+        </section>
+        <section id="func-members">
+          <h2><a href="#func-members">Functions</a></h2>
+          <dl class="m-doc">
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#af5f12b913ccdb7b82611128ae5bef227" class="m-doc">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type,
+              std::span&lt;const std::byte&gt; payload) -&gt; std::vector&lt;uint8_t&gt;</span>
+            </dt>
+            <dd>Serializes a packet from raw payload bytes.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#aba34f0b5c9eb137d5fdea45de8b09f03" class="m-doc">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type) -&gt; std::vector&lt;uint8_t&gt;</span>
+            </dt>
+            <dd>Convenience overload for packets with no payload.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a565933df37d39e76e1c139ba2bfeb48b" class="m-doc">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type,
+              const uint8_t* payload_data,
+              size_t payload_size) -&gt; std::vector&lt;uint8_t&gt;</span>
+            </dt>
+            <dd><span></span></dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#aeb77126350d4a8f98a402ef22bfae2f8" class="m-doc">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type,
+              std::span&lt;const uint8_t&gt; payload) -&gt; std::vector&lt;uint8_t&gt;</span>
+            </dt>
+            <dd>Convenience overload for serializing a byte buffer payload.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a9ff7494f135e9f5fae941dba652e3314" class="m-doc">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type,
+              const std::vector&lt;uint8_t&gt;&amp; payload) -&gt; std::vector&lt;uint8_t&gt;</span>
+            </dt>
+            <dd>Convenience overload for serializing a byte-vector payload.</dd>
+            <dt>
+              <div class="m-doc-template">template&lt;typename T&gt;</div>
+              <span class="m-doc-wrap-bumper">auto <a href="#ae76570e79c82bb3ea9c7d75f37513cfb" class="m-doc">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type,
+              const T&amp; payload) -&gt; std::vector&lt;uint8_t&gt;</span>
+            </dt>
+            <dd>Convenience wrapper that serializes a POD payload object.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#aed75aadddb1e879d933a2b2103496db6" class="m-doc">serializeDiagnosticDataPayload</a>(</span><span class="m-doc-wrap">const std::vector&lt;<a href="structnetwork_1_1DiagnosticFaultCode.html" class="m-doc">DiagnosticFaultCode</a>&gt;&amp; faults) -&gt; std::vector&lt;uint8_t&gt;</span>
+            </dt>
+            <dd>Serializes fault records into a diagnostic payload buffer.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a3d8df6fe48d5dfcd510a73919f189682" class="m-doc">deserializeDiagnosticDataPayload</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; payload,
+              std::vector&lt;<a href="structnetwork_1_1DiagnosticFaultCode.html" class="m-doc">DiagnosticFaultCode</a>&gt;&amp; faults) -&gt; bool</span>
+            </dt>
+            <dd>Parses a diagnostic payload buffer into fault records.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a564212c3c33dad4fb0d4c2390d927b8b" class="m-doc">serializeWarrantyDataPayload</a>(</span><span class="m-doc-wrap">const <a href="structcommon_1_1WarrantyInfo.html" class="m-doc">common::<wbr />WarrantyInfo</a>&amp; warranty) -&gt; std::vector&lt;uint8_t&gt;</span>
+            </dt>
+            <dd>Serializes warranty data into payload bytes.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a6f62a2c6e0ac12f4eea519885a2d4016" class="m-doc">deserializeWarrantyDataPayload</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; payload,
+              <a href="structcommon_1_1WarrantyInfo.html" class="m-doc">common::<wbr />WarrantyInfo</a>&amp; warranty) -&gt; bool</span>
+            </dt>
+            <dd>Parses payload bytes into a warranty structure.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a73ab4aea720d4a7632d4dcd7db0d7fbb" class="m-doc">serializeImagePayload</a>(</span><span class="m-doc-wrap">uint32_t image_id,
+              const std::vector&lt;uint8_t&gt;&amp; image_data,
+              <a href="namespacenetwork.html#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc">ImageFormat</a> format) -&gt; std::vector&lt;std::vector&lt;uint8_t&gt;&gt;</span>
+            </dt>
+            <dd>Splits an image into serialized chunk payloads.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#aaad6dd06ae1a40366aa4ff7eb169fd37" class="m-doc">deserializeImageChunk</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; payload,
+              <a href="structnetwork_1_1ImageChunkHeader.html" class="m-doc">ImageChunkHeader</a>&amp; header_out,
+              std::vector&lt;uint8_t&gt;&amp; chunk_data_out) -&gt; bool</span>
+            </dt>
+            <dd>Extracts image chunk header and data from a chunk payload.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a509d3bb7859807bdbac8d759dc1bfddd" class="m-doc">deserializePacket</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; data,
+              <a href="structnetwork_1_1PacketHeader.html" class="m-doc">PacketHeader</a>&amp; header,
+              std::vector&lt;uint8_t&gt;&amp; payload) -&gt; bool</span>
+            </dt>
+            <dd>Validates and deserializes packet bytes into header and payload.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a8ca74b89ed0ac72e1016735ced51fc36" class="m-doc">computePacketChecksum</a>(</span><span class="m-doc-wrap">const <a href="structnetwork_1_1PacketHeader.html" class="m-doc">PacketHeader</a>&amp; header,
+              std::span&lt;const std::byte&gt; payload) -&gt; uint32_t</span>
+            </dt>
+            <dd>Computes packet checksum for test verification and diagnostics.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a3524d7189b58feb154eb5915a68b1c15" class="m-doc">computePacketChecksum</a>(</span><span class="m-doc-wrap">const <a href="structnetwork_1_1PacketHeader.html" class="m-doc">PacketHeader</a>&amp; header,
+              std::span&lt;const uint8_t&gt; payload) -&gt; uint32_t</span>
+            </dt>
+            <dd>Convenience overload for computing checksum for a byte buffer payload.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#af139e6883d1995bb25006f02ecbd1779" class="m-doc">stateIdToString</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#aacc92849dd918baac572a00dc6b557ac" class="m-doc">StateId</a> state) -&gt; std::string_view</span>
+            </dt>
+            <dd>Converts a state identifier to a human-readable string.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a0cacdc1e020b306b4a59958a21ec26ae" class="m-doc">diagnosticFaultSeverityToString</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a238b3cf8725ece78735c86c4c1516465" class="m-doc">DiagnosticFaultSeverity</a> severity) -&gt; std::string_view</span>
+            </dt>
+            <dd>Converts diagnostic fault severity to a human-readable string.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#a1070e9730919cfef0e3ccc3b02990390" class="m-doc">imageFormatToString</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc">ImageFormat</a> format) -&gt; std::string_view</span>
+            </dt>
+            <dd>Converts image format enum to a human-readable string.</dd>
+            <dt>
+              <span class="m-doc-wrap-bumper">auto <a href="#ae60d09093a4ca7136bd9bb1f203034ac" class="m-doc">diagnosticCodeClearStatusToString</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#aa6bec128fe4026222f3a41c21e1abd28" class="m-doc">DiagnosticCodeClearStatus</a> status) -&gt; std::string_view</span>
+            </dt>
+            <dd>Converts diagnostic code clear status to a human-readable string.</dd>
+          </dl>
+        </section>
+        <section id="var-members">
+          <h2><a href="#var-members">Variables</a></h2>
+          <dl class="m-doc">
+            <dt>
+              uint32_t <a href="#a6b5bcd22d5475a485740c4dc14cd89b6" class="m-doc">PACKET_MAGIC</a>
+            </dt>
+            <dd>Magic constant used to validate packet framing.</dd>
+            <dt>
+              size_t <a href="#a964ac2f8b9ae1983ff61fd9cc78c4998" class="m-doc">kMaxImageChunkPayloadSize</a>
+            </dt>
+            <dd>Maximum per-packet image payload size after chunk header bytes.</dd>
+            <dt>
+              uint32_t <a href="#aea2986add2fa060ae420be66cf6d0d8f" class="m-doc">kMaxImageId</a>
+            </dt>
+            <dd>Upper bound for rolling image identifier counter.</dd>
+          </dl>
+        </section>
+        <section>
+          <h2>Enum documentation</h2>
+          <section class="m-doc-details" id="a17634b0cba4d91d3d33170381d4f39ce"><div>
+            <h3>
+              enum class network::<wbr /><a href="#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc-self">PacketType</a>: uint8_t
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Supported message types for client-server protocol packets.</p>
+          </div></section>
+          <section class="m-doc-details" id="aacc92849dd918baac572a00dc6b557ac"><div>
+            <h3>
+              enum class network::<wbr /><a href="#aacc92849dd918baac572a00dc6b557ac" class="m-doc-self">StateId</a>: uint8_t
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Operational aircraft state identifiers used in state messages.</p>
+          </div></section>
+          <section class="m-doc-details" id="a238b3cf8725ece78735c86c4c1516465"><div>
+            <h3>
+              enum class network::<wbr /><a href="#a238b3cf8725ece78735c86c4c1516465" class="m-doc-self">DiagnosticFaultSeverity</a>: uint8_t
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Severity levels for diagnostic fault records.</p>
+          </div></section>
+          <section class="m-doc-details" id="a7aaae8bcf29a7fee697a774dbe1a8e46"><div>
+            <h3>
+              enum class network::<wbr /><a href="#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc-self">ImageFormat</a>: uint8_t
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Image encoding used for chunked schematic transfer.</p>
+          </div></section>
+          <section class="m-doc-details" id="aa6bec128fe4026222f3a41c21e1abd28"><div>
+            <h3>
+              enum class network::<wbr /><a href="#aa6bec128fe4026222f3a41c21e1abd28" class="m-doc-self">DiagnosticCodeClearStatus</a>: uint8_t
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Result of a diagnostic code clear request.</p>
+          </div></section>
+          <section class="m-doc-details" id="a924ee6dae1ab9f91ade3c866ea7e7cb6"><div>
+            <h3>
+              enum class network::<wbr /><a href="#a924ee6dae1ab9f91ade3c866ea7e7cb6" class="m-doc-self">ConnectionState</a>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="TcpConnection_8h.html">&lt;common/TcpConnection.h&gt;</a></div>
+            </h3>
+            <p>Lifecycle state of a network connection session.</p>
+          </div></section>
+        </section>
+        <section>
+          <h2>Function documentation</h2>
+          <section class="m-doc-details" id="af5f12b913ccdb7b82611128ae5bef227"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::vector&lt;uint8_t&gt; network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#af5f12b913ccdb7b82611128ae5bef227" class="m-doc-self">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type,
+              std::span&lt;const std::byte&gt; payload)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Serializes a packet from raw payload bytes.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">type</td>
+                  <td>Type: <a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">network::<wbr />PacketType</a>. Packet type discriminator.</td>
+                </tr>
+                <tr>
+                  <td>payload</td>
+                  <td>Type: std::span&lt;const std::byte&gt;. Payload bytes.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::vector&lt;uint8_t&gt;. Serialized packet bytes including header.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="aba34f0b5c9eb137d5fdea45de8b09f03"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::vector&lt;uint8_t&gt; network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#aba34f0b5c9eb137d5fdea45de8b09f03" class="m-doc-self">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Convenience overload for packets with no payload.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">type</td>
+                  <td>Type: <a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">network::<wbr />PacketType</a>. Packet type discriminator.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::vector&lt;uint8_t&gt;. Serialized packet bytes including header.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a565933df37d39e76e1c139ba2bfeb48b"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::vector&lt;uint8_t&gt; network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a565933df37d39e76e1c139ba2bfeb48b" class="m-doc-self">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type,
+              const uint8_t* payload_data,
+              size_t payload_size)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p><span></span></p>
+          </div></section>
+          <section class="m-doc-details" id="aeb77126350d4a8f98a402ef22bfae2f8"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::vector&lt;uint8_t&gt; network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#aeb77126350d4a8f98a402ef22bfae2f8" class="m-doc-self">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type,
+              std::span&lt;const uint8_t&gt; payload)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Convenience overload for serializing a byte buffer payload.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">type</td>
+                  <td>Type: <a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">network::<wbr />PacketType</a>. Packet type discriminator.</td>
+                </tr>
+                <tr>
+                  <td>payload</td>
+                  <td>Type: std::span&lt;const uint8_t&gt;. Payload bytes.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::vector&lt;uint8_t&gt;. Serialized packet bytes including header.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a9ff7494f135e9f5fae941dba652e3314"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::vector&lt;uint8_t&gt; network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a9ff7494f135e9f5fae941dba652e3314" class="m-doc-self">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type,
+              const std::vector&lt;uint8_t&gt;&amp; payload)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Convenience overload for serializing a byte-vector payload.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">type</td>
+                  <td>Type: <a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">network::<wbr />PacketType</a>. Packet type discriminator.</td>
+                </tr>
+                <tr>
+                  <td>payload</td>
+                  <td>Type: const std::vector&lt;uint8_t&gt;&amp;. Payload bytes.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::vector&lt;uint8_t&gt;. Serialized packet bytes including header.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="ae76570e79c82bb3ea9c7d75f37513cfb"><div>
+            <h3>
+              <div class="m-doc-include m-code m-inverted m-right-m m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+              <div class="m-doc-template">
+                template&lt;typename T&gt;
+              </div>
+              <span class="m-doc-wrap-bumper">std::vector&lt;uint8_t&gt; network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#ae76570e79c82bb3ea9c7d75f37513cfb" class="m-doc-self">serializePacket</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">PacketType</a> type,
+              const T&amp; payload)</span></span>
+            </h3>
+            <p>Convenience wrapper that serializes a POD payload object.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">type</td>
+                  <td>Type: <a href="namespacenetwork.html#a17634b0cba4d91d3d33170381d4f39ce" class="m-doc">network::<wbr />PacketType</a>. Packet type discriminator.</td>
+                </tr>
+                <tr>
+                  <td>payload</td>
+                  <td>Type: const T&amp;. POD payload object.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::vector&lt;uint8_t&gt;. Serialized packet bytes including header.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="aed75aadddb1e879d933a2b2103496db6"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::vector&lt;uint8_t&gt; network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#aed75aadddb1e879d933a2b2103496db6" class="m-doc-self">serializeDiagnosticDataPayload</a>(</span><span class="m-doc-wrap">const std::vector&lt;<a href="structnetwork_1_1DiagnosticFaultCode.html" class="m-doc">DiagnosticFaultCode</a>&gt;&amp; faults)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Serializes fault records into a diagnostic payload buffer.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">faults</td>
+                  <td>Type: const std::vector&lt;<a href="structnetwork_1_1DiagnosticFaultCode.html" class="m-doc">network::<wbr />DiagnosticFaultCode</a>&gt;&amp;. Fault records to serialize.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::vector&lt;uint8_t&gt;. Serialized diagnostic payload bytes.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a3d8df6fe48d5dfcd510a73919f189682"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a3d8df6fe48d5dfcd510a73919f189682" class="m-doc-self">deserializeDiagnosticDataPayload</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; payload,
+              std::vector&lt;<a href="structnetwork_1_1DiagnosticFaultCode.html" class="m-doc">DiagnosticFaultCode</a>&gt;&amp; faults)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Parses a diagnostic payload buffer into fault records.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">payload</td>
+                  <td>Type: const std::vector&lt;uint8_t&gt;&amp;. Serialized diagnostic payload bytes.</td>
+                </tr>
+                <tr>
+                  <td>faults</td>
+                  <td>Type: std::vector&lt;<a href="structnetwork_1_1DiagnosticFaultCode.html" class="m-doc">network::<wbr />DiagnosticFaultCode</a>&gt;&amp;. Output vector populated with parsed fault records.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: bool. True if payload is valid and parsed successfully.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a564212c3c33dad4fb0d4c2390d927b8b"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::vector&lt;uint8_t&gt; network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a564212c3c33dad4fb0d4c2390d927b8b" class="m-doc-self">serializeWarrantyDataPayload</a>(</span><span class="m-doc-wrap">const <a href="structcommon_1_1WarrantyInfo.html" class="m-doc">common::<wbr />WarrantyInfo</a>&amp; warranty)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Serializes warranty data into payload bytes.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">warranty</td>
+                  <td>Type: const common::WarrantyInfo&amp;. Warranty information to encode.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::vector&lt;uint8_t&gt;. Serialized warranty payload bytes.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a6f62a2c6e0ac12f4eea519885a2d4016"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a6f62a2c6e0ac12f4eea519885a2d4016" class="m-doc-self">deserializeWarrantyDataPayload</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; payload,
+              <a href="structcommon_1_1WarrantyInfo.html" class="m-doc">common::<wbr />WarrantyInfo</a>&amp; warranty)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Parses payload bytes into a warranty structure.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">payload</td>
+                  <td>Type: const std::vector&lt;uint8_t&gt;&amp;. Serialized warranty payload bytes.</td>
+                </tr>
+                <tr>
+                  <td>warranty</td>
+                  <td>Type: common::WarrantyInfo&amp;. Output warranty structure.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: bool. True if payload is valid and parsed successfully.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a73ab4aea720d4a7632d4dcd7db0d7fbb"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::vector&lt;std::vector&lt;uint8_t&gt;&gt; network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a73ab4aea720d4a7632d4dcd7db0d7fbb" class="m-doc-self">serializeImagePayload</a>(</span><span class="m-doc-wrap">uint32_t image_id,
+              const std::vector&lt;uint8_t&gt;&amp; image_data,
+              <a href="namespacenetwork.html#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc">ImageFormat</a> format)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Splits an image into serialized chunk payloads.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">image_id</td>
+                  <td>Type: uint32_t. Identifier assigned to this image transfer.</td>
+                </tr>
+                <tr>
+                  <td>image_data</td>
+                  <td>Type: const std::vector&lt;uint8_t&gt;&amp;. Raw encoded image bytes.</td>
+                </tr>
+                <tr>
+                  <td>format</td>
+                  <td>Type: <a href="namespacenetwork.html#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc">network::<wbr />ImageFormat</a>. Encoding format of image_data.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::vector&lt;std::vector&lt;uint8_t&gt;&gt;. One serialized payload per chunk.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="aaad6dd06ae1a40366aa4ff7eb169fd37"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#aaad6dd06ae1a40366aa4ff7eb169fd37" class="m-doc-self">deserializeImageChunk</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; payload,
+              <a href="structnetwork_1_1ImageChunkHeader.html" class="m-doc">ImageChunkHeader</a>&amp; header_out,
+              std::vector&lt;uint8_t&gt;&amp; chunk_data_out)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Extracts image chunk header and data from a chunk payload.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">payload</td>
+                  <td>Type: const std::vector&lt;uint8_t&gt;&amp;. Serialized chunk payload bytes.</td>
+                </tr>
+                <tr>
+                  <td>header_out</td>
+                  <td>Type: network::ImageChunkHeader&amp;. Output chunk header.</td>
+                </tr>
+                <tr>
+                  <td>chunk_data_out</td>
+                  <td>Type: std::vector&lt;uint8_t&gt;&amp;. Output raw chunk bytes.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: bool. True if payload is valid and parsed successfully.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a509d3bb7859807bdbac8d759dc1bfddd"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">bool network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a509d3bb7859807bdbac8d759dc1bfddd" class="m-doc-self">deserializePacket</a>(</span><span class="m-doc-wrap">const std::vector&lt;uint8_t&gt;&amp; data,
+              <a href="structnetwork_1_1PacketHeader.html" class="m-doc">PacketHeader</a>&amp; header,
+              std::vector&lt;uint8_t&gt;&amp; payload)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Validates and deserializes packet bytes into header and payload.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">data</td>
+                  <td>Type: const std::vector&lt;uint8_t&gt;&amp;. Serialized packet bytes.</td>
+                </tr>
+                <tr>
+                  <td>header</td>
+                  <td>Type: network::PacketHeader&amp;. Output parsed packet header.</td>
+                </tr>
+                <tr>
+                  <td>payload</td>
+                  <td>Type: std::vector&lt;uint8_t&gt;&amp;. Output parsed packet payload.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: bool. True if packet framing and checksum are valid.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a8ca74b89ed0ac72e1016735ced51fc36"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">uint32_t network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a8ca74b89ed0ac72e1016735ced51fc36" class="m-doc-self">computePacketChecksum</a>(</span><span class="m-doc-wrap">const <a href="structnetwork_1_1PacketHeader.html" class="m-doc">PacketHeader</a>&amp; header,
+              std::span&lt;const std::byte&gt; payload)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Computes packet checksum for test verification and diagnostics.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">header</td>
+                  <td>Type: const network::PacketHeader&amp;. Packet header with checksum field ignored.</td>
+                </tr>
+                <tr>
+                  <td>payload</td>
+                  <td>Type: std::span&lt;const std::byte&gt;. Payload bytes.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: uint32_t. CRC-32 checksum for packet header and payload.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a3524d7189b58feb154eb5915a68b1c15"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">uint32_t network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a3524d7189b58feb154eb5915a68b1c15" class="m-doc-self">computePacketChecksum</a>(</span><span class="m-doc-wrap">const <a href="structnetwork_1_1PacketHeader.html" class="m-doc">PacketHeader</a>&amp; header,
+              std::span&lt;const uint8_t&gt; payload)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Convenience overload for computing checksum for a byte buffer payload.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">header</td>
+                  <td>Type: const network::PacketHeader&amp;. Packet header with checksum field ignored.</td>
+                </tr>
+                <tr>
+                  <td>payload</td>
+                  <td>Type: std::span&lt;const uint8_t&gt;. Payload bytes.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: uint32_t. CRC-32 checksum for packet header and payload.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="af139e6883d1995bb25006f02ecbd1779"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::string_view network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#af139e6883d1995bb25006f02ecbd1779" class="m-doc-self">stateIdToString</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#aacc92849dd918baac572a00dc6b557ac" class="m-doc">StateId</a> state)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Converts a state identifier to a human-readable string.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">state</td>
+                  <td>Type: <a href="namespacenetwork.html#aacc92849dd918baac572a00dc6b557ac" class="m-doc">network::<wbr />StateId</a>. State enum value.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::string_view. String representation of state.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a0cacdc1e020b306b4a59958a21ec26ae"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::string_view network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a0cacdc1e020b306b4a59958a21ec26ae" class="m-doc-self">diagnosticFaultSeverityToString</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a238b3cf8725ece78735c86c4c1516465" class="m-doc">DiagnosticFaultSeverity</a> severity)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Converts diagnostic fault severity to a human-readable string.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">severity</td>
+                  <td>Type: <a href="namespacenetwork.html#a238b3cf8725ece78735c86c4c1516465" class="m-doc">network::<wbr />DiagnosticFaultSeverity</a>. Diagnostic severity value.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::string_view. String representation of severity.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="a1070e9730919cfef0e3ccc3b02990390"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::string_view network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#a1070e9730919cfef0e3ccc3b02990390" class="m-doc-self">imageFormatToString</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc">ImageFormat</a> format)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Converts image format enum to a human-readable string.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">format</td>
+                  <td>Type: <a href="namespacenetwork.html#a7aaae8bcf29a7fee697a774dbe1a8e46" class="m-doc">network::<wbr />ImageFormat</a>. Image format value.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::string_view. String representation of image format.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+          <section class="m-doc-details" id="ae60d09093a4ca7136bd9bb1f203034ac"><div>
+            <h3>
+              <span class="m-doc-wrap-bumper">std::string_view network::<wbr /></span><span class="m-doc-wrap"><span class="m-doc-wrap-bumper"><a href="#ae60d09093a4ca7136bd9bb1f203034ac" class="m-doc-self">diagnosticCodeClearStatusToString</a>(</span><span class="m-doc-wrap"><a href="namespacenetwork.html#aa6bec128fe4026222f3a41c21e1abd28" class="m-doc">DiagnosticCodeClearStatus</a> status)</span></span>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Converts diagnostic code clear status to a human-readable string.</p>
+            <table class="m-table m-fullwidth m-flat">
+              <thead>
+                <tr><th colspan="2">Parameters</th></tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td style="width: 1%">status</td>
+                  <td>Type: <a href="namespacenetwork.html#aa6bec128fe4026222f3a41c21e1abd28" class="m-doc">network::<wbr />DiagnosticCodeClearStatus</a>. Diagnostic clear result value.</td>
+                </tr>
+              </tbody>
+              <tfoot>
+                <tr>
+                  <th>Returns</th>
+                  <td>Type: std::string_view. String representation of status.</td>
+                </tr>
+              </tfoot>
+            </table>
+          </div></section>
+        </section>
+        <section>
+          <h2>Variable documentation</h2>
+          <section class="m-doc-details" id="a6b5bcd22d5475a485740c4dc14cd89b6"><div>
+            <h3>
+              uint32_t network::<wbr /><a href="#a6b5bcd22d5475a485740c4dc14cd89b6" class="m-doc-self">PACKET_MAGIC</a>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Magic constant used to validate packet framing.</p>
+          </div></section>
+          <section class="m-doc-details" id="a964ac2f8b9ae1983ff61fd9cc78c4998"><div>
+            <h3>
+              size_t network::<wbr /><a href="#a964ac2f8b9ae1983ff61fd9cc78c4998" class="m-doc-self">kMaxImageChunkPayloadSize</a>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Maximum per-packet image payload size after chunk header bytes.</p>
+          </div></section>
+          <section class="m-doc-details" id="aea2986add2fa060ae420be66cf6d0d8f"><div>
+            <h3>
+              uint32_t network::<wbr /><a href="#aea2986add2fa060ae420be66cf6d0d8f" class="m-doc-self">kMaxImageId</a>
+              <div class="m-doc-include m-code m-inverted m-text-right"><span class="cp">#include</span> <a class="cpf" href="Packet_8h.html">&lt;common/Packet.h&gt;</a></div>
+            </h3>
+            <p>Upper bound for rolling image identifier counter.</p>
+          </div></section>
+        </section>
+      </div>
+    </div>
+  </div>
+</article></main>
+<div class="m-doc-search" id="search">
+  <a href="#!" onclick="return hideSearch()"></a>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-m-8 m-push-m-2">
+        <div class="m-doc-search-header m-text m-small">
+          <div><span class="m-label m-default">Tab</span> / <span class="m-label m-default">T</span> to search, <span class="m-label m-default">Esc</span> to close</div>
+          <div id="search-symbolcount">&hellip;</div>
+        </div>
+        <div class="m-doc-search-content">
+          <form>
+            <input type="search" name="q" id="search-input" placeholder="Loading &hellip;" disabled="disabled" autofocus="autofocus" autocomplete="off" spellcheck="false" />
+          </form>
+          <noscript class="m-text m-danger m-text-center">Unlike everything else in the docs, the search functionality <em>requires</em> JavaScript.</noscript>
+          <div id="search-help" class="m-text m-dim m-text-center">
+            <p class="m-noindent">Search for symbols, directories, files, pages or
+            modules. You can omit any prefix from the symbol or file path; adding a
+            <code>:</code> or <code>/</code> suffix lists all members of given symbol or
+            directory.</p>
+            <p class="m-noindent">Use <span class="m-label m-dim">&darr;</span>
+            / <span class="m-label m-dim">&uarr;</span> to navigate through the list,
+            <span class="m-label m-dim">Enter</span> to go.
+            <span class="m-label m-dim">Tab</span> autocompletes common prefix, you can
+            copy a link to the result using <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">L</span> while <span class="m-label m-dim">⌘</span>
+            <span class="m-label m-dim">M</span> produces a Markdown link.</p>
+          </div>
+          <div id="search-notfound" class="m-text m-warning m-text-center">Sorry, nothing was found.</div>
+          <ul id="search-results"></ul>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<script src="search-v2.js"></script>
+<script src="searchdata-v2.js" async="async"></script>
+<footer><nav>
+  <div class="m-container">
+    <div class="m-row">
+      <div class="m-col-l-10 m-push-l-1">
+        <p>Avionics
+Warranty
+Maintenance
+System. Created with <a href="https://doxygen.org/">Doxygen</a> 1.16.1 and <a href="https://mcss.mosra.cz/">m.css</a>.</p>
+      </div>
+    </div>
+  </div>
+</nav></footer>
+</body>
+</html>
