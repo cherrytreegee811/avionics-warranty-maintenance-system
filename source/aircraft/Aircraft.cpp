@@ -317,19 +317,22 @@ namespace aircraft {
 
     timer->expires_after(std::chrono::seconds(5));
     timer->async_wait([this, socket](std::error_code ec) {
+      bool should_return = false;
       if (shutting_down_.load()) {
-        return;
+        should_return = true;
       }
-
-      if (!ec) {
+      if (!should_return && !ec) {
         // REQ-CLT-082
         spdlog::error("Connection timeout, changing to DIAGNOSTIC");
         if (!transitionToState(network::StateId::DIAGNOSTIC,
                                TransitionSource::CONNECTION_FALLBACK)) {
           spdlog::warn("Connection fallback transition to DIAGNOSTIC was rejected");
         }
-
         socket->close();
+        should_return = true;
+      }
+      if (should_return) {
+        return;
       }
     });
 
@@ -361,22 +364,19 @@ namespace aircraft {
   void Aircraft::syncStateManagerToCurrentState() {
     if (!stateManager_) {
       spdlog::warn("StateManager unavailable. Cannot sync current state {}", m_currentState);
-      return;
+    } else {
+      const auto currentState = stateIdFromString(m_currentState);
+      if (!currentState) {
+        spdlog::warn("Cannot sync unknown aircraft state {}", m_currentState);
+      } else {
+        auto state = makeStateForId(*this, *stateManager_, *currentState);
+        if (!state) {
+          spdlog::warn("Cannot sync unsupported aircraft state {}", m_currentState);
+        } else {
+          stateManager_->SetState(std::move(state));
+        }
+      }
     }
-
-    const auto currentState = stateIdFromString(m_currentState);
-    if (!currentState) {
-      spdlog::warn("Cannot sync unknown aircraft state {}", m_currentState);
-      return;
-    }
-
-    auto state = makeStateForId(*this, *stateManager_, *currentState);
-    if (!state) {
-      spdlog::warn("Cannot sync unsupported aircraft state {}", m_currentState);
-      return;
-    }
-
-    stateManager_->SetState(std::move(state));
   }
 
   bool Aircraft::transitionToState(network::StateId targetState, TransitionSource source) {
@@ -637,6 +637,7 @@ namespace aircraft {
               break;
             }
             default:
+              /* No action required for unknown packet types before handshake */
               spdlog::warn("Received non-verification packet before handshake, closing");
               spdlog::default_logger()->flush();
               if (connection_) {
@@ -786,6 +787,7 @@ namespace aircraft {
               break;
             }
             default:
+              /* No action required for unknown packet types after handshake */
               break;
           }
         }
