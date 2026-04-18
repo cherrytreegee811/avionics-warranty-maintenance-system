@@ -40,9 +40,12 @@ namespace network {
     header.checksum = computePacketChecksum(header, payload);
 
     std::vector<uint8_t> result(sizeof(PacketHeader) + payload_size);
-    (void)std::memcpy(result.data(), &header, sizeof(PacketHeader));
+    std::copy_n(reinterpret_cast<const uint8_t*>(&header), sizeof(PacketHeader), result.begin());
     if (!payload.empty()) {
-      (void)std::memcpy(&result[sizeof(PacketHeader)], payload.data(), payload_size);
+      auto dest = result.begin() + sizeof(PacketHeader);
+      for (size_t i = 0; i < payload_size; ++i) {
+        dest[i] = static_cast<uint8_t>(payload[i]);
+      }
     }
     return result;
   }
@@ -69,7 +72,7 @@ namespace network {
     }
 
     if (ok) {
-      (void)std::memcpy(&header, data.data(), sizeof(PacketHeader));
+      std::copy_n(data.begin(), sizeof(PacketHeader), reinterpret_cast<uint8_t*>(&header));
 
       // Verify magic
       if (header.magic != PACKET_MAGIC) {
@@ -91,7 +94,7 @@ namespace network {
       // Extract payload
       payload.resize(header.payload_size);
       if (header.payload_size > 0U) {
-        (void)std::memcpy(payload.data(), data.data() + sizeof(PacketHeader), header.payload_size);
+        std::copy_n(data.begin() + sizeof(PacketHeader), header.payload_size, payload.begin());
       }
 
       // Verify CRC
@@ -116,7 +119,8 @@ namespace network {
     const auto capped_count = static_cast<uint16_t>(
         std::min<size_t>(faults.size(), std::numeric_limits<uint16_t>::max()));
     payload.resize(kCountSize);
-    (void)std::memcpy(payload.data(), &capped_count, sizeof(capped_count));
+    std::copy_n(reinterpret_cast<const uint8_t*>(&capped_count), sizeof(capped_count),
+                payload.begin());
 
     for (size_t i = 0; i < capped_count; ++i) {
       const auto& fault = faults[i];
@@ -132,10 +136,11 @@ namespace network {
 
       const auto start = payload.size();
       payload.resize(start + sizeof(header) + desc_size);
-      (void)std::memcpy(payload.data() + start, &header, sizeof(header));
+      std::copy_n(reinterpret_cast<const uint8_t*>(&header), sizeof(header),
+                  payload.begin() + start);
       if (desc_size > 0) {
-        (void)std::memcpy(payload.data() + start + sizeof(header), fault.description.data(),
-                          desc_size);
+        std::copy_n(reinterpret_cast<const uint8_t*>(fault.description.data()), desc_size,
+                    payload.begin() + start + sizeof(header));
       }
     }
 
@@ -152,11 +157,9 @@ namespace network {
       ok = false;
     }
 
-    const auto payload_span = std::span<const uint8_t>(payload);
-
     uint16_t count = 0;
     if (ok) {
-      (void)std::memcpy(&count, payload.data(), sizeof(count));
+      std::copy_n(payload.begin(), sizeof(count), reinterpret_cast<uint8_t*>(&count));
     }
 
     size_t offset = kCountSize;
@@ -172,7 +175,7 @@ namespace network {
 
       DiagnosticFaultCodeHeader wire{};
       if (ok) {
-        (void)std::memcpy(&wire, &payload[offset], sizeof(wire));
+        std::copy_n(payload.begin() + offset, sizeof(wire), reinterpret_cast<uint8_t*>(&wire));
         offset += sizeof(wire);
       }
 
@@ -186,7 +189,8 @@ namespace network {
         parsed.code = wire.code;
         parsed.timestamp_epoch_ms = wire.timestamp_epoch_ms;
         parsed.severity = wire.severity;
-        parsed.description = bytesToString(payload_span.subspan(offset, desc_size));
+        parsed.description
+            = bytesToString(std::span<const uint8_t>(payload).subspan(offset, desc_size));
         offset += desc_size;
 
         parsed_faults.push_back(std::move(parsed));
@@ -218,22 +222,26 @@ namespace network {
     payload.push_back(is_active);
 
     payload.resize(payload.size() + sizeof(expiry_size));
-    (void)std::memcpy(&payload[1], &expiry_size, sizeof(expiry_size));
+    std::copy_n(reinterpret_cast<const uint8_t*>(&expiry_size), sizeof(expiry_size),
+                payload.begin() + 1);
 
     if (expiry_size > 0) {
       const auto start = payload.size();
       payload.resize(start + expiry_size);
-      (void)std::memcpy(payload.data() + start, warranty.expiryDate.data(), expiry_size);
+      std::copy_n(reinterpret_cast<const uint8_t*>(warranty.expiryDate.data()), expiry_size,
+                  payload.begin() + start);
     }
 
     const auto provider_size_offset = payload.size();
     payload.resize(payload.size() + sizeof(provider_size));
-    (void)std::memcpy(&payload[provider_size_offset], &provider_size, sizeof(provider_size));
+    std::copy_n(reinterpret_cast<const uint8_t*>(&provider_size), sizeof(provider_size),
+                payload.begin() + provider_size_offset);
 
     if (provider_size > 0) {
       const auto start = payload.size();
       payload.resize(start + provider_size);
-      (void)std::memcpy(payload.data() + start, warranty.provider.data(), provider_size);
+      std::copy_n(reinterpret_cast<const uint8_t*>(warranty.provider.data()), provider_size,
+                  payload.begin() + start);
     }
 
     return payload;
@@ -258,7 +266,8 @@ namespace network {
 
     uint16_t expiry_size = 0;
     if (ok) {
-      (void)std::memcpy(&expiry_size, &payload[offset], sizeof(expiry_size));
+      std::copy_n(payload.begin() + offset, sizeof(expiry_size),
+                  reinterpret_cast<uint8_t*>(&expiry_size));
       offset += sizeof(expiry_size);
     }
 
@@ -277,7 +286,8 @@ namespace network {
 
     uint16_t provider_size = 0;
     if (ok) {
-      (void)std::memcpy(&provider_size, &payload[offset], sizeof(provider_size));
+      std::copy_n(payload.begin() + offset, sizeof(provider_size),
+                  reinterpret_cast<uint8_t*>(&provider_size));
       offset += sizeof(provider_size);
     }
 
@@ -344,10 +354,10 @@ namespace network {
       };
 
       std::vector<uint8_t> chunk_payload(sizeof(header) + chunk_size);
-      (void)std::memcpy(chunk_payload.data(), &header, sizeof(header));
+      std::copy_n(reinterpret_cast<const uint8_t*>(&header), sizeof(header), chunk_payload.begin());
       if (chunk_size > 0) {
-        (void)std::memcpy(&chunk_payload[sizeof(header)],
-                          image_span.subspan(chunk_start, chunk_size).data(), chunk_size);
+        std::copy_n(image_span.subspan(chunk_start, chunk_size).begin(), chunk_size,
+                    chunk_payload.begin() + sizeof(header));
       }
 
       result.push_back(std::move(chunk_payload));
@@ -373,7 +383,8 @@ namespace network {
 
     const auto payload_span = std::span<const uint8_t>(payload);
     if (ok) {
-      (void)std::memcpy(&header_out, payload.data(), sizeof(ImageChunkHeader));
+      std::copy_n(payload.begin(), sizeof(ImageChunkHeader),
+                  reinterpret_cast<uint8_t*>(&header_out));
     }
 
     // Validate header
@@ -398,7 +409,7 @@ namespace network {
     if (ok && (header_out.chunk_data_size > 0U)) {
       const auto chunk_bytes = payload_span.subspan(
           sizeof(ImageChunkHeader), static_cast<size_t>(header_out.chunk_data_size));
-      (void)std::memcpy(chunk_data_out.data(), chunk_bytes.data(), chunk_bytes.size());
+      std::copy_n(chunk_bytes.begin(), chunk_bytes.size(), chunk_data_out.begin());
     }
 
     uint32_t computed_chunk_crc = 0;
