@@ -287,18 +287,6 @@ namespace mma {
       });
     }
     return;
-
-    (void)acceptor_->async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
-      if (!ec) {
-        auto conn = network::TcpConnection::create(std::move(socket));
-        handleNewConnection(conn);
-      } else {
-        spdlog::error("Accept error: {}", ec.message());
-      }
-      if (running_) {
-        doAccept();
-      }
-    });
   }
 
   void MMA::handleNewConnection(network::TcpConnection::Ptr conn) {
@@ -544,14 +532,6 @@ namespace mma {
       });
     }
     return;
-
-    (void)chunk_timeout_timer_->expires_after(kMissingChunkCheckInterval);
-    (void)chunk_timeout_timer_->async_wait([this](const std::error_code& ec) {
-      if (!(ec || !running_)) {
-        processMissingChunkTimeouts();
-        scheduleChunkTimeoutChecks();
-      }
-    });
   }
 
   void MMA::processMissingChunkTimeouts() {
