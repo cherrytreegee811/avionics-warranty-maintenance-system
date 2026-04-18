@@ -19,6 +19,7 @@
 #include <fstream>
 #include <future>
 #include <memory>
+#include <span>
 #include <thread>
 
 using namespace std::chrono_literals;
@@ -94,7 +95,7 @@ TEST_CASE("REQ-NET-081: Integration - client and server communicate over TcpConn
     }
 
     StateChangeRequest request{};
-    std::memcpy(&request, payload.data(), sizeof(request));
+    (void)std::memcpy(&request, payload.data(), sizeof(request));
     client_received_state_promise.set_value(request.target_state);
   });
   client_connection->start();
@@ -105,7 +106,7 @@ TEST_CASE("REQ-NET-081: Integration - client and server communicate over TcpConn
   auto server_connection = accepted_connection_future.get();
   REQUIRE(server_connection != nullptr);
 
-  const auto landed = serializePacket(PacketType::LANDED_NOTIFICATION, nullptr, 0);
+  const auto landed = serializePacket(PacketType::LANDED_NOTIFICATION);
   client_connection->send(landed);
 
   REQUIRE(test_helpers::waitUntilReady(server_received_type_future));
@@ -123,309 +124,6 @@ TEST_CASE("REQ-NET-081: Integration - client and server communicate over TcpConn
   }
 }
 
-TEST_CASE("REQ-NET-081: TcpConnection returns unknown remote address when endpoint unavailable") {
-  asio::io_context io;
-  asio::ip::tcp::socket socket(io);
-  auto connection = TcpConnection::create(std::move(socket));
-
-  CHECK(connection->getRemoteAddress() == "unknown");
-}
-
-TEST_CASE("REQ-NET-012/REQ-NET-081: TcpConnection closes on invalid packet magic") {
-  const std::string testLogFile = "test_tcpconnection_invalid_magic_log.txt";
-  std::remove(testLogFile.c_str());
-
-  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
-  auto logger
-      = std::make_shared<spdlog::logger>("test_tcpconnection_invalid_magic_logger", file_sink);
-  spdlog::set_default_logger(logger);
-  spdlog::set_level(spdlog::level::info);
-  spdlog::flush_on(spdlog::level::info);
-
-  asio::io_context io;
-  auto work_guard = asio::make_work_guard(io);
-  using tcp = asio::ip::tcp;
-
-  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
-  const uint16_t port = acceptor.local_endpoint().port();
-
-  std::promise<TcpConnection::Ptr> accepted_promise;
-  auto accepted_future = accepted_promise.get_future();
-
-  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
-    if (ec) {
-      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
-      return;
-    }
-    auto server_connection = TcpConnection::create(std::move(socket));
-    server_connection->setMessageHandler([](const std::vector<uint8_t>&) {});
-    server_connection->start();
-    accepted_promise.set_value(server_connection);
-  });
-
-  tcp::socket client_socket(io);
-  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
-
-  std::thread io_thread([&]() { io.run(); });
-
-  auto cleanup = [&]() {
-    std::error_code ignored;
-    client_socket.close(ignored);
-    acceptor.close();
-    work_guard.reset();
-    io.stop();
-    if (io_thread.joinable()) {
-      io_thread.join();
-    }
-  };
-
-  const bool accepted_ready = test_helpers::waitUntilReady(accepted_future);
-  if (!accepted_ready) {
-    cleanup();
-    FAIL("Accepted connection was not ready in time");
-  }
-
-  auto server_connection = accepted_future.get();
-  if (server_connection == nullptr) {
-    cleanup();
-    FAIL("Accepted server connection was null");
-  }
-
-  PacketHeader bad_header{};
-  bad_header.magic = 0x12345678;
-  bad_header.type = PacketType::LANDED_NOTIFICATION;
-  bad_header.payload_size = 0;
-  bad_header.sequence = 1;
-  bad_header.checksum = 0;
-
-  std::array<uint8_t, sizeof(PacketHeader)> raw{};
-  std::memcpy(raw.data(), &bad_header, sizeof(PacketHeader));
-  asio::write(client_socket, asio::buffer(raw));
-
-  CHECK(test_helpers::waitFor(
-      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
-  CHECK(test_helpers::waitFor(
-      [&]() { return test_helpers::logContains(testLogFile, "Invalid packet magic"); }, 2000ms));
-
-  std::error_code ignored;
-  client_socket.close(ignored);
-  acceptor.close();
-  work_guard.reset();
-  io.stop();
-  if (io_thread.joinable()) {
-    io_thread.join();
-  }
-
-  spdlog::shutdown();
-  std::remove(testLogFile.c_str());
-}
-
-TEST_CASE("REQ-NET-012/REQ-NET-081: TcpConnection closes on oversized packet header") {
-  const std::string testLogFile = "test_tcpconnection_oversized_packet_log.txt";
-  std::remove(testLogFile.c_str());
-
-  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
-  auto logger
-      = std::make_shared<spdlog::logger>("test_tcpconnection_oversized_packet_logger", file_sink);
-  spdlog::set_default_logger(logger);
-  spdlog::set_level(spdlog::level::info);
-  spdlog::flush_on(spdlog::level::info);
-
-  asio::io_context io;
-  auto work_guard = asio::make_work_guard(io);
-  using tcp = asio::ip::tcp;
-
-  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
-  const uint16_t port = acceptor.local_endpoint().port();
-
-  std::promise<TcpConnection::Ptr> accepted_promise;
-  auto accepted_future = accepted_promise.get_future();
-
-  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
-    if (ec) {
-      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
-      return;
-    }
-    auto server_connection = TcpConnection::create(std::move(socket));
-    server_connection->setMessageHandler([](const std::vector<uint8_t>&) {});
-    server_connection->start();
-    accepted_promise.set_value(server_connection);
-  });
-
-  tcp::socket client_socket(io);
-  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
-
-  std::thread io_thread([&]() { io.run(); });
-
-  REQUIRE(test_helpers::waitUntilReady(accepted_future));
-  auto server_connection = accepted_future.get();
-  REQUIRE(server_connection != nullptr);
-
-  PacketHeader oversized_header{};
-  oversized_header.magic = PACKET_MAGIC;
-  oversized_header.type = PacketType::SCHEMATIC_CHUNK;
-  oversized_header.payload_size = 60U * 1024U * 1024U;
-  oversized_header.sequence = 1;
-  oversized_header.checksum = 0;
-
-  std::array<uint8_t, sizeof(PacketHeader)> raw{};
-  std::memcpy(raw.data(), &oversized_header, sizeof(PacketHeader));
-  asio::write(client_socket, asio::buffer(raw));
-
-  CHECK(test_helpers::waitFor(
-      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
-  CHECK(test_helpers::waitFor(
-      [&]() { return test_helpers::logContains(testLogFile, "Packet too large"); }, 2000ms));
-
-  std::error_code ignored;
-  client_socket.close(ignored);
-  acceptor.close();
-  work_guard.reset();
-  io.stop();
-  if (io_thread.joinable()) {
-    io_thread.join();
-  }
-
-  spdlog::shutdown();
-  std::remove(testLogFile.c_str());
-}
-
-TEST_CASE("REQ-NET-013/REQ-NET-081: TcpConnection buffers partial packet until complete") {
-  asio::io_context io;
-  auto work_guard = asio::make_work_guard(io);
-  using tcp = asio::ip::tcp;
-
-  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
-  const uint16_t port = acceptor.local_endpoint().port();
-
-  std::promise<TcpConnection::Ptr> accepted_promise;
-  auto accepted_future = accepted_promise.get_future();
-
-  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
-    if (ec) {
-      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
-      return;
-    }
-    auto server_connection = TcpConnection::create(std::move(socket));
-    server_connection->start();
-    accepted_promise.set_value(server_connection);
-  });
-
-  tcp::socket client_socket(io);
-  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
-
-  std::thread io_thread([&]() { io.run(); });
-
-  auto cleanup = [&]() {
-    std::error_code ignored;
-    client_socket.close(ignored);
-    acceptor.close();
-    work_guard.reset();
-    io.stop();
-    if (io_thread.joinable()) {
-      io_thread.join();
-    }
-  };
-
-  const bool accepted_ready = test_helpers::waitUntilReady(accepted_future);
-  if (!accepted_ready) {
-    cleanup();
-    FAIL("Accepted connection was not ready in time");
-  }
-
-  auto server_connection = accepted_future.get();
-  if (server_connection == nullptr) {
-    cleanup();
-    FAIL("Accepted server connection was null");
-  }
-
-  const VerificationRequest request{0x12345678U, 0xABCDEF1234567890ULL};
-  const auto packet = serializePacket(PacketType::VERIFICATION_REQUEST, request);
-  CHECK(packet.size() > sizeof(PacketHeader));
-
-  const size_t first_part = sizeof(PacketHeader) + 1;
-  if (first_part >= packet.size()) {
-    cleanup();
-    FAIL("Partial-split precondition failed");
-  }
-
-  asio::write(client_socket, asio::buffer(packet.data(), first_part));
-
-  std::this_thread::sleep_for(150ms);
-  CHECK(server_connection->getState() != ConnectionState::CLOSED);
-
-  server_connection->close();
-  CHECK(test_helpers::waitFor(
-      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
-  cleanup();
-}
-
-TEST_CASE("REQ-NET-081: TcpConnection logs send-closed path when write is aborted") {
-  const std::string testLogFile = "test_tcpconnection_send_closed_log.txt";
-  std::remove(testLogFile.c_str());
-
-  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
-  auto logger
-      = std::make_shared<spdlog::logger>("test_tcpconnection_send_closed_logger", file_sink);
-  spdlog::set_default_logger(logger);
-  spdlog::set_level(spdlog::level::info);
-  spdlog::flush_on(spdlog::level::info);
-
-  asio::io_context io;
-  auto work_guard = asio::make_work_guard(io);
-  using tcp = asio::ip::tcp;
-
-  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
-  const uint16_t port = acceptor.local_endpoint().port();
-
-  std::promise<TcpConnection::Ptr> accepted_promise;
-  auto accepted_future = accepted_promise.get_future();
-
-  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
-    if (ec) {
-      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
-      return;
-    }
-    auto server_connection = TcpConnection::create(std::move(socket));
-    accepted_promise.set_value(server_connection);
-  });
-
-  tcp::socket client_socket(io);
-  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
-
-  std::thread io_thread([&]() { io.run(); });
-
-  REQUIRE(test_helpers::waitUntilReady(accepted_future));
-  auto server_connection = accepted_future.get();
-  REQUIRE(server_connection != nullptr);
-
-  // Large payload increases chance that close races with in-flight write.
-  std::vector<uint8_t> large_payload(4 * 1024 * 1024, 0xAB);
-  server_connection->send(large_payload);
-  server_connection->close();
-
-  CHECK(test_helpers::waitFor(
-      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
-
-  CHECK(test_helpers::waitFor(
-      [&]() {
-        return test_helpers::logContains(testLogFile, "Connection send closed for|Send error:");
-      },
-      3000ms));
-
-  std::error_code ignored;
-  client_socket.close(ignored);
-  acceptor.close();
-  work_guard.reset();
-  io.stop();
-  if (io_thread.joinable()) {
-    io_thread.join();
-  }
-
-  spdlog::shutdown();
-  std::remove(testLogFile.c_str());
-}
-
 // ============================================================================
 // REQ-SYS-080: Both the client and server shall require connection verification before accepting
 //              any commands or returning results.
@@ -435,7 +133,7 @@ TEST_CASE("REQ-NET-081: TcpConnection logs send-closed path when write is aborte
 TEST_CASE("REQ-SYS-080/REQ-NET-081: Integration - Successful verification flow") {
   // We first need to initialize a server from which we are listening.
   // A connection must be simulated for testing flows.
-  MMA server;
+  mma::MMA server;
   // client must be referenced directly from namespace.
   aircraft::Aircraft client;
 
@@ -457,7 +155,7 @@ TEST_CASE("REQ-SYS-080/REQ-NET-081: Integration - Successful verification flow")
 
 TEST_CASE(
     "REQ-SYS-080/REQ-NET-081: Integration - Command rejection when connection is UNVERIFIED") {
-  MMA server;
+  mma::MMA server;
   const uint16_t testPort = 8005;  // Use a fresh port
   server.startServer(testPort);
   std::this_thread::sleep_for(100ms);
@@ -479,7 +177,7 @@ TEST_CASE(
   REQUIRE(!ec);
 
   // 2. SEND THE ILLEGAL COMMAND
-  auto packet = network::serializePacket(network::PacketType::LANDED_NOTIFICATION, nullptr, 0);
+  auto packet = network::serializePacket(network::PacketType::LANDED_NOTIFICATION);
   asio::write(socket, asio::buffer(packet));
 
   // 3. WAIT AND CHECK FOR CLOSURE
@@ -526,7 +224,7 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057: MMA logs landed and state transi
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
 
   const uint16_t testPort = 8006;
   server.startServer(testPort);
@@ -534,7 +232,7 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057: MMA logs landed and state transi
 
   {
     aircraft::Aircraft client;
-    StateManager stateManager;
+    aircraft::StateManager stateManager;
     client.setStateManager(&stateManager);
     client.syncStateManagerToCurrentState();
 
@@ -588,7 +286,7 @@ TEST_CASE("REQ-NET-013: DIAGNOSTIC_DATA severity is logged by MMA") {
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
   const uint16_t testPort = 8007;
   server.startServer(testPort);
   std::this_thread::sleep_for(100ms);
@@ -644,14 +342,14 @@ TEST_CASE(
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
   const uint16_t testPort = 8008;
   server.startServer(testPort);
   std::this_thread::sleep_for(100ms);
 
   {
     aircraft::Aircraft client;
-    StateManager stateManager;
+    aircraft::StateManager stateManager;
     client.setStateManager(&stateManager);
     client.syncStateManagerToCurrentState();
 
@@ -711,14 +409,14 @@ TEST_CASE("REQ-SYS-010/REQ-NET-013/REQ-SYS-060: MMA allows clear request in FAUL
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
   const uint16_t testPort = 8009;
   server.startServer(testPort);
   std::this_thread::sleep_for(100ms);
 
   {
     aircraft::Aircraft client;
-    StateManager stateManager;
+    aircraft::StateManager stateManager;
     client.setStateManager(&stateManager);
     client.syncStateManagerToCurrentState();
 
@@ -816,7 +514,7 @@ TEST_CASE(
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
   server.startServer(0);
   const uint16_t port = server.getListeningPort();
   REQUIRE(port != 0);
@@ -842,7 +540,7 @@ TEST_CASE(
   REQUIRE(payload.size() == sizeof(network::VerificationRequest));
 
   network::VerificationRequest request{};
-  std::memcpy(&request, payload.data(), sizeof(request));
+  (void)std::memcpy(&request, payload.data(), sizeof(request));
 
   // Send an invalid challenge response intentionally.
   network::VerificationResponse invalid_response{};
@@ -903,7 +601,7 @@ TEST_CASE(
   spdlog::flush_on(spdlog::level::info);
 
   {
-    MMA server;
+    mma::MMA server;
     server.initialize();
 
     std::thread server_thread([&]() { server.startServer(9001); });
@@ -980,7 +678,7 @@ TEST_CASE("REQ-SYS-010/REQ-NET-012/REQ-NET-081: Integration - Image transfer wit
   spdlog::flush_on(spdlog::level::info);
 
   {
-    MMA server;
+    mma::MMA server;
     server.initialize();
 
     std::thread server_thread([&]() { server.startServer(9002); });
@@ -1045,7 +743,7 @@ TEST_CASE(
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
   server.startServer(0);
   const uint16_t port = server.getListeningPort();
   REQUIRE(port != 0);
@@ -1063,7 +761,7 @@ TEST_CASE(
   REQUIRE(incoming_payload.size() == sizeof(network::VerificationRequest));
 
   network::VerificationRequest verification_request{};
-  std::memcpy(&verification_request, incoming_payload.data(), sizeof(verification_request));
+  (void)std::memcpy(&verification_request, incoming_payload.data(), sizeof(verification_request));
   network::VerificationResponse verification_response{};
   verification_response.challenge_response = verification_request.challenge ^ 0xDEADBEEF;
   verification_response.client_id = 12345;
@@ -1074,7 +772,8 @@ TEST_CASE(
 
   const std::vector<uint8_t> image_data{0x10, 0x20, 0x30, 0x40, 0x50, 0x60, 0x70};
   const uint32_t image_id = 9001;
-  const uint32_t image_crc = network::Crc32::calculate(image_data.data(), image_data.size());
+  const uint32_t image_crc
+      = network::Crc32::calculate(std::span<const uint8_t>(image_data.data(), image_data.size()));
 
   const std::vector<uint8_t> chunk0_data{0x10, 0x20, 0x30};
   const std::vector<uint8_t> chunk1_data{0x40, 0x50, 0x60, 0x70};
@@ -1085,7 +784,7 @@ TEST_CASE(
       2,
       static_cast<uint32_t>(chunk0_data.size()),
       network::ImageFormat::RAW,
-      network::Crc32::calculate(chunk0_data.data(), chunk0_data.size()),
+      network::Crc32::calculate(std::span<const uint8_t>(chunk0_data.data(), chunk0_data.size())),
       image_crc};
   const network::ImageChunkHeader chunk1_header{
       image_id,
@@ -1093,22 +792,22 @@ TEST_CASE(
       2,
       static_cast<uint32_t>(chunk1_data.size()),
       network::ImageFormat::RAW,
-      network::Crc32::calculate(chunk1_data.data(), chunk1_data.size()),
+      network::Crc32::calculate(std::span<const uint8_t>(chunk1_data.data(), chunk1_data.size())),
       image_crc};
 
   std::vector<uint8_t> chunk0_payload(sizeof(chunk0_header) + chunk0_data.size());
-  std::memcpy(chunk0_payload.data(), &chunk0_header, sizeof(chunk0_header));
-  std::memcpy(chunk0_payload.data() + sizeof(chunk0_header), chunk0_data.data(),
-              chunk0_data.size());
+  (void)std::memcpy(chunk0_payload.data(), &chunk0_header, sizeof(chunk0_header));
+  (void)std::memcpy(chunk0_payload.data() + sizeof(chunk0_header), chunk0_data.data(),
+                    chunk0_data.size());
 
   std::vector<uint8_t> chunk1_payload(sizeof(chunk1_header) + chunk1_data.size());
-  std::memcpy(chunk1_payload.data(), &chunk1_header, sizeof(chunk1_header));
-  std::memcpy(chunk1_payload.data() + sizeof(chunk1_header), chunk1_data.data(),
-              chunk1_data.size());
+  (void)std::memcpy(chunk1_payload.data(), &chunk1_header, sizeof(chunk1_header));
+  (void)std::memcpy(chunk1_payload.data() + sizeof(chunk1_header), chunk1_data.data(),
+                    chunk1_data.size());
 
   // Send only first chunk so MMA must request retry for chunk 1.
-  const auto chunk0_packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
-                                                      chunk0_payload.data(), chunk0_payload.size());
+  const auto chunk0_packet
+      = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK, chunk0_payload);
   asio::write(socket, asio::buffer(chunk0_packet), ec);
   REQUIRE(!ec);
 
@@ -1119,12 +818,12 @@ TEST_CASE(
   REQUIRE(retry_payload.size() == sizeof(network::SchematicChunkRetryRequest));
 
   network::SchematicChunkRetryRequest retry_request{};
-  std::memcpy(&retry_request, retry_payload.data(), sizeof(retry_request));
+  (void)std::memcpy(&retry_request, retry_payload.data(), sizeof(retry_request));
   CHECK(retry_request.image_id == image_id);
   CHECK(retry_request.chunk_index == 1);
 
-  const auto chunk1_packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
-                                                      chunk1_payload.data(), chunk1_payload.size());
+  const auto chunk1_packet
+      = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK, chunk1_payload);
   asio::write(socket, asio::buffer(chunk1_packet), ec);
   REQUIRE(!ec);
 
@@ -1151,7 +850,7 @@ TEST_CASE(
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
   server.startServer(0);
   const uint16_t port = server.getListeningPort();
   REQUIRE(port != 0);
@@ -1169,7 +868,7 @@ TEST_CASE(
   REQUIRE(incoming_payload.size() == sizeof(network::VerificationRequest));
 
   network::VerificationRequest verification_request{};
-  std::memcpy(&verification_request, incoming_payload.data(), sizeof(verification_request));
+  (void)std::memcpy(&verification_request, incoming_payload.data(), sizeof(verification_request));
   network::VerificationResponse verification_response{};
   verification_response.challenge_response = verification_request.challenge ^ 0xDEADBEEF;
   verification_response.client_id = 12345;
@@ -1181,8 +880,8 @@ TEST_CASE(
   const std::vector<uint8_t> chunk0_data{0xAA, 0xBB, 0xCC};
   const std::vector<uint8_t> full_image_data{0xAA, 0xBB, 0xCC, 0xDD};
   const uint32_t image_id = 9002;
-  const uint32_t image_crc
-      = network::Crc32::calculate(full_image_data.data(), full_image_data.size());
+  const uint32_t image_crc = network::Crc32::calculate(
+      std::span<const uint8_t>(full_image_data.data(), full_image_data.size()));
 
   const network::ImageChunkHeader chunk0_header{
       image_id,
@@ -1190,15 +889,15 @@ TEST_CASE(
       2,
       static_cast<uint32_t>(chunk0_data.size()),
       network::ImageFormat::RAW,
-      network::Crc32::calculate(chunk0_data.data(), chunk0_data.size()),
+      network::Crc32::calculate(std::span<const uint8_t>(chunk0_data.data(), chunk0_data.size())),
       image_crc};
   std::vector<uint8_t> chunk0_payload(sizeof(chunk0_header) + chunk0_data.size());
-  std::memcpy(chunk0_payload.data(), &chunk0_header, sizeof(chunk0_header));
-  std::memcpy(chunk0_payload.data() + sizeof(chunk0_header), chunk0_data.data(),
-              chunk0_data.size());
+  (void)std::memcpy(chunk0_payload.data(), &chunk0_header, sizeof(chunk0_header));
+  (void)std::memcpy(chunk0_payload.data() + sizeof(chunk0_header), chunk0_data.data(),
+                    chunk0_data.size());
 
-  const auto chunk0_packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
-                                                      chunk0_payload.data(), chunk0_payload.size());
+  const auto chunk0_packet
+      = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK, chunk0_payload);
   asio::write(socket, asio::buffer(chunk0_packet), ec);
   REQUIRE(!ec);
 

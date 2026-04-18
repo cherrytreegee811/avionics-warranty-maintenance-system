@@ -29,7 +29,7 @@ TEST_CASE("REQ-SRV-053: MMA server logs landed notification from client") {
   spdlog::set_level(spdlog::level::info);
   spdlog::flush_on(spdlog::level::info);
 
-  MMA server;
+  mma::MMA server;
   const uint16_t testPort = 8040;
   server.startServer(testPort);
   std::this_thread::sleep_for(100ms);
@@ -57,7 +57,7 @@ TEST_CASE("REQ-SRV-053: MMA server logs landed notification from client") {
 // ============================================================================
 
 TEST_CASE("REQ-SYS-080: MMA closes connection on invalid verification response size") {
-  MMA server;
+  mma::MMA server;
   server.startServer(0);
   test_helpers::ScopedMmaStopper stop(server);
 
@@ -77,7 +77,7 @@ TEST_CASE("REQ-SYS-080: MMA closes connection on invalid verification response s
   CHECK(request_header.type == network::PacketType::VERIFICATION_REQUEST);
 
   const auto invalid_response
-      = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, nullptr, 0);
+      = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE);
   asio::write(socket, asio::buffer(invalid_response), ec);
   REQUIRE(!ec);
 
@@ -107,7 +107,7 @@ TEST_CASE("REQ-SYS-080: MMA closes connection on invalid verification response s
 }
 
 TEST_CASE("REQ-SYS-080: MMA closes connection on incorrect verification challenge response") {
-  MMA server;
+  mma::MMA server;
   server.startServer(0);
   test_helpers::ScopedMmaStopper stop(server);
 
@@ -128,7 +128,7 @@ TEST_CASE("REQ-SYS-080: MMA closes connection on incorrect verification challeng
   REQUIRE(request_payload.size() == sizeof(network::VerificationRequest));
 
   network::VerificationRequest req{};
-  std::memcpy(&req, request_payload.data(), sizeof(req));
+  (void)std::memcpy(&req, request_payload.data(), sizeof(req));
 
   network::VerificationResponse bad_resp{};
   bad_resp.client_id = 424242;

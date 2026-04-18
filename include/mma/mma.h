@@ -18,80 +18,84 @@
 #include <unordered_map>
 #include <vector>
 
-class WarrantyManager;
+namespace mma {
+  class WarrantyManager;
 
-/**
- * @brief Main MMA server facade for handling aircraft clients and commands.
- */
-class MMA {
-public:
-  /** @brief Constructs MMA server instance. */
-  MMA();
-  /** @brief Stops background resources and active client sessions. */
-  ~MMA();
-  /** @brief Initializes MMA internal components. */
-  void initialize();
   /**
-   * @brief Starts the TCP listener on the requested port.
-   * @param port Type: uint16_t. TCP listener port.
+   * @brief Main MMA server facade for handling aircraft clients and commands.
    */
-  void startServer(uint16_t port = 8000);
-  /** @brief Stops listener, worker thread, and active connections. */
-  void stopServer();
-  /** @brief Runs interactive console menu operations. */
-  void runMenu();
-  /**
-   * @brief Sends a state change request to put an aircraft into diagnostic mode.
-   * @param aircraftId Type: uint64_t. Target aircraft identifier.
-   */
-  void sendDiagnosticStateChange(uint64_t aircraftId);
-  /**
-   * @brief Sends a request to clear a specific aircraft diagnostic code.
-   * @param aircraftId Type: uint64_t. Target aircraft identifier.
-   * @param code Type: int32_t. Diagnostic code to clear.
-   */
-  void sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code);
-  /**
-   * @brief Returns true while the MMA server is running.
-   * @return Type: bool. True when the server loop is active.
-   */
-  bool getRunningStatus() const { return running_; }
-  /**
-   * @brief Gets the currently configured listener port.
-   * @return Type: uint16_t. Bound or configured TCP listener port.
-   */
-  uint16_t getListeningPort() const;
+  class MMA {
+  public:
+    /** @brief Constructs MMA server instance. */
+    MMA();
+    /** @brief Stops background resources and active client sessions. */
+    ~MMA();
+    /** @brief Initializes MMA internal components. */
+    void initialize();
+    /**
+     * @brief Starts the TCP listener on the requested port.
+     * @param port Type: uint16_t. TCP listener port.
+     */
+    void startServer(uint16_t port = 8000);
+    /** @brief Stops listener, worker thread, and active connections. */
+    void stopServer();
+    /** @brief Runs interactive console menu operations. */
+    void runMenu();
+    /**
+     * @brief Sends a state change request to put an aircraft into diagnostic mode.
+     * @param aircraftId Type: uint64_t. Target aircraft identifier.
+     */
+    void sendDiagnosticStateChange(uint64_t aircraftId);
+    /**
+     * @brief Sends a request to clear a specific aircraft diagnostic code.
+     * @param aircraftId Type: uint64_t. Target aircraft identifier.
+     * @param code Type: int32_t. Diagnostic code to clear.
+     */
+    void sendDiagnosticCodeClearRequest(uint64_t aircraftId, int32_t code);
+    /**
+     * @brief Returns true while the MMA server is running.
+     * @return Type: bool. True when the server loop is active.
+     */
+    bool getRunningStatus() const { return running_; }
+    /**
+     * @brief Gets the currently configured listener port.
+     * @return Type: uint16_t. Bound or configured TCP listener port.
+     */
+    uint16_t getListeningPort() const;
 
-private:
-  struct ReassemblyRetryState {
-    std::chrono::steady_clock::time_point last_chunk_time;
-    std::vector<uint8_t> retry_attempts_per_chunk;
+  private:
+    struct ReassemblyRetryState {
+      std::chrono::steady_clock::time_point last_chunk_time;
+      std::vector<uint8_t> retry_attempts_per_chunk;
+    };
+
+    void doAccept();
+    void handleNewConnection(network::TcpConnection::Ptr conn);
+    void processMessage(const std::vector<uint8_t>& data, network::TcpConnection::Ptr conn);
+    void scheduleChunkTimeoutChecks();
+    void processMissingChunkTimeouts();
+    void sendChunkRetryRequest(uint64_t aircraftId, uint32_t imageId, uint16_t chunkIndex);
+    void displayWarranty(uint64_t aircraftId);
+    void printDiagnosticFaults(uint64_t aircraftId,
+                               const std::vector<network::DiagnosticFaultCode>& faults) const;
+
+    std::unique_ptr<asio::io_context> io_context_;
+    std::unique_ptr<asio::ip::tcp::acceptor> acceptor_;
+    std::vector<network::TcpConnection::Ptr> connections_;
+    std::unordered_map<uint64_t, network::TcpConnection::Ptr> verified_connections_;
+    std::unordered_map<network::TcpConnection*, uint64_t> connection_to_id_;
+    std::unordered_map<uint64_t, network::StateId> aircraft_states_;
+    uint32_t expected_challenge_ = 0;
+    bool running_ = false;
+    std::unique_ptr<asio::steady_timer> chunk_timeout_timer_;
+    std::thread io_thread_;
+    std::unique_ptr<WarrantyManager> warrantyManager_;
+    std::atomic<bool> menuRunning_{true};
+    // Per aircraft, per image: aircraft_id -> (image_id -> ImageBuffer)
+    std::unordered_map<uint64_t, std::map<uint32_t, network::ImageBuffer>>
+        image_reassembly_buffers_;
+    std::unordered_map<uint64_t, std::map<uint32_t, ReassemblyRetryState>>
+        image_reassembly_retry_state_;
   };
 
-  void doAccept();
-  void handleNewConnection(network::TcpConnection::Ptr conn);
-  void processMessage(const std::vector<uint8_t>& data, network::TcpConnection::Ptr conn);
-  void scheduleChunkTimeoutChecks();
-  void processMissingChunkTimeouts();
-  void sendChunkRetryRequest(uint64_t aircraftId, uint32_t imageId, uint16_t chunkIndex);
-  void displayWarranty(uint64_t aircraftId);
-  void printDiagnosticFaults(uint64_t aircraftId,
-                             const std::vector<network::DiagnosticFaultCode>& faults) const;
-
-  std::unique_ptr<asio::io_context> io_context_;
-  std::unique_ptr<asio::ip::tcp::acceptor> acceptor_;
-  std::vector<network::TcpConnection::Ptr> connections_;
-  std::unordered_map<uint64_t, network::TcpConnection::Ptr> verified_connections_;
-  std::unordered_map<network::TcpConnection*, uint64_t> connection_to_id_;
-  std::unordered_map<uint64_t, network::StateId> aircraft_states_;
-  uint32_t expected_challenge_ = 0;
-  bool running_ = false;
-  std::unique_ptr<asio::steady_timer> chunk_timeout_timer_;
-  std::thread io_thread_;
-  std::unique_ptr<WarrantyManager> warrantyManager_;
-  std::atomic<bool> menuRunning_{true};
-  // Per aircraft, per image: aircraft_id -> (image_id -> ImageBuffer)
-  std::unordered_map<uint64_t, std::map<uint32_t, network::ImageBuffer>> image_reassembly_buffers_;
-  std::unordered_map<uint64_t, std::map<uint32_t, ReassemblyRetryState>>
-      image_reassembly_retry_state_;
-};
+}  // namespace mma

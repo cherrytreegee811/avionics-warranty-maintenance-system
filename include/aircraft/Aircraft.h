@@ -18,9 +18,9 @@
 #include <thread>
 #include <vector>
 
-class StateManager;
-
 namespace aircraft {
+
+  class StateManager;
 
   /**
    * @brief Describes the origin of a state transition request.

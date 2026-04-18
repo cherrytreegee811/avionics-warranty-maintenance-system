@@ -12,7 +12,9 @@
 #include <thread>
 #include <vector>
 
-class MMA;
+namespace mma {
+  class MMA;
+}
 
 namespace test_helpers {
 
@@ -53,7 +55,7 @@ namespace test_helpers {
 
   class ScopedMmaStopper {
   public:
-    explicit ScopedMmaStopper(MMA& server);
+    explicit ScopedMmaStopper(mma::MMA& server);
 
     ScopedMmaStopper(const ScopedMmaStopper&) = delete;
     ScopedMmaStopper& operator=(const ScopedMmaStopper&) = delete;
@@ -61,7 +63,7 @@ namespace test_helpers {
     ~ScopedMmaStopper();
 
   private:
-    MMA& server_;
+    mma::MMA& server_;
   };
 
 }  // namespace test_helpers

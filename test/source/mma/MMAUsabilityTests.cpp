@@ -51,7 +51,7 @@ namespace {
   }
 }  // namespace
 
-TEST_CASE("REQ-CLT-041: MMA usability - runMenu displays warranty details and exits") {
+TEST_CASE("REQ-CLT-042: MMA usability - runMenu displays warranty details and exits") {
   test_helpers::ScopedTempWorkingDir env("awms_mma_usability_active");
   REQUIRE(env.ok());
 
@@ -65,7 +65,7 @@ TEST_CASE("REQ-CLT-041: MMA usability - runMenu displays warranty details and ex
   std::ostringstream output;
   ScopedConsoleRedirect redirect(input, output);
 
-  MMA mma;
+  mma::MMA mma;
   mma.runMenu();
 
   spdlog::shutdown();
@@ -82,7 +82,7 @@ TEST_CASE("REQ-CLT-041: MMA usability - runMenu displays warranty details and ex
       test_helpers::logContains(logFile, "Warranty for aircraft 1001 is provided by OperatorTest"));
 }
 
-TEST_CASE("REQ-CLT-041: MMA usability - runMenu reports missing warranty records") {
+TEST_CASE("REQ-CLT-042: MMA usability - runMenu reports missing warranty records") {
   test_helpers::ScopedTempWorkingDir env("awms_mma_usability_missing");
   REQUIRE(env.ok());
 
@@ -96,7 +96,7 @@ TEST_CASE("REQ-CLT-041: MMA usability - runMenu reports missing warranty records
   std::ostringstream output;
   ScopedConsoleRedirect redirect(input, output);
 
-  MMA mma;
+  mma::MMA mma;
   mma.runMenu();
 
   spdlog::shutdown();
@@ -109,7 +109,7 @@ TEST_CASE("REQ-CLT-041: MMA usability - runMenu reports missing warranty records
   CHECK(test_helpers::logContains(logFile, "No warranty record found for aircraft 9999"));
 }
 
-TEST_CASE("REQ-CLT-041: MMA usability - runMenu displays expired warranty details") {
+TEST_CASE("REQ-CLT-042: MMA usability - runMenu displays expired warranty details") {
   test_helpers::ScopedTempWorkingDir env("awms_mma_usability_expired");
   REQUIRE(env.ok());
 
@@ -123,7 +123,7 @@ TEST_CASE("REQ-CLT-041: MMA usability - runMenu displays expired warranty detail
   std::ostringstream output;
   ScopedConsoleRedirect redirect(input, output);
 
-  MMA mma;
+  mma::MMA mma;
   mma.runMenu();
 
   spdlog::shutdown();
@@ -134,7 +134,7 @@ TEST_CASE("REQ-CLT-041: MMA usability - runMenu displays expired warranty detail
 }
 
 TEST_CASE(
-    "REQ-CLT-041: MMA usability - runMenu handles list and command options for unverified "
+    "REQ-CLT-042: MMA usability - runMenu handles list and command options for unverified "
     "aircraft") {
   test_helpers::ScopedTempWorkingDir env("awms_mma_usability_menu_branches");
   REQUIRE(env.ok());
@@ -149,7 +149,7 @@ TEST_CASE(
   std::ostringstream output;
   ScopedConsoleRedirect redirect(input, output);
 
-  MMA mma;
+  mma::MMA mma;
   mma.runMenu();
 
   spdlog::shutdown();
@@ -165,7 +165,7 @@ TEST_CASE(
       logFile, "Cannot send diagnostic code clear command: aircraft 777 is not verified"));
 }
 
-TEST_CASE("REQ-CLT-041: MMA usability - runMenu handles invalid IDs and diagnostic code input") {
+TEST_CASE("REQ-CLT-042: MMA usability - runMenu handles invalid IDs and diagnostic code input") {
   test_helpers::ScopedTempWorkingDir env("awms_mma_usability_invalid_input");
   REQUIRE(env.ok());
 
@@ -179,7 +179,7 @@ TEST_CASE("REQ-CLT-041: MMA usability - runMenu handles invalid IDs and diagnost
   std::ostringstream output;
   ScopedConsoleRedirect redirect(input, output);
 
-  MMA mma;
+  mma::MMA mma;
   mma.runMenu();
 
   spdlog::shutdown();
