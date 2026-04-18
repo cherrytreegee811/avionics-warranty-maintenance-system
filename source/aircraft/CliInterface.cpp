@@ -54,10 +54,10 @@ namespace aircraft {
 
   std::string CliInterface::formatTimePoint(const std::chrono::system_clock::time_point& tp) const {
     static constexpr char kTimeFormat[] = "%Y-%m-%d %H:%M:%S";
+    const char* fmt_ptr = kTimeFormat;
     auto time_t = std::chrono::system_clock::to_time_t(tp);
     std::stringstream ss;
-    // Prevent array decay by wrapping in std::string
-    ss << std::put_time(std::localtime(&time_t), std::string(kTimeFormat).c_str());
+    ss << std::put_time(std::localtime(&time_t), fmt_ptr);
     return ss.str();
   }
 

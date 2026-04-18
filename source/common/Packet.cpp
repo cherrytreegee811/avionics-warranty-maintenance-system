@@ -91,7 +91,9 @@ namespace network {
       // Extract payload
       payload.resize(header.payload_size);
       if (header.payload_size > 0U) {
-        (void)std::memcpy(payload.data(), data.data() + sizeof(PacketHeader), header.payload_size);
+        for (size_t i = 0; i < header.payload_size; ++i) {
+          payload[i] = data[sizeof(PacketHeader) + i];
+        }
       }
 
       // Verify CRC
