@@ -39,6 +39,7 @@ namespace {
         ext = ".raw";
         break;
       default:
+        // Unknown format. No action required.
         break;
     }
     return ext;
@@ -341,8 +342,7 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
           break;
         }
         default:
-          spdlog::warn("Rejecting command type {} from unverified client",
-                       static_cast<int>(header.type));
+          // No action required for other packet types.
           conn->close();
           break;
       }
@@ -404,6 +404,7 @@ void MMA::processMessage(const std::vector<uint8_t>& data, network::TcpConnectio
                 spdlog::warn("Aircraft {} transitioned to FAULT state", aircraft_id);
                 break;
               default:
+                // No action required for other states.
                 break;
             }
           }

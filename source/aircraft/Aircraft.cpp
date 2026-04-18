@@ -45,7 +45,7 @@ namespace {
         result = std::make_unique<aircraft::FaultState>(aircraft, stateManager);
         break;
       default:
-        // Unknown state id.
+        // Unknown state id. No action required.
         break;
     }
 
@@ -68,9 +68,9 @@ namespace {
       case network::StateId::FAULT:
         allowed = (targetState == network::StateId::STANDBY) || (targetState == network::StateId::DIAGNOSTIC);
         break;
-      default:
-        // Unknown state id.
-        break;
+        default:
+          // Unknown state id. No action required.
+          break;
     }
 
     return allowed;
@@ -110,9 +110,9 @@ namespace {
       case network::StateId::FAULT:
         result = "FAULT";
         break;
-      default:
-        // Unknown state id.
-        break;
+        default:
+          // Unknown state id. No action required.
+          break;
     }
 
     return result;
@@ -134,9 +134,9 @@ namespace {
       case aircraft::TransitionSource::CONNECTION_FALLBACK:
         result = "CONNECTION_FALLBACK";
         break;
-      default:
-        // Unknown transition source.
-        break;
+        default:
+          // Unknown transition source. No action required.
+          break;
     }
 
     return result;
