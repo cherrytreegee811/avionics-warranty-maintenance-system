@@ -39,7 +39,7 @@ namespace {
         ext = ".raw";
         break;
       default:
-        // Unknown format. No action required.
+        // Unknown format. No action required. (MISRA: default case comment)
         break;
     }
     return ext;
@@ -176,7 +176,7 @@ namespace mma {
   MMA::MMA()
       : io_context_(std::make_unique<asio::io_context>()),
         warrantyManager_(std::make_unique<WarrantyManager>()) {
-    warrantyManager_->load();
+    (void)warrantyManager_->load();
   }
 
   MMA::~MMA() = default;
@@ -189,10 +189,10 @@ namespace mma {
       asio::ip::tcp::endpoint endpoint(asio::ip::tcp::v4(), port);
 
       acceptor_ = std::make_unique<asio::ip::tcp::acceptor>(*io_context_);
-      acceptor_->open(endpoint.protocol());
-      acceptor_->set_option(asio::socket_base::reuse_address(true));
-      acceptor_->bind(endpoint);
-      acceptor_->listen();
+      (void)acceptor_->open(endpoint.protocol());
+      (void)acceptor_->set_option(asio::socket_base::reuse_address(true));
+      (void)acceptor_->bind(endpoint);
+      (void)acceptor_->listen();
 
       spdlog::info("MMA server listening on port {}", port);
       running_ = true;
@@ -210,16 +210,16 @@ namespace mma {
 
       if (acceptor_) {
         std::error_code ignored;
-        acceptor_->close(ignored);
+        (void)acceptor_->close(ignored);
       }
 
       if (chunk_timeout_timer_) {
-        chunk_timeout_timer_->cancel();
+        (void)chunk_timeout_timer_->cancel();
       }
 
       auto cleanup_done = std::make_shared<std::promise<void>>();
       auto cleanup_future = cleanup_done->get_future();
-      asio::post(*io_context_, [this, cleanup_done]() mutable {
+      (void)asio::post(*io_context_, [this, cleanup_done]() mutable {
         for (auto& conn : connections_) {
           if (conn) {
             conn->close();
@@ -276,7 +276,7 @@ namespace mma {
       return;
     }
 
-    acceptor_->async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
+    (void)acceptor_->async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
       if (!ec) {
         auto conn = network::TcpConnection::create(std::move(socket));
         handleNewConnection(conn);
@@ -340,8 +340,8 @@ namespace mma {
             break;
           }
           default:
-            // No action required for other packet types.
-            conn->close();
+            // No action required for other packet types. (MISRA: default case comment)
+            (void)conn->close();
             break;
         }
       } else {
@@ -402,7 +402,7 @@ namespace mma {
                   spdlog::warn("Aircraft {} transitioned to FAULT state", aircraft_id);
                   break;
                 default:
-                  // No action required for other states.
+                  // No action required for other states. (MISRA: default case comment)
                   break;
               }
             }
@@ -512,6 +512,7 @@ namespace mma {
           }
 
           default:
+            // No action required for other packet types. (MISRA: default case comment)
             break;
         }
       }
@@ -523,8 +524,8 @@ namespace mma {
       return;
     }
 
-    chunk_timeout_timer_->expires_after(kMissingChunkCheckInterval);
-    chunk_timeout_timer_->async_wait([this](const std::error_code& ec) {
+    (void)chunk_timeout_timer_->expires_after(kMissingChunkCheckInterval);
+    (void)chunk_timeout_timer_->async_wait([this](const std::error_code& ec) {
       if (ec || !running_) {
         return;
       }
@@ -621,11 +622,11 @@ namespace mma {
     std::cout << "Enter choice: ";
 
     std::string line;
-    while (menuRunning_ && std::getline(std::cin, line)) {
+    while (menuRunning_ && static_cast<bool>(std::getline(std::cin, line))) {
       if (line == "1") {
         std::cout << "Enter aircraft ID: ";
         std::string idStr;
-        std::getline(std::cin, idStr);
+        (void)std::getline(std::cin, idStr);
         try {
           uint64_t id = std::stoull(idStr);
           displayWarranty(id);
@@ -644,7 +645,7 @@ namespace mma {
       } else if (line == "4") {
         std::cout << "Enter aircraft ID: ";
         std::string idStr;
-        std::getline(std::cin, idStr);
+        (void)std::getline(std::cin, idStr);
         try {
           const uint64_t id = std::stoull(idStr);
           sendDiagnosticStateChange(id);
@@ -654,10 +655,10 @@ namespace mma {
       } else if (line == "5") {
         std::cout << "Enter aircraft ID: ";
         std::string idStr;
-        std::getline(std::cin, idStr);
+        (void)std::getline(std::cin, idStr);
         std::cout << "Enter diagnostic code to clear: ";
         std::string codeStr;
-        std::getline(std::cin, codeStr);
+        (void)std::getline(std::cin, codeStr);
         try {
           const uint64_t id = std::stoull(idStr);
           const int32_t code = std::stoi(codeStr);
