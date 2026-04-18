@@ -621,18 +621,20 @@ namespace aircraft {
               } else {
                 network::VerificationRequest req{};
                 (void)std::memcpy(&req, payload.data(), sizeof(req));
-                network::VerificationResponse resp{};
-                resp.challenge_response = req.challenge ^ 0xDEADBEEFU;
-                resp.client_id = aircraft_id_;
-                auto resp_packet
-                    = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, resp);
-                if (connection_) {
-                  connection_->send(resp_packet);
-                  verified_ = true;
-                  connection_->setState(network::ConnectionState::VERIFIED);
+                {
+                  network::VerificationResponse resp{};
+                  resp.challenge_response = req.challenge ^ 0xDEADBEEFU;
+                  resp.client_id = aircraft_id_;
+                  auto resp_packet
+                      = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, resp);
+                  if (connection_) {
+                    connection_->send(resp_packet);
+                    verified_ = true;
+                    connection_->setState(network::ConnectionState::VERIFIED);
+                  }
+                  spdlog::info("Verification successful, client ID {}", aircraft_id_);
+                  sendLandedNotification();
                 }
-                spdlog::info("Verification successful, client ID {}", aircraft_id_);
-                sendLandedNotification();
               }
               break;
             }
@@ -786,6 +788,7 @@ namespace aircraft {
               break;
             }
             default:
+              // No action required for other packet types. (MISRA: default case comment)
               break;
           }
         }
