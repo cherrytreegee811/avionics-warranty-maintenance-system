@@ -56,7 +56,8 @@ namespace aircraft {
     static constexpr char kTimeFormat[] = "%Y-%m-%d %H:%M:%S";
     auto time_t = std::chrono::system_clock::to_time_t(tp);
     std::stringstream ss;
-    ss << std::put_time(std::localtime(&time_t), kTimeFormat);
+    // Prevent array decay by wrapping in std::string
+    ss << std::put_time(std::localtime(&time_t), std::string(kTimeFormat).c_str());
     return ss.str();
   }
 
@@ -94,14 +95,14 @@ namespace aircraft {
       out_ << "  6. Exit\n";
       printSeparator();
       out_ << "Enter choice (1-6): ";
-      out_.flush();
+      (void)out_.flush();
 
       int choice;
       in_ >> choice;
 
       if (in_.fail()) {
         in_.clear();
-        in_.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+        (void)in_.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
         out_ << "Invalid input. Please enter a number.\n";
         waitForEnter();
         continue;

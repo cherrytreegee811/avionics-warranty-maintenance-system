@@ -120,7 +120,7 @@ namespace network {
 
     for (size_t i = 0; i < capped_count; ++i) {
       const auto& fault = faults[i];
-      const auto desc_size = static_cast<uint16_t>(
+      const uint16_t desc_size = static_cast<uint16_t>(
           std::min<size_t>(fault.description.size(), std::numeric_limits<uint16_t>::max()));
 
       DiagnosticFaultCodeHeader header{
@@ -130,12 +130,17 @@ namespace network {
           desc_size,
       };
 
-      const auto start = payload.size();
+      const size_t start = payload.size();
       payload.resize(start + sizeof(header) + desc_size);
-      (void)std::memcpy(payload.data() + start, &header, sizeof(header));
+      // Use array indexing instead of pointer arithmetic for MISRA compliance
+      const uint8_t* header_bytes = reinterpret_cast<const uint8_t*>(&header);
+      for (size_t j = 0; j < sizeof(header); ++j) {
+        payload[start + j] = header_bytes[j];
+      }
       if (desc_size > 0) {
-        (void)std::memcpy(payload.data() + start + sizeof(header), fault.description.data(),
-                          desc_size);
+        for (size_t j = 0; j < desc_size; ++j) {
+          payload[start + sizeof(header) + j] = static_cast<uint8_t>(fault.description[j]);
+        }
       }
     }
 
@@ -223,7 +228,9 @@ namespace network {
     if (expiry_size > 0) {
       const auto start = payload.size();
       payload.resize(start + expiry_size);
-      (void)std::memcpy(payload.data() + start, warranty.expiryDate.data(), expiry_size);
+      for (size_t i = 0; i < expiry_size; ++i) {
+        payload[start + i] = static_cast<uint8_t>(warranty.expiryDate[i]);
+      }
     }
 
     const auto provider_size_offset = payload.size();
@@ -233,7 +240,9 @@ namespace network {
     if (provider_size > 0) {
       const auto start = payload.size();
       payload.resize(start + provider_size);
-      (void)std::memcpy(payload.data() + start, warranty.provider.data(), provider_size);
+      for (size_t i = 0; i < provider_size; ++i) {
+        payload[start + i] = static_cast<uint8_t>(warranty.provider[i]);
+      }
     }
 
     return payload;
@@ -396,9 +405,9 @@ namespace network {
     }
 
     if (ok && (header_out.chunk_data_size > 0U)) {
-      const auto chunk_bytes = payload_span.subspan(
-          sizeof(ImageChunkHeader), static_cast<size_t>(header_out.chunk_data_size));
-      (void)std::memcpy(chunk_data_out.data(), chunk_bytes.data(), chunk_bytes.size());
+      for (size_t i = 0; i < static_cast<size_t>(header_out.chunk_data_size); ++i) {
+        chunk_data_out[i] = payload[sizeof(ImageChunkHeader) + i];
+      }
     }
 
     uint32_t computed_chunk_crc = 0;
