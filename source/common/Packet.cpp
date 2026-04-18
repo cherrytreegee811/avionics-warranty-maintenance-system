@@ -396,8 +396,8 @@ namespace network {
     }
 
     if (ok && (header_out.chunk_data_size > 0U)) {
-      const auto chunk_bytes = payload_span.subspan(sizeof(ImageChunkHeader),
-                                                    static_cast<size_t>(header_out.chunk_data_size));
+      const auto chunk_bytes = payload_span.subspan(
+          sizeof(ImageChunkHeader), static_cast<size_t>(header_out.chunk_data_size));
       (void)std::memcpy(chunk_data_out.data(), chunk_bytes.data(), chunk_bytes.size());
     }
 
