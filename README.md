@@ -3,7 +3,7 @@
 [![ubuntu](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/ubuntu.yml/badge.svg)](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/ubuntu.yml)
 [![style](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/style.yml/badge.svg)](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/style.yml)
 [![install](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/install.yml/badge.svg)](https://github.com/CherryTreeGee811/avionics-warranty-maintenance-system/actions/workflows/install.yml)
-[![codecov](https://codecov.io/gh/CherryTreeGee811/avionics-warranty-maintenance-system/branch/master/graph/badge.svg)](https://codecov.io/gh/CherryTreeGee811/avionics-warranty-maintenance-system)
+[![codecov](https://codecov.io/gh/CherryTreeGee811/avionics-warranty-maintenance-system/branch/main/graph/badge.svg)](https://codecov.io/gh/CherryTreeGee811/avionics-warranty-maintenance-system)
 
 # Avionics Warranty & Maintenance Management System
 
