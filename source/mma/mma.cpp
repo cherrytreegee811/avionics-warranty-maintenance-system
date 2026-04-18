@@ -261,7 +261,8 @@ namespace mma {
     uint16_t port = 0;
     if (acceptor_) {
       std::error_code ec;
-      const auto endpoint = acceptor_->local_endpoint(ec);
+      asio::ip::tcp::endpoint endpoint;
+      endpoint = acceptor_->local_endpoint(ec);
       if (!ec) {
         port = endpoint.port();
       }
@@ -270,7 +271,24 @@ namespace mma {
   }
 
   void MMA::doAccept() {
+    bool should_return = false;
     if (!running_ || !acceptor_) {
+      should_return = true;
+    }
+    if (!should_return) {
+      (void)acceptor_->async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
+        if (!ec) {
+          auto conn = network::TcpConnection::create(std::move(socket));
+          handleNewConnection(conn);
+        } else {
+          spdlog::error("Accept error: {}", ec.message());
+        }
+        if (running_) {
+          doAccept();
+        }
+      });
+    }
+    if (should_return) {
       return;
     }
 
@@ -518,7 +536,20 @@ namespace mma {
   }
 
   void MMA::scheduleChunkTimeoutChecks() {
+    bool should_return = false;
     if (!running_ || !chunk_timeout_timer_) {
+      should_return = true;
+    }
+    if (!should_return) {
+      (void)chunk_timeout_timer_->expires_after(kMissingChunkCheckInterval);
+      (void)chunk_timeout_timer_->async_wait([this](const std::error_code& ec) {
+        if (!(ec || !running_)) {
+          processMissingChunkTimeouts();
+          scheduleChunkTimeoutChecks();
+        }
+      });
+    }
+    if (should_return) {
       return;
     }
 
