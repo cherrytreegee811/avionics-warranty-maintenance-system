@@ -43,7 +43,7 @@ namespace test_helpers {
     }
 
     VerificationRequest req;
-    std::memcpy(&req, payload.data(), sizeof(req));
+    (void)std::memcpy(&req, payload.data(), sizeof(req));
 
     // Compute response
     VerificationResponse resp;
@@ -53,7 +53,7 @@ namespace test_helpers {
     asio::write(socket_, asio::buffer(response_packet));
 
     // Send LANDED notification
-    auto landed_packet = serializePacket(PacketType::LANDED_NOTIFICATION, nullptr, 0);
+    auto landed_packet = serializePacket(PacketType::LANDED_NOTIFICATION);
     asio::write(socket_, asio::buffer(landed_packet));
     spdlog::info("MockAircraft sent LANDED notification for client {}", client_id_);
   }

@@ -5,33 +5,35 @@
  */
 
 namespace aircraft {
+
   class Aircraft;
-}
+  class StateManager;
 
-class StateManager;
-
-/**
- * @brief Base interface for all concrete aircraft operational states.
- */
-class BaseState {
-public:
   /**
-   * @brief Constructs a state with references to owning aircraft and manager.
-   * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
-   * @param stateManager Type: @ref StateManager&. Transition manager used by this state.
+   * @brief Base interface for all concrete aircraft operational states.
    */
-  BaseState(aircraft::Aircraft& aircraft, StateManager& stateManager)
-      : m_aircraft(aircraft), m_stateManager(stateManager) {};
-  /** @brief Virtual destructor for polymorphic deletion. */
-  virtual ~BaseState() {}
-  /** @brief Performs state entry initialization logic. */
-  virtual void InitState() = 0;
-  /** @brief Performs state exit cleanup logic. */
-  virtual void CleanUpState() = 0;
+  class BaseState {
+  public:
+    /**
+     * @brief Constructs a state with references to owning aircraft and manager.
+     * @param aircraft Type: @ref aircraft::Aircraft&. Owning aircraft aggregate.
+     * @param stateManager Type: @ref aircraft::StateManager&. Transition manager used by this
+     * state.
+     */
+    BaseState(Aircraft& aircraft, StateManager& stateManager)
+        : m_aircraft(aircraft), m_stateManager(stateManager) {}
+    /** @brief Virtual destructor for polymorphic deletion. */
+    virtual ~BaseState() {}
+    /** @brief Performs state entry initialization logic. */
+    virtual void InitState() = 0;
+    /** @brief Performs state exit cleanup logic. */
+    virtual void CleanUpState() = 0;
 
-protected:
-  aircraft::Aircraft& m_aircraft;
+  protected:
+    Aircraft& m_aircraft;
 
-private:
-  StateManager& m_stateManager;
-};
+  private:
+    StateManager& m_stateManager;
+  };
+
+}  // namespace aircraft

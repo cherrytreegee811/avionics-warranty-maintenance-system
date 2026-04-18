@@ -8,9 +8,13 @@
 
 #include <iostream>
 
-MaintenanceState::MaintenanceState(aircraft::Aircraft& aircraft, StateManager& stateManager)
-    : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
+namespace aircraft {
 
-void MaintenanceState::InitState() { m_aircraft.setCurrentState("MAINTENANCE"); }
+  MaintenanceState::MaintenanceState(Aircraft& aircraft, StateManager& stateManager)
+      : BaseState(aircraft, stateManager), m_stateManager(stateManager) {}
 
-void MaintenanceState::CleanUpState() {}
+  void MaintenanceState::InitState() { m_aircraft.setCurrentState("MAINTENANCE"); }
+
+  void MaintenanceState::CleanUpState() {}
+
+}  // namespace aircraft

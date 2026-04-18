@@ -83,7 +83,7 @@ namespace test_helpers {
       }
 
       network::PacketHeader tentative_header{};
-      std::memcpy(&tentative_header, accumulated.data(), sizeof(tentative_header));
+      (void)std::memcpy(&tentative_header, accumulated.data(), sizeof(tentative_header));
       const size_t total_packet_size
           = sizeof(network::PacketHeader) + tentative_header.payload_size;
       if (accumulated.size() < total_packet_size) {
@@ -135,7 +135,7 @@ namespace test_helpers {
     }
   }
 
-  ScopedMmaStopper::ScopedMmaStopper(MMA& server) : server_(server) {}
+  ScopedMmaStopper::ScopedMmaStopper(mma::MMA& server) : server_(server) {}
 
   ScopedMmaStopper::~ScopedMmaStopper() { server_.stopServer(); }
 

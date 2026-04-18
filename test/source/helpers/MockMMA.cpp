@@ -45,7 +45,7 @@ namespace test_helpers {
       if (header.type == PacketType::VERIFICATION_RESPONSE
           && payload.size() == sizeof(VerificationResponse)) {
         VerificationResponse resp;
-        std::memcpy(&resp, payload.data(), sizeof(resp));
+        (void)std::memcpy(&resp, payload.data(), sizeof(resp));
         // Optionally verify challenge_response, but we accept any for test.
         verified_ = true;
         // After verification, the client will send LANDED automatically.
@@ -56,7 +56,7 @@ namespace test_helpers {
       } else if (header.type == PacketType::STATE_CHANGE_CONFIRMATION
                  && payload.size() == sizeof(StateChangeConfirmation)) {
         StateChangeConfirmation confirmation{};
-        std::memcpy(&confirmation, payload.data(), sizeof(confirmation));
+        (void)std::memcpy(&confirmation, payload.data(), sizeof(confirmation));
         confirmation_count_.fetch_add(1);
         std::lock_guard<std::mutex> lock(confirmations_mutex_);
         applied_confirmations_.push_back(confirmation.applied_state);

@@ -65,7 +65,7 @@ TEST_CASE("REQ-CLT-042: MMA usability - runMenu displays warranty details and ex
   std::ostringstream output;
   ScopedConsoleRedirect redirect(input, output);
 
-  MMA mma;
+  mma::MMA mma;
   mma.runMenu();
 
   spdlog::shutdown();
@@ -96,7 +96,7 @@ TEST_CASE("REQ-CLT-042: MMA usability - runMenu reports missing warranty records
   std::ostringstream output;
   ScopedConsoleRedirect redirect(input, output);
 
-  MMA mma;
+  mma::MMA mma;
   mma.runMenu();
 
   spdlog::shutdown();
@@ -123,7 +123,7 @@ TEST_CASE("REQ-CLT-042: MMA usability - runMenu displays expired warranty detail
   std::ostringstream output;
   ScopedConsoleRedirect redirect(input, output);
 
-  MMA mma;
+  mma::MMA mma;
   mma.runMenu();
 
   spdlog::shutdown();
@@ -149,7 +149,7 @@ TEST_CASE(
   std::ostringstream output;
   ScopedConsoleRedirect redirect(input, output);
 
-  MMA mma;
+  mma::MMA mma;
   mma.runMenu();
 
   spdlog::shutdown();
@@ -179,7 +179,7 @@ TEST_CASE("REQ-CLT-042: MMA usability - runMenu handles invalid IDs and diagnost
   std::ostringstream output;
   ScopedConsoleRedirect redirect(input, output);
 
-  MMA mma;
+  mma::MMA mma;
   mma.runMenu();
 
   spdlog::shutdown();

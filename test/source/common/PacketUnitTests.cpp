@@ -3,6 +3,7 @@
 #include <doctest/doctest.h>
 
 #include <cstring>
+#include <span>
 
 using namespace network;
 
@@ -33,7 +34,7 @@ TEST_CASE(
   CHECK(header.checksum != 0);
 
   VerificationRequest deserialized;
-  std::memcpy(&deserialized, payload.data(), sizeof(deserialized));
+  (void)std::memcpy(&deserialized, payload.data(), sizeof(deserialized));
   CHECK(deserialized.challenge == original.challenge);
   CHECK(deserialized.timestamp == original.timestamp);
 }
@@ -50,7 +51,7 @@ TEST_CASE("REQ-SYS-010/REQ-NET-013: VerificationResponse serialization/deseriali
   CHECK(header.payload_size == sizeof(VerificationResponse));
 
   VerificationResponse deserialized;
-  std::memcpy(&deserialized, payload.data(), sizeof(deserialized));
+  (void)std::memcpy(&deserialized, payload.data(), sizeof(deserialized));
   CHECK(deserialized.challenge_response == original.challenge_response);
   CHECK(deserialized.client_id == original.client_id);
 }
@@ -66,7 +67,7 @@ TEST_CASE("REQ-NET-013: StateChangeRequest serialization/deserialization") {
   CHECK(header.payload_size == sizeof(StateChangeRequest));
 
   StateChangeRequest parsed{};
-  std::memcpy(&parsed, payload.data(), sizeof(parsed));
+  (void)std::memcpy(&parsed, payload.data(), sizeof(parsed));
   CHECK(parsed.target_state == StateId::DIAGNOSTIC);
 }
 
@@ -81,7 +82,7 @@ TEST_CASE("REQ-NET-013: DiagnosticCodeClearRequest serialization/deserialization
   CHECK(header.payload_size == sizeof(DiagnosticCodeClearRequest));
 
   DiagnosticCodeClearRequest parsed{};
-  std::memcpy(&parsed, payload.data(), sizeof(parsed));
+  (void)std::memcpy(&parsed, payload.data(), sizeof(parsed));
   CHECK(parsed.code == original.code);
 }
 
@@ -97,7 +98,7 @@ TEST_CASE("REQ-NET-013: DiagnosticCodeClearConfirmation serialization/deserializ
   CHECK(header.payload_size == sizeof(DiagnosticCodeClearConfirmation));
 
   DiagnosticCodeClearConfirmation parsed{};
-  std::memcpy(&parsed, payload.data(), sizeof(parsed));
+  (void)std::memcpy(&parsed, payload.data(), sizeof(parsed));
   CHECK(parsed.code == original.code);
   CHECK(parsed.status == DiagnosticCodeClearStatus::SUCCESS);
   CHECK(parsed.resulting_state == StateId::MAINTENANCE);
@@ -127,14 +128,14 @@ TEST_CASE("REQ-NET-012: Diagnostic payload rejects malformed buffer") {
   std::vector<uint8_t> malformed;
   const uint16_t count = 1;
   malformed.resize(sizeof(count));
-  std::memcpy(malformed.data(), &count, sizeof(count));
+  (void)std::memcpy(malformed.data(), &count, sizeof(count));
 
   std::vector<DiagnosticFaultCode> parsed;
   CHECK(!deserializeDiagnosticDataPayload(malformed, parsed));
 
   malformed.clear();
   malformed.resize(sizeof(uint16_t) + sizeof(DiagnosticFaultCodeHeader) - 1);
-  std::memcpy(malformed.data(), &count, sizeof(count));
+  (void)std::memcpy(malformed.data(), &count, sizeof(count));
   CHECK(!deserializeDiagnosticDataPayload(malformed, parsed));
 }
 
@@ -180,7 +181,7 @@ TEST_CASE("REQ-NET-012: Packet with wrong size fails deserialization") {
 // REQ-CLT-005: The airplane should tell the MMA when it has landed.
 // ============================================================================
 TEST_CASE("REQ-CLT-005: LANDED packet serialization/deserialization") {
-  auto packet = serializePacket(PacketType::LANDED_NOTIFICATION, nullptr, 0);
+  auto packet = serializePacket(PacketType::LANDED_NOTIFICATION);
   PacketHeader header;
   std::vector<uint8_t> payload;
   CHECK(deserializePacket(packet, header, payload));
@@ -219,8 +220,10 @@ TEST_CASE(
   CHECK(header.chunk_index == 0);
   CHECK(header.total_chunks == 1);
   CHECK(header.format == ImageFormat::PNG);
-  CHECK(header.chunk_crc32 == Crc32::calculate(image_data.data(), image_data.size()));
-  CHECK(header.image_crc32 == Crc32::calculate(image_data.data(), image_data.size()));
+  CHECK(header.chunk_crc32
+        == Crc32::calculate(std::span<const uint8_t>(image_data.data(), image_data.size())));
+  CHECK(header.image_crc32
+        == Crc32::calculate(std::span<const uint8_t>(image_data.data(), image_data.size())));
   CHECK(chunk_data == image_data);
 }
 
@@ -249,8 +252,10 @@ TEST_CASE(
     CHECK(header.total_chunks == static_cast<uint16_t>(chunks.size()));
     CHECK(header.format == ImageFormat::JPEG);
     CHECK(header.chunk_data_size == chunk_data.size());
-    CHECK(header.chunk_crc32 == Crc32::calculate(chunk_data.data(), chunk_data.size()));
-    CHECK(header.image_crc32 == Crc32::calculate(large_image.data(), large_image.size()));
+    CHECK(header.chunk_crc32
+          == Crc32::calculate(std::span<const uint8_t>(chunk_data.data(), chunk_data.size())));
+    CHECK(header.image_crc32
+          == Crc32::calculate(std::span<const uint8_t>(large_image.data(), large_image.size())));
   }
 }
 
@@ -268,7 +273,8 @@ TEST_CASE(
   const auto reassembled = buffer.reassemble();
   CHECK(reassembled == data);
 
-  CHECK(buffer.setExpectedImageCrc(Crc32::calculate(data.data(), data.size())));
+  CHECK(buffer.setExpectedImageCrc(
+      Crc32::calculate(std::span<const uint8_t>(data.data(), data.size()))));
   CHECK(buffer.validateReassembledCrc(reassembled));
 }
 
@@ -372,7 +378,8 @@ TEST_CASE(
   const auto reassembled = buffer.reassemble();
   CHECK(reassembled == original_image);
 
-  CHECK(buffer.setExpectedImageCrc(Crc32::calculate(original_image.data(), original_image.size())));
+  CHECK(buffer.setExpectedImageCrc(
+      Crc32::calculate(std::span<const uint8_t>(original_image.data(), original_image.size()))));
   CHECK(buffer.validateReassembledCrc(reassembled));
 }
 
@@ -433,7 +440,7 @@ TEST_CASE(
   // Payload with wrong size
   ImageChunkHeader hdr{100, 0, 1, 500, ImageFormat::PNG, 0, 0};
   std::vector<uint8_t> invalid_payload(sizeof(hdr) + 100);  // Says 500 bytes but has 100
-  std::memcpy(invalid_payload.data(), &hdr, sizeof(hdr));
+  (void)std::memcpy(invalid_payload.data(), &hdr, sizeof(hdr));
   CHECK(!deserializeImageChunk(invalid_payload, header, chunk_data));
 }
 
@@ -491,7 +498,8 @@ TEST_CASE("REQ-NET-012: ImageBuffer CRC expectation edge cases") {
 
   CHECK(!buffer.validateReassembledCrc(reassembled));
 
-  const uint32_t crc = Crc32::calculate(reassembled.data(), reassembled.size());
+  const uint32_t crc
+      = Crc32::calculate(std::span<const uint8_t>(reassembled.data(), reassembled.size()));
   CHECK(buffer.setExpectedImageCrc(crc));
   CHECK(buffer.setExpectedImageCrc(crc));
   CHECK(!buffer.setExpectedImageCrc(crc ^ 0xFFFFFFFFU));

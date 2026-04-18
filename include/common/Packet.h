@@ -7,15 +7,18 @@
 #include <common/Crc32.h>
 #include <common/WarrantyData.h>
 
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
+#include <span>
 #include <string>
+#include <string_view>
 #include <vector>
 
 namespace network {
 
   /** @brief Magic constant used to validate packet framing. */
-  constexpr uint32_t PACKET_MAGIC = 0xABCD1234;
+  constexpr uint32_t PACKET_MAGIC = 0xABCD1234U;
 
   /** @brief Supported message types for client-server protocol packets. */
   enum class PacketType : uint8_t {
@@ -142,11 +145,48 @@ namespace network {
   /**
    * @brief Serializes a packet from raw payload bytes.
    * @param type Type: @ref network::PacketType. Packet type discriminator.
-   * @param payload Type: const void*. Pointer to payload bytes.
-   * @param payload_size Type: size_t. Number of payload bytes.
+   * @param payload Type: std::span<const std::byte>. Payload bytes.
    * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
    */
-  std::vector<uint8_t> serializePacket(PacketType type, const void* payload, size_t payload_size);
+  std::vector<uint8_t> serializePacket(PacketType type, std::span<const std::byte> payload);
+
+  /**
+   * @brief Convenience overload for packets with no payload.
+   * @param type Type: @ref network::PacketType. Packet type discriminator.
+   * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
+   */
+  inline std::vector<uint8_t> serializePacket(PacketType type) { return serializePacket(type, {}); }
+
+  inline std::vector<uint8_t> serializePacket(PacketType type, const uint8_t* payload_data,
+                                              size_t payload_size) {
+    std::span<const std::byte> payload = {};
+    if ((payload_data != nullptr) && (payload_size > 0U)) {
+      payload = std::as_bytes(std::span<const uint8_t>(payload_data, payload_size));
+    }
+
+    return serializePacket(type, payload);
+  }
+
+  /**
+   * @brief Convenience overload for serializing a byte buffer payload.
+   * @param type Type: @ref network::PacketType. Packet type discriminator.
+   * @param payload Type: std::span<const uint8_t>. Payload bytes.
+   * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
+   */
+  inline std::vector<uint8_t> serializePacket(PacketType type, std::span<const uint8_t> payload) {
+    return serializePacket(type, std::as_bytes(payload));
+  }
+
+  /**
+   * @brief Convenience overload for serializing a byte-vector payload.
+   * @param type Type: @ref network::PacketType. Packet type discriminator.
+   * @param payload Type: const std::vector<uint8_t>&. Payload bytes.
+   * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
+   */
+  inline std::vector<uint8_t> serializePacket(PacketType type,
+                                              const std::vector<uint8_t>& payload) {
+    return serializePacket(type, std::as_bytes(std::span{payload}));
+  }
   /**
    * @brief Convenience wrapper that serializes a POD payload object.
    * @param type Type: @ref network::PacketType. Packet type discriminator.
@@ -154,7 +194,7 @@ namespace network {
    * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
    */
   template <typename T> std::vector<uint8_t> serializePacket(PacketType type, const T& payload) {
-    return serializePacket(type, &payload, sizeof(T));
+    return serializePacket(type, std::as_bytes(std::span{&payload, 1U}));
   }
 
   /**
@@ -225,12 +265,22 @@ namespace network {
    * @brief Computes packet checksum for test verification and diagnostics.
    * @param header Type: const @ref network::PacketHeader&. Packet header with checksum field
    * ignored.
-   * @param payload Type: const void*. Pointer to payload bytes.
-   * @param payload_size Type: size_t. Number of payload bytes.
+   * @param payload Type: std::span<const std::byte>. Payload bytes.
    * @return Type: uint32_t. CRC-32 checksum for packet header and payload.
    */
-  uint32_t computePacketChecksum(const PacketHeader& header, const void* payload,
-                                 size_t payload_size);
+  uint32_t computePacketChecksum(const PacketHeader& header, std::span<const std::byte> payload);
+
+  /**
+   * @brief Convenience overload for computing checksum for a byte buffer payload.
+   * @param header Type: const @ref network::PacketHeader&. Packet header with checksum field
+   * ignored.
+   * @param payload Type: std::span<const uint8_t>. Payload bytes.
+   * @return Type: uint32_t. CRC-32 checksum for packet header and payload.
+   */
+  inline uint32_t computePacketChecksum(const PacketHeader& header,
+                                        std::span<const uint8_t> payload) {
+    return computePacketChecksum(header, std::as_bytes(payload));
+  }
 
   /**
    * @brief Converts a state identifier to a human-readable string.
@@ -238,18 +288,26 @@ namespace network {
    * @return Type: std::string_view. String representation of state.
    */
   inline constexpr std::string_view stateIdToString(StateId state) {
+    std::string_view result = "UNKNOWN";
     switch (state) {
       case StateId::STANDBY:
-        return "STANDBY";
+        result = "STANDBY";
+        break;
       case StateId::DIAGNOSTIC:
-        return "DIAGNOSTIC";
+        result = "DIAGNOSTIC";
+        break;
       case StateId::MAINTENANCE:
-        return "MAINTENANCE";
+        result = "MAINTENANCE";
+        break;
       case StateId::FAULT:
-        return "FAULT";
+        result = "FAULT";
+        break;
       default:
-        return "UNKNOWN";
+        // Unknown state id.
+        break;
     }
+
+    return result;
   }
 
   /**
@@ -259,14 +317,20 @@ namespace network {
    */
   inline constexpr std::string_view diagnosticFaultSeverityToString(
       DiagnosticFaultSeverity severity) {
+    std::string_view result = "UNKNOWN";
     switch (severity) {
       case DiagnosticFaultSeverity::MINOR:
-        return "MINOR";
+        result = "MINOR";
+        break;
       case DiagnosticFaultSeverity::MAJOR:
-        return "MAJOR";
+        result = "MAJOR";
+        break;
       default:
-        return "UNKNOWN";
+        // Unknown severity.
+        break;
     }
+
+    return result;
   }
 
   /**
@@ -275,16 +339,23 @@ namespace network {
    * @return Type: std::string_view. String representation of image format.
    */
   inline constexpr std::string_view imageFormatToString(ImageFormat format) {
+    std::string_view result = "UNKNOWN";
     switch (format) {
       case ImageFormat::RAW:
-        return "RAW";
+        result = "RAW";
+        break;
       case ImageFormat::PNG:
-        return "PNG";
+        result = "PNG";
+        break;
       case ImageFormat::JPEG:
-        return "JPEG";
+        result = "JPEG";
+        break;
       default:
-        return "UNKNOWN";
+        // Unknown image format.
+        break;
     }
+
+    return result;
   }
 
   /**
@@ -294,18 +365,26 @@ namespace network {
    */
   inline constexpr std::string_view diagnosticCodeClearStatusToString(
       DiagnosticCodeClearStatus status) {
+    std::string_view result = "UNKNOWN";
     switch (status) {
       case DiagnosticCodeClearStatus::SUCCESS:
-        return "SUCCESS";
+        result = "SUCCESS";
+        break;
       case DiagnosticCodeClearStatus::REJECTED_NOT_IN_CLEARABLE_STATE:
-        return "REJECTED_NOT_IN_CLEARABLE_STATE";
+        result = "REJECTED_NOT_IN_CLEARABLE_STATE";
+        break;
       case DiagnosticCodeClearStatus::CODE_NOT_FOUND:
-        return "CODE_NOT_FOUND";
+        result = "CODE_NOT_FOUND";
+        break;
       case DiagnosticCodeClearStatus::MALFORMED_REQUEST:
-        return "MALFORMED_REQUEST";
+        result = "MALFORMED_REQUEST";
+        break;
       default:
-        return "UNKNOWN";
+        // Unknown status.
+        break;
     }
+
+    return result;
   }
 
   /**
@@ -345,12 +424,17 @@ namespace network {
      * @return Type: bool. True if value was set or matches the existing expectation.
      */
     bool setExpectedImageCrc(uint32_t crc32) {
+      bool result = false;
+
       if (!expected_image_crc32_set) {
         expected_image_crc32 = crc32;
         expected_image_crc32_set = true;
-        return true;
+        result = true;
+      } else {
+        result = (expected_image_crc32 == crc32);
       }
-      return expected_image_crc32 == crc32;
+
+      return result;
     }
 
     /**
@@ -360,17 +444,22 @@ namespace network {
      * @return Type: bool. True when the image is complete after this insert.
      */
     bool addChunk(uint16_t chunk_index, const std::vector<uint8_t>& data) {
-      if (chunk_index >= total_chunks) {
-        return false;  // Invalid chunk index
-      }
-      if (received[chunk_index]) {
-        return isComplete();  // Already have this chunk
+      bool result = false;
+
+      if (chunk_index < total_chunks) {
+        if (received[chunk_index]) {
+          result = isComplete();
+        } else {
+          chunks[chunk_index] = data;
+          received[chunk_index] = true;
+          total_size_bytes += data.size();
+          result = isComplete();
+        }
+      } else {
+        result = false;
       }
 
-      chunks[chunk_index] = data;
-      received[chunk_index] = true;
-      total_size_bytes += data.size();
-      return isComplete();
+      return result;
     }
 
     /**
@@ -378,10 +467,16 @@ namespace network {
      * @return Type: bool. True when no chunk is missing.
      */
     bool isComplete() const {
+      bool complete = true;
+
       for (bool r : received) {
-        if (!r) return false;
+        if (!r) {
+          complete = false;
+          break;
+        }
       }
-      return true;
+
+      return complete;
     }
 
     /**
@@ -392,7 +487,7 @@ namespace network {
       std::vector<uint8_t> result;
       result.reserve(total_size_bytes);
       for (const auto& chunk : chunks) {
-        result.insert(result.end(), chunk.begin(), chunk.end());
+        (void)result.insert(result.end(), chunk.begin(), chunk.end());
       }
       return result;
     }
@@ -403,10 +498,13 @@ namespace network {
      * @return Type: bool. True if CRC matches the expected image checksum.
      */
     bool validateReassembledCrc(const std::vector<uint8_t>& reassembled) const {
-      if (!expected_image_crc32_set) {
-        return false;
+      bool result = false;
+
+      if (expected_image_crc32_set) {
+        result = (Crc32::calculate(std::span<const uint8_t>(reassembled)) == expected_image_crc32);
       }
-      return Crc32::calculate(reassembled.data(), reassembled.size()) == expected_image_crc32;
+
+      return result;
     }
   };
 }  // namespace network
