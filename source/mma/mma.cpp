@@ -271,11 +271,9 @@ namespace mma {
   }
 
   void MMA::doAccept() {
-    bool should_return = false;
     if (!running_ || !acceptor_) {
-      should_return = true;
-    }
-    if (!should_return) {
+      // MISRA: single exit point at end
+    } else {
       (void)acceptor_->async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
         if (!ec) {
           auto conn = network::TcpConnection::create(std::move(socket));
@@ -288,9 +286,7 @@ namespace mma {
         }
       });
     }
-    if (should_return) {
-      return;
-    }
+    return;
 
     (void)acceptor_->async_accept([this](std::error_code ec, asio::ip::tcp::socket socket) {
       if (!ec) {
@@ -536,11 +532,9 @@ namespace mma {
   }
 
   void MMA::scheduleChunkTimeoutChecks() {
-    bool should_return = false;
     if (!running_ || !chunk_timeout_timer_) {
-      should_return = true;
-    }
-    if (!should_return) {
+      // MISRA: single exit point at end
+    } else {
       (void)chunk_timeout_timer_->expires_after(kMissingChunkCheckInterval);
       (void)chunk_timeout_timer_->async_wait([this](const std::error_code& ec) {
         if (!(ec || !running_)) {
@@ -549,9 +543,7 @@ namespace mma {
         }
       });
     }
-    if (should_return) {
-      return;
-    }
+    return;
 
     (void)chunk_timeout_timer_->expires_after(kMissingChunkCheckInterval);
     (void)chunk_timeout_timer_->async_wait([this](const std::error_code& ec) {

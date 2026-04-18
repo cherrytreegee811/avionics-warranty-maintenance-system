@@ -635,14 +635,12 @@ namespace aircraft {
                 network::VerificationResponse resp{};
                 resp.challenge_response = req.challenge ^ 0xDEADBEEFU;
                 resp.client_id = aircraft_id_;
-                {
+                if (connection_) {
                   const auto resp_packet
                       = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, resp);
-                  if (connection_) {
-                    connection_->send(resp_packet);
-                    verified_ = true;
-                    connection_->setState(network::ConnectionState::VERIFIED);
-                  }
+                  connection_->send(resp_packet);
+                  verified_ = true;
+                  connection_->setState(network::ConnectionState::VERIFIED);
                 }
                 spdlog::info("Verification successful, client ID {}", aircraft_id_);
                 sendLandedNotification();
