@@ -635,7 +635,8 @@ namespace aircraft {
                 network::VerificationResponse resp{};
                 resp.challenge_response = req.challenge ^ 0xDEADBEEFU;
                 resp.client_id = aircraft_id_;
-                const auto resp_packet = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, resp);
+                const auto resp_packet
+                    = network::serializePacket(network::PacketType::VERIFICATION_RESPONSE, resp);
                 if (connection_) {
                   connection_->send(resp_packet);
                   verified_ = true;
@@ -740,8 +741,8 @@ namespace aircraft {
                 } else {
                   const auto& chunk_payload = cached_image_it->second[request.chunk_index];
                   if (connection_) {
-                    const auto packet = network::serializePacket(network::PacketType::SCHEMATIC_CHUNK,
-                                                               chunk_payload);
+                    const auto packet = network::serializePacket(
+                        network::PacketType::SCHEMATIC_CHUNK, chunk_payload);
                     connection_->send(packet);
                   }
                   spdlog::info("Resent chunk {} for image {} after MMA retry request",
