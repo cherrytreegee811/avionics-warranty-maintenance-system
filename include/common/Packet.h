@@ -159,12 +159,12 @@ namespace network {
 
   inline std::vector<uint8_t> serializePacket(PacketType type, const uint8_t* payload_data,
                                               size_t payload_size) {
-    if ((payload_data == nullptr) || (payload_size == 0U)) {
-      return serializePacket(type, {});
+    std::span<const std::byte> payload = {};
+    if ((payload_data != nullptr) && (payload_size > 0U)) {
+      payload = std::as_bytes(std::span<const uint8_t>(payload_data, payload_size));
     }
 
-    return serializePacket(type,
-                           std::as_bytes(std::span<const uint8_t>(payload_data, payload_size)));
+    return serializePacket(type, payload);
   }
 
   /**
@@ -183,8 +183,7 @@ namespace network {
    * @param payload Type: const std::vector<uint8_t>&. Payload bytes.
    * @return Type: std::vector<uint8_t>. Serialized packet bytes including header.
    */
-  inline std::vector<uint8_t> serializePacket(PacketType type,
-                                              const std::vector<uint8_t>& payload) {
+  inline std::vector<uint8_t> serializePacket(PacketType type, const std::vector<uint8_t>& payload) {
     return serializePacket(type, std::as_bytes(std::span{payload}));
   }
   /**
@@ -272,13 +271,11 @@ namespace network {
 
   /**
    * @brief Convenience overload for computing checksum for a byte buffer payload.
-   * @param header Type: const @ref network::PacketHeader&. Packet header with checksum field
-   * ignored.
+   * @param header Type: const @ref network::PacketHeader&. Packet header with checksum field ignored.
    * @param payload Type: std::span<const uint8_t>. Payload bytes.
    * @return Type: uint32_t. CRC-32 checksum for packet header and payload.
    */
-  inline uint32_t computePacketChecksum(const PacketHeader& header,
-                                        std::span<const uint8_t> payload) {
+  inline uint32_t computePacketChecksum(const PacketHeader& header, std::span<const uint8_t> payload) {
     return computePacketChecksum(header, std::as_bytes(payload));
   }
 
@@ -501,7 +498,8 @@ namespace network {
       bool result = false;
 
       if (expected_image_crc32_set) {
-        result = (Crc32::calculate(std::span<const uint8_t>(reassembled)) == expected_image_crc32);
+        result = (Crc32::calculate(std::span<const uint8_t>(reassembled))
+                  == expected_image_crc32);
       }
 
       return result;

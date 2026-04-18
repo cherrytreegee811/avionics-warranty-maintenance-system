@@ -16,11 +16,11 @@ namespace network {
 
   namespace {
 
-    std::string bytesToString(const uint8_t* data, size_t length) {
+    static std::string bytesToString(std::span<const uint8_t> bytes) {
       std::string result;
-      result.resize(length);
-      for (size_t i = 0; i < length; ++i) {
-        result[i] = static_cast<char>(data[i]);
+      result.resize(bytes.size());
+      for (size_t i = 0; i < bytes.size(); ++i) {
+        result[i] = static_cast<char>(bytes[i]);
       }
       return result;
     }
@@ -42,7 +42,7 @@ namespace network {
     std::vector<uint8_t> result(sizeof(PacketHeader) + payload_size);
     (void)std::memcpy(result.data(), &header, sizeof(PacketHeader));
     if (!payload.empty()) {
-      (void)std::memcpy(result.data() + sizeof(PacketHeader), payload.data(), payload_size);
+      (void)std::memcpy(&result[sizeof(PacketHeader)], payload.data(), payload_size);
     }
     return result;
   }
@@ -144,42 +144,64 @@ namespace network {
 
   bool deserializeDiagnosticDataPayload(const std::vector<uint8_t>& payload,
                                         std::vector<DiagnosticFaultCode>& faults) {
+    bool ok = true;
     faults.clear();
+
     constexpr size_t kCountSize = sizeof(uint16_t);
     if (payload.size() < kCountSize) {
-      return false;
+      ok = false;
     }
 
+    const auto payload_span = std::span<const uint8_t>(payload);
+
     uint16_t count = 0;
-    (void)std::memcpy(&count, payload.data(), sizeof(count));
+    if (ok) {
+      (void)std::memcpy(&count, payload.data(), sizeof(count));
+    }
 
     size_t offset = kCountSize;
-    faults.reserve(count);
-    for (uint16_t i = 0; i < count; ++i) {
+    std::vector<DiagnosticFaultCode> parsed_faults;
+    if (ok) {
+      parsed_faults.reserve(count);
+    }
+
+    for (uint16_t i = 0; ok && (i < count); ++i) {
       if (offset + sizeof(DiagnosticFaultCodeHeader) > payload.size()) {
-        return false;
+        ok = false;
       }
 
       DiagnosticFaultCodeHeader wire{};
-      (void)std::memcpy(&wire, payload.data() + offset, sizeof(wire));
-      offset += sizeof(wire);
-
-      if (offset + wire.description_size > payload.size()) {
-        return false;
+      if (ok) {
+        (void)std::memcpy(&wire, &payload[offset], sizeof(wire));
+        offset += sizeof(wire);
       }
 
-      DiagnosticFaultCode parsed{};
-      parsed.code = wire.code;
-      parsed.timestamp_epoch_ms = wire.timestamp_epoch_ms;
-      parsed.severity = wire.severity;
-      parsed.description
-          = bytesToString(payload.data() + offset, static_cast<size_t>(wire.description_size));
-      offset += wire.description_size;
+      const size_t desc_size = static_cast<size_t>(wire.description_size);
+      if (ok && (offset + desc_size > payload.size())) {
+        ok = false;
+      }
 
-      faults.push_back(std::move(parsed));
+      if (ok) {
+        DiagnosticFaultCode parsed{};
+        parsed.code = wire.code;
+        parsed.timestamp_epoch_ms = wire.timestamp_epoch_ms;
+        parsed.severity = wire.severity;
+        parsed.description = bytesToString(payload_span.subspan(offset, desc_size));
+        offset += desc_size;
+
+        parsed_faults.push_back(std::move(parsed));
+      }
     }
 
-    return offset == payload.size();
+    if (ok) {
+      ok = (offset == payload.size());
+    }
+
+    if (ok) {
+      faults = std::move(parsed_faults);
+    }
+
+    return ok;
   }
 
   std::vector<uint8_t> serializeWarrantyDataPayload(const common::WarrantyInfo& warranty) {
@@ -196,7 +218,7 @@ namespace network {
     payload.push_back(is_active);
 
     payload.resize(payload.size() + sizeof(expiry_size));
-    (void)std::memcpy(payload.data() + 1, &expiry_size, sizeof(expiry_size));
+    (void)std::memcpy(&payload[1], &expiry_size, sizeof(expiry_size));
 
     if (expiry_size > 0) {
       const auto start = payload.size();
@@ -206,7 +228,7 @@ namespace network {
 
     const auto provider_size_offset = payload.size();
     payload.resize(payload.size() + sizeof(provider_size));
-    (void)std::memcpy(payload.data() + provider_size_offset, &provider_size, sizeof(provider_size));
+    (void)std::memcpy(&payload[provider_size_offset], &provider_size, sizeof(provider_size));
 
     if (provider_size > 0) {
       const auto start = payload.size();
@@ -219,68 +241,98 @@ namespace network {
 
   bool deserializeWarrantyDataPayload(const std::vector<uint8_t>& payload,
                                       common::WarrantyInfo& warranty) {
+    bool ok = true;
+    common::WarrantyInfo parsed = warranty;
+
     if (payload.size() < sizeof(uint8_t) + sizeof(uint16_t) + sizeof(uint16_t)) {
-      return false;
+      ok = false;
     }
 
+    const auto payload_span = std::span<const uint8_t>(payload);
     size_t offset = 0;
-    warranty.isActive = payload[offset] != 0;
-    offset += sizeof(uint8_t);
+
+    if (ok) {
+      parsed.isActive = payload[offset] != 0;
+      offset += sizeof(uint8_t);
+    }
 
     uint16_t expiry_size = 0;
-    (void)std::memcpy(&expiry_size, payload.data() + offset, sizeof(expiry_size));
-    offset += sizeof(expiry_size);
-
-    if (offset + expiry_size > payload.size()) {
-      return false;
+    if (ok) {
+      (void)std::memcpy(&expiry_size, &payload[offset], sizeof(expiry_size));
+      offset += sizeof(expiry_size);
     }
-    warranty.expiryDate = bytesToString(payload.data() + offset, static_cast<size_t>(expiry_size));
-    offset += expiry_size;
 
-    if (offset + sizeof(uint16_t) > payload.size()) {
-      return false;
+    const size_t expiry_size_st = static_cast<size_t>(expiry_size);
+    if (ok && (offset + expiry_size_st > payload.size())) {
+      ok = false;
+    }
+    if (ok) {
+      parsed.expiryDate = bytesToString(payload_span.subspan(offset, expiry_size_st));
+      offset += expiry_size_st;
+    }
+
+    if (ok && (offset + sizeof(uint16_t) > payload.size())) {
+      ok = false;
     }
 
     uint16_t provider_size = 0;
-    (void)std::memcpy(&provider_size, payload.data() + offset, sizeof(provider_size));
-    offset += sizeof(provider_size);
-
-    if (offset + provider_size > payload.size()) {
-      return false;
+    if (ok) {
+      (void)std::memcpy(&provider_size, &payload[offset], sizeof(provider_size));
+      offset += sizeof(provider_size);
     }
-    warranty.provider = bytesToString(payload.data() + offset, static_cast<size_t>(provider_size));
-    offset += provider_size;
 
-    return offset == payload.size();
+    const size_t provider_size_st = static_cast<size_t>(provider_size);
+    if (ok && (offset + provider_size_st > payload.size())) {
+      ok = false;
+    }
+    if (ok) {
+      parsed.provider = bytesToString(payload_span.subspan(offset, provider_size_st));
+      offset += provider_size_st;
+    }
+
+    if (ok) {
+      ok = (offset == payload.size());
+    }
+
+    if (ok) {
+      warranty = std::move(parsed);
+    }
+    return ok;
   }
 
   std::vector<std::vector<uint8_t>> serializeImagePayload(uint32_t image_id,
                                                           const std::vector<uint8_t>& image_data,
                                                           ImageFormat format) {
     std::vector<std::vector<uint8_t>> result;
+    bool ok = true;
 
     if (image_data.empty()) {
       spdlog::warn("Cannot serialize empty image");
-      return result;
+      ok = false;
     }
 
     // Calculate chunk count and validate
     const size_t kMaxDataPerChunk = kMaxImageChunkPayloadSize;
     const size_t total_chunks = (image_data.size() + kMaxDataPerChunk - 1) / kMaxDataPerChunk;
 
-    if (total_chunks > std::numeric_limits<uint16_t>::max()) {
+    if (ok && (total_chunks > std::numeric_limits<uint16_t>::max())) {
       spdlog::error("Image too large: requires {} chunks, max is {}", total_chunks,
                     std::numeric_limits<uint16_t>::max());
-      return result;
+      ok = false;
     }
 
-    const auto total_chunks_u16 = static_cast<uint16_t>(total_chunks);
-    const auto image_span = std::span<const uint8_t>(image_data);
-    const uint32_t image_crc32 = Crc32::calculate(image_span);
+    uint16_t total_chunks_u16 = 0;
+    std::span<const uint8_t> image_span{};
+    uint32_t image_crc32 = 0;
+    if (ok) {
+      total_chunks_u16 = static_cast<uint16_t>(total_chunks);
+      image_span = std::span<const uint8_t>(image_data);
+      image_crc32 = Crc32::calculate(image_span);
+    }
 
     // Serialize each chunk
     size_t bytes_serialized = 0;
-    for (uint16_t chunk_index = 0; chunk_index < total_chunks_u16; ++chunk_index) {
+    for (uint16_t chunk_index = 0; ok && (chunk_index < total_chunks_u16); ++chunk_index) {
       const size_t chunk_start = bytes_serialized;
       const size_t chunk_end = std::min(bytes_serialized + kMaxDataPerChunk, image_data.size());
       const size_t chunk_size = chunk_end - chunk_start;
@@ -294,7 +346,7 @@ namespace network {
       std::vector<uint8_t> chunk_payload(sizeof(header) + chunk_size);
       (void)std::memcpy(chunk_payload.data(), &header, sizeof(header));
       if (chunk_size > 0) {
-        (void)std::memcpy(chunk_payload.data() + sizeof(header),
+        (void)std::memcpy(&chunk_payload[sizeof(header)],
                           image_span.subspan(chunk_start, chunk_size).data(), chunk_size);
       }
 
@@ -302,52 +354,70 @@ namespace network {
       bytes_serialized = chunk_end;
     }
 
-    spdlog::info("Serialized image {} into {} chunks ({} bytes total)", image_id, total_chunks_u16,
-                 image_data.size());
+    if (ok) {
+      spdlog::info("Serialized image {} into {} chunks ({} bytes total)", image_id,
+                   total_chunks_u16, image_data.size());
+    }
     return result;
   }
 
   bool deserializeImageChunk(const std::vector<uint8_t>& payload, ImageChunkHeader& header_out,
                              std::vector<uint8_t>& chunk_data_out) {
+    bool ok = true;
     chunk_data_out.clear();
 
     if (payload.size() < sizeof(ImageChunkHeader)) {
       spdlog::warn("Image chunk payload too short: {} bytes", payload.size());
-      return false;
+      ok = false;
     }
 
-    (void)std::memcpy(&header_out, payload.data(), sizeof(ImageChunkHeader));
+    const auto payload_span = std::span<const uint8_t>(payload);
+    if (ok) {
+      (void)std::memcpy(&header_out, payload.data(), sizeof(ImageChunkHeader));
+    }
 
     // Validate header
-    if (header_out.chunk_index >= header_out.total_chunks) {
+    if (ok && (header_out.chunk_index >= header_out.total_chunks)) {
       spdlog::warn("Invalid chunk index: {} >= {}", header_out.chunk_index,
                    header_out.total_chunks);
-      return false;
+      ok = false;
     }
 
     const size_t expected_chunk_size = sizeof(ImageChunkHeader) + header_out.chunk_data_size;
-    if (payload.size() != expected_chunk_size) {
+    if (ok && (payload.size() != expected_chunk_size)) {
       spdlog::warn("Chunk payload size mismatch: expected {}, got {}", expected_chunk_size,
                    payload.size());
-      return false;
+      ok = false;
     }
 
     // Extract chunk data
-    chunk_data_out.resize(header_out.chunk_data_size);
-    if (header_out.chunk_data_size > 0) {
-      (void)std::memcpy(chunk_data_out.data(), payload.data() + sizeof(ImageChunkHeader),
-                        header_out.chunk_data_size);
+    if (ok) {
+      chunk_data_out.resize(header_out.chunk_data_size);
     }
 
-    const uint32_t computed_chunk_crc = Crc32::calculate(std::span<const uint8_t>(chunk_data_out));
-    if (computed_chunk_crc != header_out.chunk_crc32) {
+    if (ok && (header_out.chunk_data_size > 0U)) {
+      const auto chunk_bytes = payload_span.subspan(sizeof(ImageChunkHeader),
+                                                    static_cast<size_t>(header_out.chunk_data_size));
+      (void)std::memcpy(chunk_data_out.data(), chunk_bytes.data(), chunk_bytes.size());
+    }
+
+    uint32_t computed_chunk_crc = 0;
+    if (ok) {
+      computed_chunk_crc = Crc32::calculate(std::span<const uint8_t>(chunk_data_out));
+    }
+
+    if (ok && (computed_chunk_crc != header_out.chunk_crc32)) {
       spdlog::warn("Chunk CRC mismatch for image {} chunk {}: expected 0x{:08X}, computed 0x{:08X}",
                    header_out.image_id, header_out.chunk_index, header_out.chunk_crc32,
                    computed_chunk_crc);
-      return false;
+      ok = false;
     }
 
-    return true;
+    if (!ok) {
+      chunk_data_out.clear();
+    }
+
+    return ok;
   }
 
 }  // namespace network

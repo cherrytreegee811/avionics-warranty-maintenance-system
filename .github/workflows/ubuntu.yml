@@ -74,6 +74,7 @@ jobs:
           gcovr \
             --root . \
             --object-directory build \
+            --gcov-ignore-parse-errors negative_hits.warn \
             --exclude-directories "(^|.*/)build/CMakeFiles/[0-9.]+/CompilerIdCXX(/.*)?$" \
             --exclude-directories "(^|.*/)build/CMakeFiles/[0-9.]+/CompilerIdC(/.*)?$" \
             --exclude-directories "(^|.*/)build/_deps(/.*)?$" \

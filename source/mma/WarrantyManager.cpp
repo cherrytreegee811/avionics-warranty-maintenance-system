@@ -11,52 +11,88 @@
 
 namespace mma {
 
-  WarrantyManager::WarrantyManager(const std::string& storageFile) : storageFile_(storageFile) {}
+WarrantyManager::WarrantyManager(const std::string& storageFile) : storageFile_(storageFile) {}
 
-  bool WarrantyManager::load() {
-    std::ifstream file(storageFile_);
-    if (!file.is_open()) {
-      spdlog::warn("Warranty file not found: {}", storageFile_);
-      return false;
-    }
+bool WarrantyManager::load() {
+  bool ok = true;
+  std::ifstream file(storageFile_);
+  if (!file.is_open()) {
+    spdlog::warn("Warranty file not found: {}", storageFile_);
+    ok = false;
+  }
+
+  if (ok) {
     std::string line;
     while (std::getline(file, line)) {
-      if (line.empty()) continue;
+      if (line.empty()) {
+        continue;
+      }
       std::istringstream ss(line);
-      std::string idStr, activeStr, expiry, provider;
+      std::string idStr;
+      std::string activeStr;
+      std::string expiry;
+      std::string provider;
       if (std::getline(ss, idStr, ',') && std::getline(ss, activeStr, ',')
           && std::getline(ss, expiry, ',') && std::getline(ss, provider)) {
-        uint64_t id = std::stoull(idStr);
-        bool active = (activeStr == "1");
+        const uint64_t id = std::stoull(idStr);
+        const bool active = (activeStr == "1");
         warranties_[id] = {active, expiry, provider};
       }
     }
+
     spdlog::info("Loaded {} warranty records", warranties_.size());
-    return true;
   }
 
-  bool WarrantyManager::save() {
-    std::ofstream file(storageFile_);
-    if (!file.is_open()) {
-      spdlog::error("Cannot write warranty file: {}", storageFile_);
-      return false;
-    }
+  return ok;
+}
+
+bool WarrantyManager::save() {
+  bool ok = true;
+  std::ofstream file(storageFile_);
+  if (!file.is_open()) {
+    spdlog::error("Cannot write warranty file: {}", storageFile_);
+    ok = false;
+  }
+
+  if (ok) {
     for (const auto& [id, info] : warranties_) {
-      file << id << ',' << (info.isActive ? "1" : "0") << ',' << info.expiryDate << ','
+      std::ostringstream line;
+      line << id << ',' << (info.isActive ? "1" : "0") << ',' << info.expiryDate << ','
            << info.provider << '\n';
+      const bool write_ok = static_cast<bool>(file << line.str());
+      if (!write_ok) {
+        ok = false;
+      }
     }
-    return true;
   }
 
-  std::optional<common::WarrantyInfo> WarrantyManager::getWarranty(uint64_t aircraftId) const {
-    auto it = warranties_.find(aircraftId);
-    if (it != warranties_.end()) return it->second;
-    return std::nullopt;
+  if (ok && !file.good()) {
+    ok = false;
   }
 
-  void WarrantyManager::setWarranty(uint64_t aircraftId, const common::WarrantyInfo& info) {
-    warranties_[aircraftId] = info;
-    save();
+  return ok;
+}
+
+std::optional<common::WarrantyInfo> WarrantyManager::getWarranty(uint64_t aircraftId) const {
+  std::optional<common::WarrantyInfo> result;
+
+  const auto it = warranties_.find(aircraftId);
+  if (it != warranties_.end()) {
+    result = it->second;
+  } else {
+    result = std::nullopt;
   }
+
+  return result;
+}
+
+void WarrantyManager::setWarranty(uint64_t aircraftId, const common::WarrantyInfo& info) {
+  warranties_[aircraftId] = info;
+  const bool saved = save();
+  if (!saved) {
+    spdlog::error("Failed to persist warranty data for aircraft {} to {}", aircraftId,
+                  storageFile_);
+  }
+}
 
 }  // namespace mma
