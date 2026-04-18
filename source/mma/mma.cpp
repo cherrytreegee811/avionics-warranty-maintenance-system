@@ -175,7 +175,10 @@ namespace mma {
   MMA::MMA()
       : io_context_(std::make_unique<asio::io_context>()),
         warrantyManager_(std::make_unique<WarrantyManager>()) {
-    warrantyManager_->load();
+    const bool wm_loaded = warrantyManager_->load();
+    if (!wm_loaded) {
+      spdlog::warn("WarrantyManager load failed during MMA initialization");
+    }
   }
 
   MMA::~MMA() = default;
@@ -624,7 +627,10 @@ namespace mma {
       if (line == "1") {
         std::cout << "Enter aircraft ID: ";
         std::string idStr;
-        std::getline(std::cin, idStr);
+        if (!std::getline(std::cin, idStr)) {
+          std::cout << "Input error\n";
+          continue;
+        }
         try {
           uint64_t id = std::stoull(idStr);
           displayWarranty(id);
@@ -643,7 +649,10 @@ namespace mma {
       } else if (line == "4") {
         std::cout << "Enter aircraft ID: ";
         std::string idStr;
-        std::getline(std::cin, idStr);
+        if (!std::getline(std::cin, idStr)) {
+          std::cout << "Input error\n";
+          continue;
+        }
         try {
           const uint64_t id = std::stoull(idStr);
           sendDiagnosticStateChange(id);
@@ -653,10 +662,16 @@ namespace mma {
       } else if (line == "5") {
         std::cout << "Enter aircraft ID: ";
         std::string idStr;
-        std::getline(std::cin, idStr);
+        if (!std::getline(std::cin, idStr)) {
+          std::cout << "Input error\n";
+          continue;
+        }
         std::cout << "Enter diagnostic code to clear: ";
         std::string codeStr;
-        std::getline(std::cin, codeStr);
+        if (!std::getline(std::cin, codeStr)) {
+          std::cout << "Input error\n";
+          continue;
+        }
         try {
           const uint64_t id = std::stoull(idStr);
           const int32_t code = std::stoi(codeStr);

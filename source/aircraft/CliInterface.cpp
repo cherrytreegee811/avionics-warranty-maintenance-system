@@ -10,6 +10,7 @@
 #include <iostream>
 #include <limits>
 #include <sstream>
+#include <string_view>
 
 namespace aircraft {
 
@@ -25,8 +26,10 @@ namespace aircraft {
     if (should_clear) {
       // ANSI clear screen + cursor home.
       out_ << "\x1B[2J\x1B[H";
-      const bool flush_ok = static_cast<bool>(out_.flush());
-      (void)flush_ok;
+      out_.flush();
+      if (!out_) {
+        out_.clear();
+      }
     }
   }
 
@@ -34,13 +37,22 @@ namespace aircraft {
     const bool should_wait = screen_control_enabled_;
     if (should_wait) {
       out_ << "\nPress Enter to continue...";
-      const bool flush_ok = static_cast<bool>(out_.flush());
-      const bool ignore_ok
-          = static_cast<bool>(in_.ignore(std::numeric_limits<std::streamsize>::max(), '\n'));
-      const int ignored = in_.get();
-      (void)flush_ok;
-      (void)ignore_ok;
-      (void)ignored;
+      out_.flush();
+      if (!out_) {
+        out_.clear();
+      }
+
+      in_.ignore(std::numeric_limits<std::streamsize>::max(), '\n');
+      if (in_.fail() && !in_.eof()) {
+        in_.clear();
+        return;
+      }
+
+      const int c = in_.get();
+      if (c == EOF) {
+        in_.clear();
+        return;
+      }
     }
   }
 
@@ -53,10 +65,10 @@ namespace aircraft {
   void CliInterface::printSeparator() { out_ << "----------------------------------------\n"; }
 
   std::string CliInterface::formatTimePoint(const std::chrono::system_clock::time_point& tp) const {
-    static constexpr char kTimeFormat[] = "%Y-%m-%d %H:%M:%S";
+    static constexpr std::string_view kTimeFormat = "%Y-%m-%d %H:%M:%S";
     auto time_t = std::chrono::system_clock::to_time_t(tp);
     std::stringstream ss;
-    ss << std::put_time(std::localtime(&time_t), kTimeFormat);
+    ss << std::put_time(std::localtime(&time_t), kTimeFormat.data());
     return ss.str();
   }
 
