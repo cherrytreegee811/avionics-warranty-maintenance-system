@@ -16,7 +16,9 @@ namespace {
   class ScopedConsoleRedirect {
   public:
     ScopedConsoleRedirect(std::istream& input, std::ostream& output)
-        : input_(input), output_(output), cinBuffer_(std::cin.rdbuf(input_.rdbuf())),
+        : input_(input),
+          output_(output),
+          cinBuffer_(std::cin.rdbuf(input_.rdbuf())),
           coutBuffer_(std::cout.rdbuf(output_.rdbuf())) {}
 
     ScopedConsoleRedirect(const ScopedConsoleRedirect&) = delete;
@@ -76,10 +78,10 @@ TEST_CASE("REQ-CLT-041: MMA usability - runMenu displays warranty details and ex
 
   CHECK(test_helpers::logContains(logFile, "Warranty for aircraft 1001 is ACTIVE"));
   CHECK(test_helpers::logContains(logFile, "Warranty for aircraft 1001 expires on 2030-01-02"));
-  CHECK(test_helpers::logContains(logFile,
-                                  "Warranty for aircraft 1001 is provided by OperatorTest"));
+  CHECK(
+      test_helpers::logContains(logFile, "Warranty for aircraft 1001 is provided by OperatorTest"));
 }
-    
+
 TEST_CASE("REQ-CLT-041: MMA usability - runMenu reports missing warranty records") {
   test_helpers::ScopedTempWorkingDir env("awms_mma_usability_missing");
   REQUIRE(env.ok());
@@ -127,12 +129,13 @@ TEST_CASE("REQ-CLT-041: MMA usability - runMenu displays expired warranty detail
   spdlog::shutdown();
 
   CHECK(test_helpers::logContains(logFile, "Warranty for aircraft 2002 is EXPIRED"));
-  CHECK(test_helpers::logContains(logFile,
-                                  "Warranty for aircraft 2002 is provided by LegacyOps"));
+  CHECK(test_helpers::logContains(logFile, "Warranty for aircraft 2002 is provided by LegacyOps"));
   CHECK(!test_helpers::logContains(logFile, "Warranty for aircraft 2002 expires on"));
 }
 
-TEST_CASE("REQ-CLT-041: MMA usability - runMenu handles list and command options for unverified aircraft") {
+TEST_CASE(
+    "REQ-CLT-041: MMA usability - runMenu handles list and command options for unverified "
+    "aircraft") {
   test_helpers::ScopedTempWorkingDir env("awms_mma_usability_menu_branches");
   REQUIRE(env.ok());
 

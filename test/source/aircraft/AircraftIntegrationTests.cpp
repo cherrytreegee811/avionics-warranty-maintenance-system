@@ -246,8 +246,8 @@ TEST_CASE(
   const std::vector<uint8_t> image_data{0x10, 0x20, 0x30, 0x40};
   REQUIRE(client.sendImage(image_data, network::ImageFormat::RAW));
 
-  REQUIRE(test_helpers::waitFor([&]() { return mockServer.receivedSchematicChunkCount() >= 1; },
-                                3000));
+  REQUIRE(
+      test_helpers::waitFor([&]() { return mockServer.receivedSchematicChunkCount() >= 1; }, 3000));
 
   const auto initial_chunks = mockServer.receivedSchematicChunkPayloads();
   REQUIRE(!initial_chunks.empty());
@@ -255,8 +255,8 @@ TEST_CASE(
 
   REQUIRE(mockServer.sendChunkRetryRequest(1, 0));
 
-  REQUIRE(test_helpers::waitFor([&]() { return mockServer.receivedSchematicChunkCount() >= 2; },
-                                3000));
+  REQUIRE(
+      test_helpers::waitFor([&]() { return mockServer.receivedSchematicChunkCount() >= 2; }, 3000));
 
   const auto chunks_after_retry = mockServer.receivedSchematicChunkPayloads();
   REQUIRE(chunks_after_retry.size() >= 2);
