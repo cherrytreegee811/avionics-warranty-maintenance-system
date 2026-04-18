@@ -19,8 +19,6 @@ public:
    */
   DiagnosticState(aircraft::Aircraft& aircraft, StateManager& stateManager);
 
-  /** @brief Runs periodic diagnostic-state update behavior. */
-  void UpdateState() override;
   /** @brief Executes entry logic for diagnostic state. */
   void InitState() override;
   /** @brief Executes exit logic for diagnostic state. */

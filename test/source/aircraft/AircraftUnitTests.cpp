@@ -171,7 +171,7 @@ TEST_CASE("REQ-CLT-056: Aircraft logs state changes") {
   std::remove(testLogFile.c_str());
 }
 
-TEST_CASE("REQ-CLT-056/US-015: Aircraft logs transition metadata for all source labels") {
+TEST_CASE("REQ-CLT-056: Aircraft logs transition metadata for all source labels") {
   std::string testLogFile = "test_aircraft_transition_metadata_log.txt";
   std::remove(testLogFile.c_str());
 
@@ -213,7 +213,13 @@ TEST_CASE("REQ-CLT-056/US-015: Aircraft logs transition metadata for all source 
   std::remove(testLogFile.c_str());
 }
 
-TEST_CASE("US-012: Automatic transition MAINTENANCE -> FAULT when MAJOR fault is added") {
+// ============================================================================
+// REQ-SYS-060 / REQ-CLT-061 / REQ-CLT-056: Automatic state transitions + logging
+// ============================================================================
+
+TEST_CASE(
+    "REQ-SYS-060/REQ-CLT-061: Automatic transition MAINTENANCE -> FAULT when MAJOR fault is "
+    "added") {
   Aircraft aircraft;
   StateManager stateManager;
   aircraft.setStateManager(&stateManager);
@@ -230,7 +236,9 @@ TEST_CASE("US-012: Automatic transition MAINTENANCE -> FAULT when MAJOR fault is
   CHECK(aircraft.getCurrentState() == "FAULT");
 }
 
-TEST_CASE("US-012: Automatic transition MAINTENANCE -> STANDBY when faults are cleared") {
+TEST_CASE(
+    "REQ-SYS-060/REQ-CLT-061: Automatic transition MAINTENANCE -> STANDBY when faults are "
+    "cleared") {
   Aircraft aircraft;
   StateManager stateManager;
   aircraft.setStateManager(&stateManager);
@@ -249,7 +257,9 @@ TEST_CASE("US-012: Automatic transition MAINTENANCE -> STANDBY when faults are c
   CHECK(aircraft.getCurrentState() == "STANDBY");
 }
 
-TEST_CASE("US-012: Automatic transition FAULT -> STANDBY when all faults are resolved") {
+TEST_CASE(
+    "REQ-SYS-060/REQ-CLT-061: Automatic transition FAULT -> STANDBY when all faults are "
+    "resolved") {
   Aircraft aircraft;
   StateManager stateManager;
   aircraft.setStateManager(&stateManager);
@@ -268,7 +278,9 @@ TEST_CASE("US-012: Automatic transition FAULT -> STANDBY when all faults are res
   CHECK(aircraft.getCurrentState() == "STANDBY");
 }
 
-TEST_CASE("US-012: Automatic transition FAULT -> DIAGNOSTIC when only MINOR faults persist") {
+TEST_CASE(
+    "REQ-SYS-060/REQ-CLT-061: Automatic transition FAULT -> DIAGNOSTIC when only MINOR faults "
+    "persist") {
   Aircraft aircraft;
   StateManager stateManager;
   aircraft.setStateManager(&stateManager);
@@ -290,7 +302,7 @@ TEST_CASE("US-012: Automatic transition FAULT -> DIAGNOSTIC when only MINOR faul
   CHECK_FALSE(aircraft.resolveFaultCode(9999));
 }
 
-TEST_CASE("US-012: Automatic transitions are logged with source AUTOMATIC") {
+TEST_CASE("REQ-SYS-060/REQ-CLT-056: Automatic transitions are logged with source AUTOMATIC") {
   std::string testLogFile = "test_aircraft_automatic_transition_log.txt";
   std::remove(testLogFile.c_str());
 

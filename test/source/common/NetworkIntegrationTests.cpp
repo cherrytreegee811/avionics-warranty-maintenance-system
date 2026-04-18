@@ -4,6 +4,7 @@
 #include <common/Packet.h>
 #include <common/TcpConnection.h>
 #include <doctest/doctest.h>
+#include <helpers/TestHelpers.h>
 #include <mma/mma.h>
 #include <spdlog/sinks/basic_file_sink.h>
 #include <spdlog/spdlog.h>
@@ -18,130 +19,17 @@
 #include <fstream>
 #include <future>
 #include <memory>
-#include <regex>
 #include <thread>
 
 using namespace std::chrono_literals;
 
 using namespace network;
 
-namespace {
-
-  using namespace std::chrono_literals;
-
-  template <typename T>
-  bool waitUntilReady(std::future<T>& future, std::chrono::milliseconds timeout = 2000ms) {
-    return future.wait_for(timeout) == std::future_status::ready;
-  }
-
-  bool logContainsLine(const std::string& filename, const std::string& pattern) {
-    std::ifstream file(filename);
-    if (!file.is_open()) {
-      return false;
-    }
-
-    std::regex re(pattern);
-    std::string line;
-    while (std::getline(file, line)) {
-      if (std::regex_search(line, re)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  std::vector<uint8_t> readBinaryFile(const std::string& filepath) {
-    std::ifstream file(filepath, std::ios::binary | std::ios::ate);
-    if (!file.is_open()) {
-      return {};
-    }
-
-    const auto file_size_pos = file.tellg();
-    if (file_size_pos < 0) {
-      return {};
-    }
-
-    const size_t file_size = static_cast<size_t>(file_size_pos);
-    std::vector<uint8_t> data(file_size);
-    file.seekg(0, std::ios::beg);
-    if (file_size > 0) {
-      file.read(reinterpret_cast<char*>(data.data()), static_cast<std::streamsize>(file_size));
-      if (!file || file.gcount() != static_cast<std::streamsize>(file_size)) {
-        return {};
-      }
-    }
-
-    return data;
-  }
-
-  bool readPacketWithTimeout(asio::ip::tcp::socket& socket, network::PacketHeader& header_out,
-                             std::vector<uint8_t>& payload_out,
-                             std::chrono::milliseconds timeout = 5000ms) {
-    std::error_code ec;
-    socket.non_blocking(true, ec);
-    if (ec) {
-      return false;
-    }
-
-    std::vector<uint8_t> accumulated;
-    accumulated.reserve(2048);
-    std::array<uint8_t, 4096> read_buffer{};
-
-    const auto start = std::chrono::steady_clock::now();
-    while (std::chrono::steady_clock::now() - start < timeout) {
-      const size_t read_bytes = socket.read_some(asio::buffer(read_buffer), ec);
-      if (!ec) {
-        accumulated.insert(accumulated.end(), read_buffer.begin(),
-                           read_buffer.begin() + read_bytes);
-      } else if (ec == asio::error::would_block || ec == asio::error::try_again) {
-        std::this_thread::sleep_for(10ms);
-        continue;
-      } else {
-        return false;
-      }
-
-      if (accumulated.size() < sizeof(network::PacketHeader)) {
-        continue;
-      }
-
-      network::PacketHeader tentative_header{};
-      std::memcpy(&tentative_header, accumulated.data(), sizeof(tentative_header));
-      const size_t total_packet_size
-          = sizeof(network::PacketHeader) + tentative_header.payload_size;
-      if (accumulated.size() < total_packet_size) {
-        continue;
-      }
-
-      const std::vector<uint8_t> packet_bytes(accumulated.begin(),
-                                              accumulated.begin() + total_packet_size);
-      return network::deserializePacket(packet_bytes, header_out, payload_out);
-    }
-
-    return false;
-  }
-
-  template <typename F>
-  bool waitForCondition(F&& condition, std::chrono::milliseconds timeout = 4000ms) {
-    const auto start = std::chrono::steady_clock::now();
-    while (!condition()) {
-      if (std::chrono::steady_clock::now() - start > timeout) {
-        return false;
-      }
-
-      std::this_thread::sleep_for(50ms);
-    }
-
-    return true;
-  }
-
-}  // namespace
-
 // ============================================================================
-// REQ-NET-081/US-001: Our applications shall use TCP/IP to communicate
+// REQ-NET-081: Our applications shall use TCP/IP to communicate
 // ============================================================================
 
-TEST_CASE("US-001: Integration - client and server communicate over TcpConnection") {
+TEST_CASE("REQ-NET-081: Integration - client and server communicate over TcpConnection") {
   asio::io_context io_context;
   using tcp = asio::ip::tcp;
 
@@ -213,17 +101,17 @@ TEST_CASE("US-001: Integration - client and server communicate over TcpConnectio
 
   std::thread io_thread([&]() { io_context.run(); });
 
-  REQUIRE(waitUntilReady(accepted_connection_future));
+  REQUIRE(test_helpers::waitUntilReady(accepted_connection_future));
   auto server_connection = accepted_connection_future.get();
   REQUIRE(server_connection != nullptr);
 
   const auto landed = serializePacket(PacketType::LANDED_NOTIFICATION, nullptr, 0);
   client_connection->send(landed);
 
-  REQUIRE(waitUntilReady(server_received_type_future));
+  REQUIRE(test_helpers::waitUntilReady(server_received_type_future));
   CHECK(server_received_type_future.get() == PacketType::LANDED_NOTIFICATION);
 
-  REQUIRE(waitUntilReady(client_received_state_future));
+  REQUIRE(test_helpers::waitUntilReady(client_received_state_future));
   CHECK(client_received_state_future.get() == StateId::DIAGNOSTIC);
 
   client_connection->close();
@@ -235,7 +123,316 @@ TEST_CASE("US-001: Integration - client and server communicate over TcpConnectio
   }
 }
 
-TEST_CASE("US-014: Integration - Successful verification flow") {
+TEST_CASE("REQ-NET-081: TcpConnection returns unknown remote address when endpoint unavailable") {
+  asio::io_context io;
+  asio::ip::tcp::socket socket(io);
+  auto connection = TcpConnection::create(std::move(socket));
+
+  CHECK(connection->getRemoteAddress() == "unknown");
+}
+
+TEST_CASE("REQ-NET-012/REQ-NET-081: TcpConnection closes on invalid packet magic") {
+  const std::string testLogFile = "test_tcpconnection_invalid_magic_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger
+      = std::make_shared<spdlog::logger>("test_tcpconnection_invalid_magic_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  asio::io_context io;
+  auto work_guard = asio::make_work_guard(io);
+  using tcp = asio::ip::tcp;
+
+  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
+  const uint16_t port = acceptor.local_endpoint().port();
+
+  std::promise<TcpConnection::Ptr> accepted_promise;
+  auto accepted_future = accepted_promise.get_future();
+
+  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
+    if (ec) {
+      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
+      return;
+    }
+    auto server_connection = TcpConnection::create(std::move(socket));
+    server_connection->setMessageHandler([](const std::vector<uint8_t>&) {});
+    server_connection->start();
+    accepted_promise.set_value(server_connection);
+  });
+
+  tcp::socket client_socket(io);
+  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
+
+  std::thread io_thread([&]() { io.run(); });
+
+  auto cleanup = [&]() {
+    std::error_code ignored;
+    client_socket.close(ignored);
+    acceptor.close();
+    work_guard.reset();
+    io.stop();
+    if (io_thread.joinable()) {
+      io_thread.join();
+    }
+  };
+
+  const bool accepted_ready = test_helpers::waitUntilReady(accepted_future);
+  if (!accepted_ready) {
+    cleanup();
+    FAIL("Accepted connection was not ready in time");
+  }
+
+  auto server_connection = accepted_future.get();
+  if (server_connection == nullptr) {
+    cleanup();
+    FAIL("Accepted server connection was null");
+  }
+
+  PacketHeader bad_header{};
+  bad_header.magic = 0x12345678;
+  bad_header.type = PacketType::LANDED_NOTIFICATION;
+  bad_header.payload_size = 0;
+  bad_header.sequence = 1;
+  bad_header.checksum = 0;
+
+  std::array<uint8_t, sizeof(PacketHeader)> raw{};
+  std::memcpy(raw.data(), &bad_header, sizeof(PacketHeader));
+  asio::write(client_socket, asio::buffer(raw));
+
+  CHECK(test_helpers::waitFor(
+      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
+  CHECK(test_helpers::waitFor(
+      [&]() { return test_helpers::logContains(testLogFile, "Invalid packet magic"); }, 2000ms));
+
+  std::error_code ignored;
+  client_socket.close(ignored);
+  acceptor.close();
+  work_guard.reset();
+  io.stop();
+  if (io_thread.joinable()) {
+    io_thread.join();
+  }
+
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
+TEST_CASE("REQ-NET-012/REQ-NET-081: TcpConnection closes on oversized packet header") {
+  const std::string testLogFile = "test_tcpconnection_oversized_packet_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger
+      = std::make_shared<spdlog::logger>("test_tcpconnection_oversized_packet_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  asio::io_context io;
+  auto work_guard = asio::make_work_guard(io);
+  using tcp = asio::ip::tcp;
+
+  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
+  const uint16_t port = acceptor.local_endpoint().port();
+
+  std::promise<TcpConnection::Ptr> accepted_promise;
+  auto accepted_future = accepted_promise.get_future();
+
+  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
+    if (ec) {
+      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
+      return;
+    }
+    auto server_connection = TcpConnection::create(std::move(socket));
+    server_connection->setMessageHandler([](const std::vector<uint8_t>&) {});
+    server_connection->start();
+    accepted_promise.set_value(server_connection);
+  });
+
+  tcp::socket client_socket(io);
+  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
+
+  std::thread io_thread([&]() { io.run(); });
+
+  REQUIRE(test_helpers::waitUntilReady(accepted_future));
+  auto server_connection = accepted_future.get();
+  REQUIRE(server_connection != nullptr);
+
+  PacketHeader oversized_header{};
+  oversized_header.magic = PACKET_MAGIC;
+  oversized_header.type = PacketType::SCHEMATIC_CHUNK;
+  oversized_header.payload_size = 60U * 1024U * 1024U;
+  oversized_header.sequence = 1;
+  oversized_header.checksum = 0;
+
+  std::array<uint8_t, sizeof(PacketHeader)> raw{};
+  std::memcpy(raw.data(), &oversized_header, sizeof(PacketHeader));
+  asio::write(client_socket, asio::buffer(raw));
+
+  CHECK(test_helpers::waitFor(
+      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
+  CHECK(test_helpers::waitFor(
+      [&]() { return test_helpers::logContains(testLogFile, "Packet too large"); }, 2000ms));
+
+  std::error_code ignored;
+  client_socket.close(ignored);
+  acceptor.close();
+  work_guard.reset();
+  io.stop();
+  if (io_thread.joinable()) {
+    io_thread.join();
+  }
+
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
+TEST_CASE("REQ-NET-013/REQ-NET-081: TcpConnection buffers partial packet until complete") {
+  asio::io_context io;
+  auto work_guard = asio::make_work_guard(io);
+  using tcp = asio::ip::tcp;
+
+  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
+  const uint16_t port = acceptor.local_endpoint().port();
+
+  std::promise<TcpConnection::Ptr> accepted_promise;
+  auto accepted_future = accepted_promise.get_future();
+
+  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
+    if (ec) {
+      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
+      return;
+    }
+    auto server_connection = TcpConnection::create(std::move(socket));
+    server_connection->start();
+    accepted_promise.set_value(server_connection);
+  });
+
+  tcp::socket client_socket(io);
+  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
+
+  std::thread io_thread([&]() { io.run(); });
+
+  auto cleanup = [&]() {
+    std::error_code ignored;
+    client_socket.close(ignored);
+    acceptor.close();
+    work_guard.reset();
+    io.stop();
+    if (io_thread.joinable()) {
+      io_thread.join();
+    }
+  };
+
+  const bool accepted_ready = test_helpers::waitUntilReady(accepted_future);
+  if (!accepted_ready) {
+    cleanup();
+    FAIL("Accepted connection was not ready in time");
+  }
+
+  auto server_connection = accepted_future.get();
+  if (server_connection == nullptr) {
+    cleanup();
+    FAIL("Accepted server connection was null");
+  }
+
+  const VerificationRequest request{0x12345678U, 0xABCDEF1234567890ULL};
+  const auto packet = serializePacket(PacketType::VERIFICATION_REQUEST, request);
+  CHECK(packet.size() > sizeof(PacketHeader));
+
+  const size_t first_part = sizeof(PacketHeader) + 1;
+  if (first_part >= packet.size()) {
+    cleanup();
+    FAIL("Partial-split precondition failed");
+  }
+
+  asio::write(client_socket, asio::buffer(packet.data(), first_part));
+
+  std::this_thread::sleep_for(150ms);
+  CHECK(server_connection->getState() != ConnectionState::CLOSED);
+
+  server_connection->close();
+  CHECK(test_helpers::waitFor(
+      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
+  cleanup();
+}
+
+TEST_CASE("REQ-NET-081: TcpConnection logs send-closed path when write is aborted") {
+  const std::string testLogFile = "test_tcpconnection_send_closed_log.txt";
+  std::remove(testLogFile.c_str());
+
+  auto file_sink = std::make_shared<spdlog::sinks::basic_file_sink_mt>(testLogFile, true);
+  auto logger
+      = std::make_shared<spdlog::logger>("test_tcpconnection_send_closed_logger", file_sink);
+  spdlog::set_default_logger(logger);
+  spdlog::set_level(spdlog::level::info);
+  spdlog::flush_on(spdlog::level::info);
+
+  asio::io_context io;
+  auto work_guard = asio::make_work_guard(io);
+  using tcp = asio::ip::tcp;
+
+  tcp::acceptor acceptor(io, tcp::endpoint(tcp::v4(), 0));
+  const uint16_t port = acceptor.local_endpoint().port();
+
+  std::promise<TcpConnection::Ptr> accepted_promise;
+  auto accepted_future = accepted_promise.get_future();
+
+  acceptor.async_accept([&](std::error_code ec, tcp::socket socket) {
+    if (ec) {
+      accepted_promise.set_exception(std::make_exception_ptr(std::runtime_error(ec.message())));
+      return;
+    }
+    auto server_connection = TcpConnection::create(std::move(socket));
+    accepted_promise.set_value(server_connection);
+  });
+
+  tcp::socket client_socket(io);
+  client_socket.connect(tcp::endpoint(asio::ip::make_address("127.0.0.1"), port));
+
+  std::thread io_thread([&]() { io.run(); });
+
+  REQUIRE(test_helpers::waitUntilReady(accepted_future));
+  auto server_connection = accepted_future.get();
+  REQUIRE(server_connection != nullptr);
+
+  // Large payload increases chance that close races with in-flight write.
+  std::vector<uint8_t> large_payload(4 * 1024 * 1024, 0xAB);
+  server_connection->send(large_payload);
+  server_connection->close();
+
+  CHECK(test_helpers::waitFor(
+      [&]() { return server_connection->getState() == ConnectionState::CLOSED; }, 2000ms));
+
+  CHECK(test_helpers::waitFor(
+      [&]() {
+        return test_helpers::logContains(testLogFile, "Connection send closed for|Send error:");
+      },
+      3000ms));
+
+  std::error_code ignored;
+  client_socket.close(ignored);
+  acceptor.close();
+  work_guard.reset();
+  io.stop();
+  if (io_thread.joinable()) {
+    io_thread.join();
+  }
+
+  spdlog::shutdown();
+  std::remove(testLogFile.c_str());
+}
+
+// ============================================================================
+// REQ-SYS-080: Both the client and server shall require connection verification before accepting
+//              any commands or returning results.
+// REQ-NET-081: Our applications shall use TCP/IP to communicate.
+// ============================================================================
+
+TEST_CASE("REQ-SYS-080/REQ-NET-081: Integration - Successful verification flow") {
   // We first need to initialize a server from which we are listening.
   // A connection must be simulated for testing flows.
   MMA server;
@@ -258,7 +455,8 @@ TEST_CASE("US-014: Integration - Successful verification flow") {
   server.stopServer();
 }
 
-TEST_CASE("US-014: Integration - Command rejection when connection is UNVERIFIED") {
+TEST_CASE(
+    "REQ-SYS-080/REQ-NET-081: Integration - Command rejection when connection is UNVERIFIED") {
   MMA server;
   const uint16_t testPort = 8005;  // Use a fresh port
   server.startServer(testPort);
@@ -312,7 +510,13 @@ TEST_CASE("US-014: Integration - Command rejection when connection is UNVERIFIED
   server.stopServer();
 }
 
-TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state transitions") {
+// ============================================================================
+// REQ-SRV-053: The MMA logs when it receives a landed notification from an aircraft.
+// REQ-SRV-055: The MMA logs outgoing state change commands.
+// REQ-SRV-057: The MMA logs state transition confirmations from aircraft.
+// ============================================================================
+
+TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057: MMA logs landed and state transitions") {
   const std::string testLogFile = "test_mma_landed_and_transition_log.txt";
   std::remove(testLogFile.c_str());
 
@@ -337,25 +541,29 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state
     client.connectToMMA("127.0.0.1", testPort);
     const uint64_t aircraft_id = client.getAircraftId();
 
-    REQUIRE(waitForCondition(
+    REQUIRE(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile, "Client " + std::to_string(aircraft_id) + " verified")
-                 && logContainsLine(testLogFile,
-                                    "Aircraft " + std::to_string(aircraft_id) + " landed");
+          return test_helpers::logContains(testLogFile,
+                                           "Client " + std::to_string(aircraft_id) + " verified")
+                 && test_helpers::logContains(
+                     testLogFile, "Aircraft " + std::to_string(aircraft_id) + " landed");
         },
         4000ms));
 
     server.sendDiagnosticStateChange(aircraft_id);
 
-    CHECK(waitForCondition(
+    CHECK(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile, "Aircraft " + std::to_string(aircraft_id) + " landed")
-                 && logContainsLine(testLogFile, "Sent DIAGNOSTIC state change command to aircraft "
-                                                     + std::to_string(aircraft_id))
-                 && logContainsLine(testLogFile,
-                                    "Operational state transition: STANDBY -> DIAGNOSTIC")
-                 && logContainsLine(testLogFile, "Aircraft " + std::to_string(aircraft_id)
-                                                     + " transitioned to DIAGNOSTIC state");
+          return test_helpers::logContains(testLogFile,
+                                           "Aircraft " + std::to_string(aircraft_id) + " landed")
+                 && test_helpers::logContains(testLogFile,
+                                              "Sent DIAGNOSTIC state change command to aircraft "
+                                                  + std::to_string(aircraft_id))
+                 && test_helpers::logContains(testLogFile,
+                                              "Operational state transition: STANDBY -> DIAGNOSTIC")
+                 && test_helpers::logContains(testLogFile,
+                                              "Aircraft " + std::to_string(aircraft_id)
+                                                  + " transitioned to DIAGNOSTIC state");
         },
         4000ms));
   }
@@ -365,7 +573,12 @@ TEST_CASE("REQ-SRV-053/REQ-SRV-055/REQ-SRV-057/US-011: MMA logs landed and state
   std::remove(testLogFile.c_str());
 }
 
-TEST_CASE("REQ-NET-013/US-011: DIAGNOSTIC_DATA severity is logged by MMA") {
+// ============================================================================
+// REQ-NET-013: The client and the server shall support internal processing logic for reading
+//              received information, and serialize information for transfer.
+// ============================================================================
+
+TEST_CASE("REQ-NET-013: DIAGNOSTIC_DATA severity is logged by MMA") {
   const std::string testLogFile = "test_mma_diagnostic_severity_log.txt";
   std::remove(testLogFile.c_str());
 
@@ -385,23 +598,23 @@ TEST_CASE("REQ-NET-013/US-011: DIAGNOSTIC_DATA severity is logged by MMA") {
     client.connectToMMA("127.0.0.1", testPort);
     const uint64_t aircraft_id = client.getAircraftId();
 
-    REQUIRE(waitForCondition(
+    REQUIRE(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile,
-                                 "Client " + std::to_string(aircraft_id) + " verified");
+          return test_helpers::logContains(testLogFile,
+                                           "Client " + std::to_string(aircraft_id) + " verified");
         },
         4000ms));
 
     CHECK(client.sendDiagnosticData());
 
-    CHECK(waitForCondition(
+    CHECK(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile,
-                                 "Fault Code '101' \\(aircraft: " + std::to_string(aircraft_id)
-                                     + "\\): \\[MINOR\\] - '.*'")
-                 && logContainsLine(testLogFile,
-                                    "Fault Code '102' \\(aircraft: " + std::to_string(aircraft_id)
-                                        + "\\): \\[MAJOR\\] - '.*'");
+          return test_helpers::logContains(
+                     testLogFile, "Fault Code '101' \\(aircraft: " + std::to_string(aircraft_id)
+                                      + "\\): \\[MINOR\\] - '.*'")
+                 && test_helpers::logContains(
+                     testLogFile, "Fault Code '102' \\(aircraft: " + std::to_string(aircraft_id)
+                                      + "\\): \\[MAJOR\\] - '.*'");
         },
         4000ms));
   }
@@ -411,9 +624,17 @@ TEST_CASE("REQ-NET-013/US-011: DIAGNOSTIC_DATA severity is logged by MMA") {
   std::remove(testLogFile.c_str());
 }
 
+// ============================================================================
+// REQ-SYS-010: All data transferred between Client and Server shall use a pre-defined structure.
+// REQ-NET-013: The client and the server shall support internal processing logic for reading
+//              received information, and serialize information for transfer.
+// REQ-SYS-060: The client or server (or both) application shall contain an operational state
+// machine.
+// ============================================================================
+
 TEST_CASE(
-    "US-012: MMA can clear one diagnostic code when aircraft is in MAINTENANCE with explicit "
-    "confirmation") {
+    "REQ-SYS-010/REQ-NET-013/REQ-SYS-060: MMA can clear one diagnostic code when aircraft is in "
+    "MAINTENANCE with explicit confirmation") {
   const std::string testLogFile = "test_mma_clear_diagnostic_code_log.txt";
   std::remove(testLogFile.c_str());
 
@@ -437,35 +658,40 @@ TEST_CASE(
     client.connectToMMA("127.0.0.1", testPort);
     const uint64_t aircraft_id = client.getAircraftId();
 
-    REQUIRE(waitForCondition(
+    REQUIRE(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile, "Client " + std::to_string(aircraft_id) + " verified")
-                 && logContainsLine(testLogFile,
-                                    "Aircraft " + std::to_string(aircraft_id) + " landed");
+          return test_helpers::logContains(testLogFile,
+                                           "Client " + std::to_string(aircraft_id) + " verified")
+                 && test_helpers::logContains(
+                     testLogFile, "Aircraft " + std::to_string(aircraft_id) + " landed");
         },
         4000ms));
 
     server.sendDiagnosticStateChange(aircraft_id);
     spdlog::default_logger()->flush();
 
-    REQUIRE(waitForCondition(
+    REQUIRE(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile, "Sent DIAGNOSTIC state change command to aircraft "
-                                                  + std::to_string(aircraft_id))
-                 && logContainsLine(testLogFile, "Aircraft " + std::to_string(aircraft_id)
-                                                     + " transitioned to MAINTENANCE state");
+          return test_helpers::logContains(testLogFile,
+                                           "Sent DIAGNOSTIC state change command to aircraft "
+                                               + std::to_string(aircraft_id))
+                 && test_helpers::logContains(testLogFile,
+                                              "Aircraft " + std::to_string(aircraft_id)
+                                                  + " transitioned to MAINTENANCE state");
         },
         4000ms));
 
     server.sendDiagnosticCodeClearRequest(aircraft_id, 101);
 
-    CHECK(waitForCondition(
+    CHECK(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile, "Sent diagnostic code clear command to aircraft "
-                                                  + std::to_string(aircraft_id) + " for code 101")
-                 && logContainsLine(testLogFile, "Diagnostic code clear succeeded for aircraft "
-                                                     + std::to_string(aircraft_id)
-                                                     + " \\(code: 101, state: FAULT\\)");
+          return test_helpers::logContains(testLogFile,
+                                           "Sent diagnostic code clear command to aircraft "
+                                               + std::to_string(aircraft_id) + " for code 101")
+                 && test_helpers::logContains(testLogFile,
+                                              "Diagnostic code clear succeeded for aircraft "
+                                                  + std::to_string(aircraft_id)
+                                                  + " \\(code: 101, state: FAULT\\)");
         },
         4000ms));
   }
@@ -475,7 +701,7 @@ TEST_CASE(
   std::remove(testLogFile.c_str());
 }
 
-TEST_CASE("US-012: MMA allows clear request in FAULT state") {
+TEST_CASE("REQ-SYS-010/REQ-NET-013/REQ-SYS-060: MMA allows clear request in FAULT state") {
   const std::string testLogFile = "test_mma_clear_diagnostic_code_blocked_log.txt";
   std::remove(testLogFile.c_str());
 
@@ -499,31 +725,32 @@ TEST_CASE("US-012: MMA allows clear request in FAULT state") {
     client.connectToMMA("127.0.0.1", testPort);
     const uint64_t aircraft_id = client.getAircraftId();
 
-    REQUIRE(waitForCondition(
+    REQUIRE(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile, "Client " + std::to_string(aircraft_id) + " verified")
-                 && logContainsLine(testLogFile,
-                                    "Aircraft " + std::to_string(aircraft_id) + " landed");
+          return test_helpers::logContains(testLogFile,
+                                           "Client " + std::to_string(aircraft_id) + " verified")
+                 && test_helpers::logContains(
+                     testLogFile, "Aircraft " + std::to_string(aircraft_id) + " landed");
         },
         4000ms));
 
     server.sendDiagnosticStateChange(aircraft_id);
     spdlog::default_logger()->flush();
 
-    REQUIRE(waitForCondition(
+    REQUIRE(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile, "Aircraft " + std::to_string(aircraft_id)
-                                                  + " transitioned to MAINTENANCE state");
+          return test_helpers::logContains(testLogFile, "Aircraft " + std::to_string(aircraft_id)
+                                                            + " transitioned to MAINTENANCE state");
         },
         4000ms));
 
     server.sendDiagnosticCodeClearRequest(aircraft_id, 101);
 
-    REQUIRE(waitForCondition(
+    REQUIRE(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile,
-                                 "Diagnostic code clear succeeded for aircraft " + std::to_string(aircraft_id) + " \\(code: "
-                                 "101, state: FAULT\\)");
+          return test_helpers::logContains(
+              testLogFile, "Diagnostic code clear succeeded for aircraft "
+                               + std::to_string(aircraft_id) + " \\(code: 101, state: FAULT\\)");
         },
         4000ms));
 
@@ -531,12 +758,12 @@ TEST_CASE("US-012: MMA allows clear request in FAULT state") {
 
     server.sendDiagnosticCodeClearRequest(aircraft_id, 203);
 
-    CHECK(waitForCondition(
+    CHECK(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(
+          return test_helpers::logContains(
                      testLogFile,
                      "Sent diagnostic code clear command to aircraft " + std::to_string(aircraft_id) + " for code 203")
-                 && logContainsLine(
+           && test_helpers::logContains(
                      testLogFile,
                      "Diagnostic code clear succeeded for aircraft " + std::to_string(aircraft_id) + " \\(code: 203, "
                      "state: FAULT\\)");
@@ -549,7 +776,7 @@ TEST_CASE("US-012: MMA allows clear request in FAULT state") {
   std::remove(testLogFile.c_str());
 }
 
-TEST_CASE("Verification timeout handling.") {
+TEST_CASE("REQ-CLT-082/REQ-SYS-080/REQ-NET-081: Integration - Verification timeout handling") {
   const std::string testLogFile = "/tmp/verification_timeout_test.log";
   std::remove(testLogFile.c_str());
 
@@ -565,19 +792,22 @@ TEST_CASE("Verification timeout handling.") {
     // Use a non-routable destination so the client cannot complete connection/verification.
     client.connectToMMA("10.255.255.1", 65000);
 
-    CHECK(waitForCondition([&]() { return client.getCurrentState() == "DIAGNOSTIC"; }, 8000ms));
+    CHECK(
+        test_helpers::waitFor([&]() { return client.getCurrentState() == "DIAGNOSTIC"; }, 8000ms));
 
     // Depending on host network routing, this may surface as timeout or immediate connect failure.
-    CHECK(logContainsLine(testLogFile,
-                          "Connection timeout, changing to DIAGNOSTIC|Connect failed: .*"));
-    CHECK(logContainsLine(testLogFile, "Operational state transition: STANDBY -> DIAGNOSTIC"));
+    CHECK(test_helpers::logContains(
+        testLogFile, "Connection timeout, changing to DIAGNOSTIC|Connect failed: .*"));
+    CHECK(test_helpers::logContains(testLogFile,
+                                    "Operational state transition: STANDBY -> DIAGNOSTIC"));
   }
 
   spdlog::shutdown();
   std::remove(testLogFile.c_str());
 }
 
-TEST_CASE("Invalid verification response handling.") {
+TEST_CASE(
+    "REQ-SYS-080/REQ-NET-013/REQ-NET-081: Integration - Invalid verification response handling") {
   const std::string testLogFile = "/tmp/invalid_verification_response_test.log";
   std::remove(testLogFile.c_str());
 
@@ -648,7 +878,7 @@ TEST_CASE("Invalid verification response handling.") {
   }
 
   CHECK(closed);
-  CHECK(logContainsLine(testLogFile, "Verification failed, closing connection"));
+  CHECK(test_helpers::logContains(testLogFile, "Verification failed, closing connection"));
 
   server.stopServer();
   spdlog::shutdown();
@@ -656,10 +886,13 @@ TEST_CASE("Invalid verification response handling.") {
 }
 
 // ============================================================================
-// Image transfer integration: Client sends multi-chunk image to Server
+// REQ-SYS-010: All data transferred between Client and Server shall use a pre-defined structure.
+// REQ-NET-012: The packet shall contain packet integrity checks to ensure validity/authenticity.
+// REQ-NET-081: Our applications shall use TCP/IP to communicate.
 // ============================================================================
 
-TEST_CASE("Integration: Aircraft sends multi-chunk image to MMA") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-NET-012/REQ-NET-081: Integration - Aircraft sends multi-chunk image to MMA") {
   // Setup MMA server
   const std::string testLogFile = "/tmp/image_transfer_test.log";
   std::remove(testLogFile.c_str());
@@ -705,24 +938,26 @@ TEST_CASE("Integration: Aircraft sends multi-chunk image to MMA") {
     CHECK(client.sendImage(test_image, ImageFormat::PNG));
 
     // Wait for server to receive and reassemble all chunks
-    CHECK(waitForCondition(
+    CHECK(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile,
-                                 "Image .* received and reassembled \\(2097152 bytes.*");
+          return test_helpers::logContains(testLogFile,
+                                           "Image .* received and reassembled \\(2097152 bytes.*");
         },
         10000ms));
 
-    CHECK(waitForCondition(
-        [&]() { return logContainsLine(testLogFile, "Image integrity verified byte-for-byte:"); },
+    CHECK(test_helpers::waitFor(
+        [&]() {
+          return test_helpers::logContains(testLogFile, "Image integrity verified byte-for-byte:");
+        },
         5000ms));
 
     // Verify correct log entries for chunk reception
-    CHECK(logContainsLine(testLogFile, "Received image chunk"));
-    CHECK(logContainsLine(testLogFile, "format: PNG"));
+    CHECK(test_helpers::logContains(testLogFile, "Received image chunk"));
+    CHECK(test_helpers::logContains(testLogFile, "format: PNG"));
 
     // Verify persisted file is byte-for-byte identical to original image.
     CHECK(std::filesystem::exists(saved_image_path));
-    const auto saved_image_bytes = readBinaryFile(saved_image_path);
+    const auto saved_image_bytes = test_helpers::readBinaryFile(saved_image_path);
     CHECK(saved_image_bytes == test_image);
 
     server.stopServer();
@@ -734,7 +969,7 @@ TEST_CASE("Integration: Aircraft sends multi-chunk image to MMA") {
   std::remove(testLogFile.c_str());
 }
 
-TEST_CASE("Integration: Image transfer with small payload") {
+TEST_CASE("REQ-SYS-010/REQ-NET-012/REQ-NET-081: Integration - Image transfer with small payload") {
   // Setup MMA server
   const std::string testLogFile = "/tmp/image_transfer_small_test.log";
   std::remove(testLogFile.c_str());
@@ -773,19 +1008,21 @@ TEST_CASE("Integration: Image transfer with small payload") {
     CHECK(client.sendImage(small_image, ImageFormat::JPEG));
 
     // Wait for server to receive
-    CHECK(waitForCondition(
+    CHECK(test_helpers::waitFor(
         [&]() {
-          return logContainsLine(testLogFile,
-                                 "Image .* received and reassembled \\(10240 bytes.*format: JPEG");
+          return test_helpers::logContains(
+              testLogFile, "Image .* received and reassembled \\(10240 bytes.*format: JPEG");
         },
         5000ms));
 
-    CHECK(waitForCondition(
-        [&]() { return logContainsLine(testLogFile, "Image integrity verified byte-for-byte:"); },
+    CHECK(test_helpers::waitFor(
+        [&]() {
+          return test_helpers::logContains(testLogFile, "Image integrity verified byte-for-byte:");
+        },
         5000ms));
 
     CHECK(std::filesystem::exists(saved_image_path));
-    const auto saved_image_bytes = readBinaryFile(saved_image_path);
+    const auto saved_image_bytes = test_helpers::readBinaryFile(saved_image_path);
     CHECK(saved_image_bytes == small_image);
 
     server.stopServer();
@@ -797,7 +1034,9 @@ TEST_CASE("Integration: Image transfer with small payload") {
   std::remove(testLogFile.c_str());
 }
 
-TEST_CASE("Integration: MMA requests and receives missing image chunk retry") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-NET-012/REQ-NET-081: Integration - MMA requests and receives missing image "
+    "chunk retry") {
   const std::string testLogFile = "/tmp/image_retry_request_success_test.log";
   std::remove(testLogFile.c_str());
 
@@ -819,7 +1058,7 @@ TEST_CASE("Integration: MMA requests and receives missing image chunk retry") {
 
   network::PacketHeader incoming_header{};
   std::vector<uint8_t> incoming_payload;
-  REQUIRE(readPacketWithTimeout(socket, incoming_header, incoming_payload, 3000ms));
+  REQUIRE(test_helpers::readPacketWithTimeout(socket, incoming_header, incoming_payload, 3000ms));
   REQUIRE(incoming_header.type == network::PacketType::VERIFICATION_REQUEST);
   REQUIRE(incoming_payload.size() == sizeof(network::VerificationRequest));
 
@@ -875,7 +1114,7 @@ TEST_CASE("Integration: MMA requests and receives missing image chunk retry") {
 
   network::PacketHeader retry_header{};
   std::vector<uint8_t> retry_payload;
-  REQUIRE(readPacketWithTimeout(socket, retry_header, retry_payload, 5000ms));
+  REQUIRE(test_helpers::readPacketWithTimeout(socket, retry_header, retry_payload, 5000ms));
   REQUIRE(retry_header.type == network::PacketType::SCHEMATIC_CHUNK_RETRY_REQUEST);
   REQUIRE(retry_payload.size() == sizeof(network::SchematicChunkRetryRequest));
 
@@ -889,10 +1128,10 @@ TEST_CASE("Integration: MMA requests and receives missing image chunk retry") {
   asio::write(socket, asio::buffer(chunk1_packet), ec);
   REQUIRE(!ec);
 
-  CHECK(waitForCondition(
+  CHECK(test_helpers::waitFor(
       [&]() {
-        return logContainsLine(testLogFile,
-                               "Image 9001 from aircraft 12345 received and reassembled");
+        return test_helpers::logContains(testLogFile,
+                                         "Image 9001 from aircraft 12345 received and reassembled");
       },
       5000ms));
 
@@ -901,7 +1140,9 @@ TEST_CASE("Integration: MMA requests and receives missing image chunk retry") {
   std::remove(testLogFile.c_str());
 }
 
-TEST_CASE("Integration: MMA logs error when missing chunk retry fails") {
+TEST_CASE(
+    "REQ-SYS-010/REQ-NET-012/REQ-NET-081: Integration - MMA logs error when missing chunk retry "
+    "fails") {
   const std::string testLogFile = "/tmp/image_retry_request_failure_test.log";
   std::remove(testLogFile.c_str());
 
@@ -923,7 +1164,7 @@ TEST_CASE("Integration: MMA logs error when missing chunk retry fails") {
 
   network::PacketHeader incoming_header{};
   std::vector<uint8_t> incoming_payload;
-  REQUIRE(readPacketWithTimeout(socket, incoming_header, incoming_payload, 3000ms));
+  REQUIRE(test_helpers::readPacketWithTimeout(socket, incoming_header, incoming_payload, 3000ms));
   REQUIRE(incoming_header.type == network::PacketType::VERIFICATION_REQUEST);
   REQUIRE(incoming_payload.size() == sizeof(network::VerificationRequest));
 
@@ -962,19 +1203,21 @@ TEST_CASE("Integration: MMA logs error when missing chunk retry fails") {
   REQUIRE(!ec);
 
   // Do not send missing chunk 1 even after retry request.
-  CHECK(waitForCondition(
+  CHECK(test_helpers::waitFor(
       [&]() {
-        return logContainsLine(testLogFile,
-                               "Requested retry for missing chunk 1 of image 9002 from aircraft "
-                               "12345");
+        return test_helpers::logContains(
+            testLogFile,
+            "Requested retry for missing chunk 1 of image 9002 from aircraft "
+            "12345");
       },
       6000ms));
 
-  CHECK(waitForCondition(
+  CHECK(test_helpers::waitFor(
       [&]() {
-        return logContainsLine(testLogFile,
-                               "Image 9002 from aircraft 12345 missing chunk 1 after retry; "
-                               "aborting reassembly");
+        return test_helpers::logContains(
+            testLogFile,
+            "Image 9002 from aircraft 12345 missing chunk 1 after retry; "
+            "aborting reassembly");
       },
       8000ms));
 

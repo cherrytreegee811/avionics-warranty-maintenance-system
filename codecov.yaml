@@ -1,5 +1,5 @@
 ignore:
-  - "**/test/**"
+  - "test/**"
   - "**/deps/**"
   - "**/aircraft_main.cpp"
   - "**/mma_main.cpp"

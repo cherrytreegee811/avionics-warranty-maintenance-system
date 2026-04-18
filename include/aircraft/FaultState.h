@@ -19,8 +19,6 @@ public:
    */
   FaultState(aircraft::Aircraft& aircraft, StateManager& stateManager);
 
-  /** @brief Runs periodic fault-state update behavior. */
-  void UpdateState() override;
   /** @brief Executes entry logic for fault state. */
   void InitState() override;
   /** @brief Executes exit logic for fault state. */

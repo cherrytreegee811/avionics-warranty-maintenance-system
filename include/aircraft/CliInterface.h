@@ -6,6 +6,7 @@
 
 #include <aircraft/Aircraft.h>
 
+#include <iosfwd>
 #include <memory>
 #include <string>
 
@@ -22,6 +23,17 @@ namespace aircraft {
      */
     explicit CliInterface(Aircraft& aircraft);
 
+    /**
+     * @brief Creates the interface with injectable I/O streams.
+     * @param aircraft Type: @ref aircraft::Aircraft&. Aircraft model to display and control.
+     * @param in Type: std::istream&. Input stream used for reading user choices.
+     * @param out Type: std::ostream&. Output stream used for rendering UI text.
+     * @param enable_screen_control Type: bool. When false, disables clear-screen and
+     * wait-for-enter behavior (useful for unit tests).
+     */
+    CliInterface(Aircraft& aircraft, std::istream& in, std::ostream& out,
+                 bool enable_screen_control);
+
     /** @brief Displays the top-level menu and command loop options. */
     void showMainMenu();
     /** @brief Prints current operational state. */
@@ -37,6 +49,10 @@ namespace aircraft {
 
   private:
     Aircraft& m_aircraft;
+
+    std::istream& in_;
+    std::ostream& out_;
+    bool screen_control_enabled_ = true;
 
     void clearScreen();
     void waitForEnter();

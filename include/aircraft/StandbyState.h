@@ -22,8 +22,6 @@ public:
   /** @brief Virtual destructor for polymorphic cleanup. */
   virtual ~StandbyState() {}
 
-  /** @brief Runs periodic standby-state update behavior. */
-  void UpdateState() override;
   /** @brief Executes entry logic for standby state. */
   void InitState() override;
   /** @brief Executes exit logic for standby state. */
